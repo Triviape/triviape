@@ -1,8 +1,8 @@
 import type { Config } from "tailwindcss";
-import { fontFamily } from "tailwindcss/defaultTheme";
+import defaultTheme from "tailwindcss/defaultTheme";
 
 const config: Config = {
-  darkMode: ["class"],
+  darkMode: "class",
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -28,47 +28,47 @@ const config: Config = {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        border: "#e5e7eb",
+        input: "#e5e7eb",
+        ring: "#ec4899",
+        background: "#ffffff",
+        foreground: "#0f1015",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "#ec4899",
+          foreground: "#fff1f2",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "#f3f4f6",
+          foreground: "#1f2937",
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: "#ef4444",
+          foreground: "#fafafa",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "#f3f4f6",
+          foreground: "#737373",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "#f3f4f6",
+          foreground: "#1f2937",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "#ffffff",
+          foreground: "#0f1015",
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "#ffffff",
+          foreground: "#0f1015",
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "0.5rem",
+        md: "calc(0.5rem - 2px)",
+        sm: "calc(0.5rem - 4px)",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", ...fontFamily.sans],
+        sans: ["var(--font-sans)", ...defaultTheme.fontFamily.sans],
       },
       keyframes: {
         "accordion-down": {
