@@ -3,6 +3,7 @@
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { QuizService } from '@/app/lib/services/quizService';
 import { Quiz, DifficultyLevel } from '@/app/types/quiz';
+import { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 
 // Query keys for React Query
 export const quizKeys = {
@@ -29,7 +30,7 @@ export function useQuizzes(categoryId?: string, difficulty?: DifficultyLevel, pa
       );
       return result;
     },
-    initialPageParam: null,
+    initialPageParam: null as QueryDocumentSnapshot<DocumentData, DocumentData> | null,
     getNextPageParam: (lastPage) => lastPage.lastVisible || null,
     // Keep cached for 5 minutes
     staleTime: 5 * 60 * 1000,

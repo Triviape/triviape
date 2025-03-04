@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useAuth } from '@/app/hooks/useAuth';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, User, NextOrObserver } from 'firebase/auth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { UserService } from '@/app/lib/services/userService';
@@ -47,6 +47,15 @@ jest.mock('@/app/lib/services/userService', () => {
 // Mock the Firebase auth state changed
 const mockOnAuthStateChanged = onAuthStateChanged as jest.MockedFunction<typeof onAuthStateChanged>;
 
+// Helper function to invoke callback safely regardless of whether it's a function or Observer
+const invokeAuthCallback = (observer: NextOrObserver<User | null>, user: User | null) => {
+  if (typeof observer === 'function') {
+    observer(user);
+  } else if (observer && typeof observer.next === 'function') {
+    observer.next(user);
+  }
+};
+
 // Setup React Query for testing
 const createWrapper = () => {
   const queryClient = new QueryClient();
@@ -82,8 +91,8 @@ describe('useAuth Hook', () => {
       email: 'test@example.com'
     };
 
-    mockOnAuthStateChanged.mockImplementationOnce((auth, callback) => {
-      callback(mockUser as any);
+    mockOnAuthStateChanged.mockImplementationOnce((auth, observer) => {
+      invokeAuthCallback(observer, mockUser as unknown as User);
       return jest.fn();
     });
 
@@ -100,8 +109,8 @@ describe('useAuth Hook', () => {
   });
 
   it('should handle sign in with email', async () => {
-    mockOnAuthStateChanged.mockImplementationOnce((auth, callback) => {
-      callback(null);
+    mockOnAuthStateChanged.mockImplementationOnce((auth, observer) => {
+      invokeAuthCallback(observer, null);
       return jest.fn();
     });
 
@@ -123,8 +132,8 @@ describe('useAuth Hook', () => {
   });
 
   it('should handle sign in with Google', async () => {
-    mockOnAuthStateChanged.mockImplementationOnce((auth, callback) => {
-      callback(null);
+    mockOnAuthStateChanged.mockImplementationOnce((auth, observer) => {
+      invokeAuthCallback(observer, null);
       return jest.fn();
     });
 
@@ -140,8 +149,8 @@ describe('useAuth Hook', () => {
   });
 
   it('should handle registration', async () => {
-    mockOnAuthStateChanged.mockImplementationOnce((auth, callback) => {
-      callback(null);
+    mockOnAuthStateChanged.mockImplementationOnce((auth, observer) => {
+      invokeAuthCallback(observer, null);
       return jest.fn();
     });
 
@@ -170,8 +179,8 @@ describe('useAuth Hook', () => {
       email: 'test@example.com'
     };
 
-    mockOnAuthStateChanged.mockImplementationOnce((auth, callback) => {
-      callback(mockUser as any);
+    mockOnAuthStateChanged.mockImplementationOnce((auth, observer) => {
+      invokeAuthCallback(observer, mockUser as unknown as User);
       return jest.fn();
     });
 
