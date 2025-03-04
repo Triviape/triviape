@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Button } from '@/app/components/ui/button';
 import { ResponsiveContainer } from '@/app/components/layouts/responsive-container';

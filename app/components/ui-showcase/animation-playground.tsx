@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { useResponsiveUI } from '@/app/contexts/responsive-ui-context';
 import { RiveAnimation } from '@/app/components/animation/rive-animation';
