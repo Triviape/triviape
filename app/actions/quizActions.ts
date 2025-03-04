@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { adminDb } from '@/app/lib/firebaseAdmin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { adminAuth } from '@/app/lib/firebaseAdmin';
@@ -19,7 +20,7 @@ const COLLECTIONS = {
  * Validate and get the current user ID from the session
  */
 async function getCurrentUserId(): Promise<string> {
-  const sessionCookie = cookies().get('session')?.value;
+  const sessionCookie = (await cookies()).get('session')?.value;
   
   if (!sessionCookie) {
     throw new Error('Not authenticated');
@@ -111,12 +112,12 @@ export async function submitQuizAttempt(formData: FormData) {
       
       // Check if answer is correct
       const correctAnswerIds = question.answers
-        .filter(a => a.isCorrect)
-        .map(a => a.id);
+        .filter((a: { isCorrect: boolean }) => a.isCorrect)
+        .map((a: { id: string }) => a.id);
       
       const isCorrect = 
         correctAnswerIds.length === answer.selectedAnswerIds.length &&
-        correctAnswerIds.every(id => answer.selectedAnswerIds.includes(id));
+        correctAnswerIds.every((id: string) => answer.selectedAnswerIds.includes(id));
       
       const pointsEarned = isCorrect ? question.points : 0;
       score += pointsEarned;
@@ -163,11 +164,11 @@ export async function submitQuizAttempt(formData: FormData) {
       // Update user profile (add XP and coins)
       const userRef = adminDb.collection('users').doc(userId);
       transaction.update(userRef, {
-        xp: adminDb.FieldValue.increment(xpEarned),
-        coins: adminDb.FieldValue.increment(coinsEarned),
-        quizzesTaken: adminDb.FieldValue.increment(1),
-        questionsAnswered: adminDb.FieldValue.increment(validatedData.answers.length),
-        correctAnswers: adminDb.FieldValue.increment(
+        xp: FieldValue.increment(xpEarned),
+        coins: FieldValue.increment(coinsEarned),
+        quizzesTaken: FieldValue.increment(1),
+        questionsAnswered: FieldValue.increment(validatedData.answers.length),
+        correctAnswers: FieldValue.increment(
           scoredAnswers.filter(a => a.wasCorrect).length
         ),
       });
@@ -185,13 +186,13 @@ export async function submitQuizAttempt(formData: FormData) {
       if (userStatsDoc.exists) {
         transaction.update(userStatsRef, {
           // Update quiz stats
-          totalScore: adminDb.FieldValue.increment(score),
-          quizzesTaken: adminDb.FieldValue.increment(1),
-          totalPlayTime: adminDb.FieldValue.increment(
+          totalScore: FieldValue.increment(score),
+          quizzesTaken: FieldValue.increment(1),
+          totalPlayTime: FieldValue.increment(
             (validatedData.completedAt - validatedData.startedAt) / 1000
           ),
           // Update or set highest score if this one is higher
-          highestScore: adminDb.FieldValue.increment(0), // Will be updated conditionally after transaction
+          highestScore: FieldValue.increment(0), // Will be updated conditionally after transaction
         });
       } else {
         transaction.set(userStatsRef, {
@@ -205,8 +206,8 @@ export async function submitQuizAttempt(formData: FormData) {
       
       // Update quiz document with play statistics
       transaction.update(quizRef, {
-        timesPlayed: adminDb.FieldValue.increment(1),
-        totalScore: adminDb.FieldValue.increment(score),
+        timesPlayed: FieldValue.increment(1),
+        totalScore: FieldValue.increment(score),
       });
     });
     

@@ -1,3 +1,5 @@
+"use client";
+
 import { isMobile, isTablet, deviceDetect, browserName } from 'react-device-detect';
 
 export interface DeviceInfo {
