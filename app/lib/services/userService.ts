@@ -9,7 +9,8 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   signOut,
-  UserCredential
+  UserCredential,
+  AdditionalUserInfo
 } from 'firebase/auth';
 import {
   doc,
@@ -21,7 +22,7 @@ import {
   DocumentReference,
   Timestamp
 } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth, db } from '../firebase';
 import { UserProfile, UserPreferences, PrivacySettings } from '@/app/types/user';
 
 // Collections
@@ -134,7 +135,8 @@ export class UserService {
       const userCredential = await signInWithPopup(auth, provider);
       
       // Check if this is a new user
-      const isNewUser = userCredential.additionalUserInfo?.isNewUser;
+      const additionalInfo = userCredential as unknown as { additionalUserInfo: AdditionalUserInfo };
+      const isNewUser = additionalInfo.additionalUserInfo?.isNewUser;
       
       if (isNewUser && userCredential.user) {
         // Create user profile document for new users
@@ -164,7 +166,8 @@ export class UserService {
       const userCredential = await signInWithPopup(auth, provider);
       
       // Check if this is a new user
-      const isNewUser = userCredential.additionalUserInfo?.isNewUser;
+      const additionalInfo = userCredential as unknown as { additionalUserInfo: AdditionalUserInfo };
+      const isNewUser = additionalInfo.additionalUserInfo?.isNewUser;
       
       if (isNewUser && userCredential.user) {
         // Create user profile document for new users
@@ -194,7 +197,8 @@ export class UserService {
       const userCredential = await signInWithPopup(auth, provider);
       
       // Check if this is a new user
-      const isNewUser = userCredential.additionalUserInfo?.isNewUser;
+      const additionalInfo = userCredential as unknown as { additionalUserInfo: AdditionalUserInfo };
+      const isNewUser = additionalInfo.additionalUserInfo?.isNewUser;
       
       if (isNewUser && userCredential.user) {
         // Create user profile document for new users

@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { 
   getStorage, 
-  Storage,
+  FirebaseStorage,
   connectStorageEmulator 
 } from 'firebase/storage';
 import {
@@ -24,7 +24,7 @@ import {
   Analytics,
   isSupported
 } from 'firebase/analytics';
-import { getPerformance, Performance } from 'firebase/performance';
+import { getPerformance } from 'firebase/performance';
 import { getFunctions, Functions, connectFunctionsEmulator } from 'firebase/functions';
 
 /**
@@ -49,9 +49,9 @@ class FirebaseService {
   private app: FirebaseApp | null = null;
   private authInstance: Auth | null = null;
   private firestoreInstance: Firestore | null = null;
-  private storageInstance: Storage | null = null;
+  private storageInstance: FirebaseStorage | null = null;
   private analyticsInstance: Analytics | null = null;
-  private performanceInstance: Performance | null = null;
+  private performanceInstance: any | null = null;
   private functionsInstance: Functions | null = null;
   private isInitialized = false;
 
@@ -113,11 +113,13 @@ class FirebaseService {
       // Initialize Analytics and Performance in client-side only
       if (typeof window !== 'undefined') {
         isSupported().then(supported => {
-          if (supported) {
+          if (supported && this.app) {
             this.analyticsInstance = getAnalytics(this.app);
           }
         });
-        this.performanceInstance = getPerformance(this.app);
+        if (this.app) {
+          this.performanceInstance = getPerformance(this.app);
+        }
       }
 
       // Connect to emulators if in development mode
@@ -185,7 +187,7 @@ class FirebaseService {
   /**
    * Get the Storage instance
    */
-  public getStorage(): Storage {
+  public getStorage(): FirebaseStorage {
     if (!this.storageInstance) {
       this.initialize();
     }
@@ -202,7 +204,7 @@ class FirebaseService {
   /**
    * Get the Performance instance
    */
-  public getPerformance(): Performance | null {
+  public getPerformance(): any | null {
     return this.performanceInstance;
   }
 

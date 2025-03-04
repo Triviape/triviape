@@ -13,9 +13,12 @@ import {
   addDoc,
   updateDoc,
   increment,
-  writeBatch
+  writeBatch,
+  CollectionReference,
+  Query,
+  DocumentData
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '../firebase';
 import { 
   Quiz, 
   Question, 
@@ -53,7 +56,7 @@ export class QuizService {
   ) {
     try {
       // Start building the query
-      let q = collection(db, COLLECTIONS.QUIZZES);
+      const collectionRef = collection(db, COLLECTIONS.QUIZZES);
       let constraints = [];
 
       // Add filters if provided
@@ -80,7 +83,7 @@ export class QuizService {
       }
       
       // Build the final query
-      q = query(q, ...constraints);
+      const q = query(collectionRef, ...constraints);
       
       // Execute the query
       const snapshot = await getDocs(q);
@@ -198,7 +201,7 @@ export class QuizService {
   ) {
     try {
       // Start building the query
-      let q = collection(db, COLLECTIONS.QUESTIONS);
+      const collectionRef = collection(db, COLLECTIONS.QUESTIONS);
       let constraints = [];
       
       // Add filters if provided
@@ -225,7 +228,7 @@ export class QuizService {
       }
       
       // Build the final query
-      q = query(q, ...constraints);
+      const q = query(collectionRef, ...constraints);
       
       // Execute the query
       const snapshot = await getDocs(q);
