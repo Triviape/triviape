@@ -2,9 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { auth } from '@/app/lib/firebase';
-import { UserService } from '@/app/lib/services/userService';
-import { UserProfile, UserPreferences, PrivacySettings } from '@/app/types/user';
+import { getAuthInstance } from '@/app/lib/firebase';
+import { 
+  registerWithEmailPassword, 
+  signInWithEmail, 
+  signInWithGoogle, 
+  logoutUser 
+} from '@/app/lib/services/user/authService';
+import { 
+  getUserProfile, 
+  updateUserProfile, 
+  updateUserPreferences 
+} from '@/app/lib/services/user/profileService';
+import { UserProfile, UserPreferences } from '@/app/types/user';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
 // Query keys for React Query
@@ -27,12 +37,21 @@ export function useAuth() {
 
   // Listen to Firebase auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setLoading(false);
-    });
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const auth = getAuthInstance();
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setCurrentUser(user);
+        setLoading(false);
+      });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch (error) {
+      console.error('Error setting up auth state listener:', error);
+      setLoading(false);
+    }
   }, []);
 
   // Fetch user profile data with React Query
@@ -40,14 +59,14 @@ export function useAuth() {
     queryKey: userKeys.profileId(currentUser?.uid || 'guest'),
     queryFn: async () => {
       if (!currentUser) return null;
-      return await UserService.getUserProfile(currentUser.uid);
+      return await getUserProfile(currentUser.uid);
     },
     enabled: !!currentUser,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Sign in with email
-  const signInWithEmail = useMutation({
+  const signInWithEmailMutation = useMutation({
     mutationFn: async ({
       email,
       password,
@@ -55,7 +74,7 @@ export function useAuth() {
       email: string;
       password: string;
     }) => {
-      return await UserService.signInWithEmail(email, password);
+      return await signInWithEmail(email, password);
     },
     onSuccess: () => {
       // Invalidate user queries to refetch data
@@ -64,9 +83,9 @@ export function useAuth() {
   });
 
   // Sign in with Google
-  const signInWithGoogle = useMutation({
+  const signInWithGoogleMutation = useMutation({
     mutationFn: async () => {
-      return await UserService.signInWithGoogle();
+      return await signInWithGoogle();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.all });
@@ -74,7 +93,7 @@ export function useAuth() {
   });
 
   // Register with email
-  const registerWithEmail = useMutation({
+  const registerWithEmailMutation = useMutation({
     mutationFn: async ({
       email,
       password,
@@ -84,7 +103,7 @@ export function useAuth() {
       password: string;
       displayName: string;
     }) => {
-      return await UserService.registerWithEmail(email, password, displayName);
+      return await registerWithEmailPassword(email, password, displayName);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.all });
@@ -92,9 +111,9 @@ export function useAuth() {
   });
 
   // Sign out
-  const signOut = useMutation({
+  const signOutMutation = useMutation({
     mutationFn: async () => {
-      return await UserService.signOut();
+      return await logoutUser();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.all });
@@ -102,10 +121,10 @@ export function useAuth() {
   });
 
   // Update user profile
-  const updateProfile = useMutation({
+  const updateProfileMutation = useMutation({
     mutationFn: async (updates: Partial<UserProfile>) => {
       if (!currentUser) throw new Error('No user logged in');
-      return await UserService.updateUserProfile(currentUser.uid, updates);
+      return await updateUserProfile(currentUser, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
@@ -115,10 +134,10 @@ export function useAuth() {
   });
 
   // Update user preferences
-  const updatePreferences = useMutation({
+  const updatePreferencesMutation = useMutation({
     mutationFn: async (preferences: Partial<UserPreferences>) => {
       if (!currentUser) throw new Error('No user logged in');
-      return await UserService.updateUserPreferences(currentUser.uid, preferences);
+      return await updateUserPreferences(currentUser.uid, preferences);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
@@ -131,11 +150,11 @@ export function useAuth() {
     currentUser,
     profile,
     isLoading: loading || isProfileLoading,
-    signInWithEmail,
-    signInWithGoogle,
-    registerWithEmail,
-    signOut,
-    updateProfile,
-    updatePreferences,
+    signInWithEmail: signInWithEmailMutation,
+    signInWithGoogle: signInWithGoogleMutation,
+    registerWithEmail: registerWithEmailMutation,
+    signOut: signOutMutation,
+    updateProfile: updateProfileMutation,
+    updatePreferences: updatePreferencesMutation,
   };
 } 
