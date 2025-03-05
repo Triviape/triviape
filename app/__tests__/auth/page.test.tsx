@@ -20,6 +20,14 @@ jest.mock('@/app/contexts/responsive-ui-context', () => {
   };
 });
 
+// Mock Firebase lib
+jest.mock('@/app/lib/firebase', () => ({
+  getAuthInstance: jest.fn(() => ({
+    // Mock auth instance
+    currentUser: null,
+  })),
+}));
+
 // Mock device info
 const mockDeviceInfo = {
   isMobile: false,
@@ -71,6 +79,12 @@ describe('AuthPage', () => {
       setAnimationLevel: jest.fn(),
       setUIScale: jest.fn()
     });
+
+    // Mock navigator.onLine
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      value: true
+    });
   });
   
   const renderWithProviders = (ui: React.ReactElement) => {
@@ -114,10 +128,13 @@ describe('AuthPage', () => {
     // Submit the form
     await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
     
-    expect(mockSignInMutate).toHaveBeenCalledWith(
-      { email: 'test@example.com', password: 'password123' },
-      expect.any(Object)
-    );
+    // Wait for the mutation to be called
+    await waitFor(() => {
+      expect(mockSignInMutate).toHaveBeenCalledWith(
+        { email: 'test@example.com', password: 'password123' },
+        expect.any(Object)
+      );
+    });
   });
   
   it('calls registerWithEmail.mutate when submitting the sign up form', async () => {
@@ -134,14 +151,17 @@ describe('AuthPage', () => {
     // Submit the form
     await userEvent.click(screen.getByRole('button', { name: 'Create Account' }));
     
-    expect(mockRegisterMutate).toHaveBeenCalledWith(
-      { 
-        email: 'test@example.com', 
-        password: 'password123',
-        displayName: 'Test User'
-      },
-      expect.any(Object)
-    );
+    // Wait for the mutation to be called
+    await waitFor(() => {
+      expect(mockRegisterMutate).toHaveBeenCalledWith(
+        { 
+          email: 'test@example.com', 
+          password: 'password123',
+          displayName: 'Test User'
+        },
+        expect.any(Object)
+      );
+    });
   });
   
   it('shows loading state when authentication is in progress', () => {
@@ -189,5 +209,57 @@ describe('AuthPage', () => {
     renderWithProviders(<AuthPage />);
     
     expect(mockPush).toHaveBeenCalledWith('/');
+  });
+
+  it('disables the submit button when offline', () => {
+    // Mock offline state
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      value: false
+    });
+    
+    renderWithProviders(<AuthPage />);
+    
+    // Wait for the network status to be updated
+    expect(screen.getByRole('button', { name: 'Sign In' })).toBeDisabled();
+  });
+
+  it('shows error message when form submission fails', async () => {
+    // Mock error state
+    const mockError = new Error('Invalid credentials');
+    
+    (useAuth as jest.Mock).mockReturnValue({
+      currentUser: null,
+      signInWithEmail: {
+        mutate: jest.fn().mockImplementation((data, options) => {
+          if (options && options.onError) {
+            options.onError(mockError);
+          }
+        }),
+        isPending: false,
+        isError: true,
+        error: mockError
+      },
+      registerWithEmail: {
+        mutate: mockRegisterMutate,
+        isPending: false,
+        isError: false,
+        error: null
+      }
+    });
+    
+    renderWithProviders(<AuthPage />);
+    
+    // Fill in the form
+    await userEvent.type(screen.getByLabelText('Email'), 'test@example.com');
+    await userEvent.type(screen.getByLabelText('Password'), 'password123');
+    
+    // Submit the form
+    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+    
+    // Wait for the error message to appear
+    await waitFor(() => {
+      expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
+    });
   });
 }); 
