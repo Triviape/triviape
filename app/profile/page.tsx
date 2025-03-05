@@ -126,7 +126,7 @@ export default function ProfilePage() {
                 
                 <div className="flex-1">
                   {isEditing ? (
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
                       <div suppressHydrationWarning={true}>
                         <label htmlFor="displayName" className="block text-sm font-medium mb-1">
                           Display Name

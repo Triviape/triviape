@@ -388,9 +388,25 @@ export function initializeFirebase(): void {
   initializeFirebaseServices();
 }
 
+/**
+ * Get the Firebase app instance
+ * @returns The Firebase app instance
+ */
+export function getApp(): FirebaseApp {
+  if (!app) {
+    initializeFirebaseServices();
+  }
+  
+  if (!app) {
+    throw new Error('Firebase app not initialized');
+  }
+  
+  return app;
+}
+
 // Create a service object with all the Firebase service getter methods
 const firebaseService = {
-  getApp: () => app,
+  getApp,
   getAuth,
   getFirestore,
   getStorage,

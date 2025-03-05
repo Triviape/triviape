@@ -12,7 +12,7 @@ export interface InputProps
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, error, leftIcon, rightIcon, ...props }, ref) => {
+  ({ className, type, error, leftIcon, rightIcon, autoComplete = "off", ...props }, ref) => {
     const { isTouch, deviceInfo } = useResponsiveUI();
     
     // Adjust padding based on presence of icons
@@ -47,6 +47,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className
           )}
           ref={ref}
+          autoComplete={autoComplete}
           {...props}
         />
         

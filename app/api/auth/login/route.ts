@@ -12,13 +12,10 @@ export async function POST(request: Request) {
     const { email, password } = await request.json();
     
     if (!email || !password) {
-      return {
-        status: 400,
-        data: { 
-          success: false, 
-          error: 'Missing required fields (email or password)'
-        }
-      };
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Missing required fields (email or password)'
+      }, { status: 400 });
     }
     
     // For server-side login, we need to use a different approach
@@ -35,29 +32,23 @@ export async function POST(request: Request) {
       const customToken = await FirebaseAdminService.createCustomToken(userRecord.uid);
       
       // Return success response with token
-      return {
-        status: 200,
-        data: {
-          success: true,
-          token: customToken,
-          user: {
-            uid: userRecord.uid,
-            email: userRecord.email,
-            displayName: userRecord.displayName,
-          }
+      return NextResponse.json({
+        success: true,
+        token: customToken,
+        user: {
+          uid: userRecord.uid,
+          email: userRecord.email,
+          displayName: userRecord.displayName,
         }
-      };
+      }, { status: 200 });
     } catch (error: any) {
       // If the user doesn't exist or there's another error
       if (error.code === 'auth/user-not-found' || error.message?.includes('User not found')) {
-        return {
-          status: 401,
-          data: {
-            success: false,
-            error: 'Invalid email or password',
-            errorCode: 'auth/user-not-found',
-          }
-        };
+        return NextResponse.json({
+          success: false,
+          error: 'Invalid email or password',
+          errorCode: 'auth/user-not-found',
+        }, { status: 401 });
       }
       
       // If it's any other error, rethrow it
@@ -69,14 +60,11 @@ export async function POST(request: Request) {
     const errorMessage = getAuthErrorMessage(error);
     const errorCode = error.code ? error.code : 'unknown';
     
-    return {
-      status: 500,
-      data: {
-        success: false,
-        error: errorMessage,
-        errorCode: errorCode,
-        timestamp: new Date().toISOString()
-      }
-    };
+    return NextResponse.json({
+      success: false,
+      error: errorMessage,
+      errorCode: errorCode,
+      timestamp: new Date().toISOString()
+    }, { status: 500 });
   }
 } 

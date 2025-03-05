@@ -1,5 +1,6 @@
 import { getAuthErrorMessage } from '@/app/lib/authErrorHandler';
 import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
+import { NextResponse } from 'next/server';
 
 // Session expiration time (2 weeks)
 const SESSION_EXPIRATION = 60 * 60 * 24 * 14;
@@ -14,13 +15,10 @@ export async function POST(request: Request) {
     const { idToken } = await request.json();
     
     if (!idToken) {
-      return {
-        status: 400,
-        data: { 
-          success: false, 
-          error: 'Missing ID token'
-        }
-      };
+      return NextResponse.json(
+        { success: false, error: 'Missing ID token' },
+        { status: 400 }
+      );
     }
     
     try {
@@ -31,28 +29,45 @@ export async function POST(request: Request) {
       // For testing, we'll mock this behavior
       const sessionCookie = 'mock-session-cookie';
       
-      // Return success response with cookie header
-      return {
-        status: 200,
-        data: {
+      // Create response with session data
+      const response = NextResponse.json(
+        {
           success: true,
           uid: decodedToken?.uid || 'test-uid',
           expiresIn: SESSION_EXPIRATION
         },
-        headers: new Headers({
-          'Set-Cookie': `session=${sessionCookie}; HttpOnly; Path=/; Max-Age=${SESSION_EXPIRATION}; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
-        })
-      };
+        { status: 200 }
+      );
+      
+      // Determine if we're in a secure context
+      const isSecure = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_URL?.includes('https');
+      
+      // Set the cookie with appropriate SameSite attribute
+      // In production, use 'none' for cross-site requests with secure flag
+      // In development, use 'lax' for better developer experience
+      response.cookies.set({
+        name: 'session',
+        value: sessionCookie,
+        httpOnly: true,
+        path: '/',
+        maxAge: SESSION_EXPIRATION,
+        sameSite: isSecure ? 'none' : 'lax',
+        secure: isSecure,
+        // Add partitioned attribute for Chrome's CHIPS (if supported)
+        ...(isSecure && { partitioned: true })
+      });
+      
+      return response;
     } catch (error: any) {
       // If the token is invalid
-      return {
-        status: 401,
-        data: {
+      return NextResponse.json(
+        {
           success: false,
           error: 'Invalid or expired ID token',
           errorCode: error.code || 'auth/invalid-id-token',
-        }
-      };
+        },
+        { status: 401 }
+      );
     }
   } catch (error: any) {
     console.error('Session creation error:', error);
@@ -60,14 +75,14 @@ export async function POST(request: Request) {
     const errorMessage = getAuthErrorMessage(error);
     const errorCode = error.code ? error.code : 'unknown';
     
-    return {
-      status: 500,
-      data: {
+    return NextResponse.json(
+      {
         success: false,
         error: errorMessage,
         errorCode: errorCode,
         timestamp: new Date().toISOString()
-      }
-    };
+      },
+      { status: 500 }
+    );
   }
 } 

@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 /**
  * API route to handle user logout
@@ -6,27 +7,33 @@ import { cookies } from 'next/headers';
  */
 export async function POST(request: Request) {
   try {
-    // Return success response with cleared cookie
-    return {
-      status: 200,
-      data: {
-        success: true,
-        message: 'Logged out successfully'
-      },
-      headers: new Headers({
-        'Set-Cookie': 'session=; Path=/; Max-Age=0; SameSite=Lax'
-      })
-    };
+    // Create a response with success message
+    const response = NextResponse.json({
+      success: true,
+      message: 'Logged out successfully'
+    }, { status: 200 });
+    
+    // Determine if we're in a secure context
+    const isSecure = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_URL?.includes('https');
+    
+    // Clear the session cookie with the same settings as when it was created
+    response.cookies.set('session', '', {
+      path: '/',
+      maxAge: 0,
+      httpOnly: true,
+      sameSite: isSecure ? 'none' : 'lax',
+      secure: isSecure,
+      ...(isSecure && { partitioned: true })
+    });
+    
+    return response;
   } catch (error: any) {
     console.error('Logout error:', error);
     
-    return {
-      status: 500,
-      data: {
-        success: false,
-        error: 'An error occurred during logout',
-        timestamp: new Date().toISOString()
-      }
-    };
+    return NextResponse.json({
+      success: false,
+      error: 'An error occurred during logout',
+      timestamp: new Date().toISOString()
+    }, { status: 500 });
   }
 } 

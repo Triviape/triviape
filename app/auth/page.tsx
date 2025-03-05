@@ -128,7 +128,7 @@ export default function AuthPage() {
             </div>
           )}
           
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             <div suppressHydrationWarning={true}>
               <label htmlFor="email" className="block text-sm font-medium mb-1">
                 Email

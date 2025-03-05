@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { ReactNode, useEffect } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { recordMetric, MetricType } from '@/app/lib/performanceAnalyzer';
@@ -16,7 +16,10 @@ import { useNetworkMonitor } from '@/app/hooks/performance/useNetworkMonitor';
 // Dynamically import the performance dashboard to reduce bundle size
 const PerformanceDashboard = dynamic(
   () => import('@/app/components/performance/PerformanceDashboard'),
-  { ssr: false }
+  { 
+    ssr: false,
+    loading: () => <div className="hidden">Loading performance dashboard...</div>
+  }
 );
 
 interface PerformanceProviderProps {
@@ -29,9 +32,15 @@ interface PerformanceProviderProps {
 export default function PerformanceProvider({ children }: PerformanceProviderProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isClient, setIsClient] = useState(false);
+  
+  // Set isClient to true on client-side hydration
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   
   // Enable network monitoring in development mode
-  const showDashboard = process.env.NODE_ENV === 'development';
+  const showDashboard = process.env.NODE_ENV === 'development' && isClient;
   useNetworkMonitor({
     trackFetch: showDashboard,
     trackResources: showDashboard,
@@ -40,6 +49,8 @@ export default function PerformanceProvider({ children }: PerformanceProviderPro
   
   // Track page navigation
   useEffect(() => {
+    if (!isClient) return;
+    
     // Record navigation metric
     recordMetric({
       type: MetricType.NAVIGATION,
@@ -85,7 +96,7 @@ export default function PerformanceProvider({ children }: PerformanceProviderPro
         console.warn('web-vitals library not available');
       });
     }
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, isClient]);
   
   return (
     <>

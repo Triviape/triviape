@@ -1,7 +1,7 @@
 import React from 'react';
 import { Quiz, DifficultyLevel } from '@/app/types/quiz';
 import QuizCard from './QuizCard';
-import useQuizzes from '@/app/hooks/useQuizzes';
+import { useQuizzes } from '@/app/hooks/useQuizzes';
 
 interface QuizListProps {
   categoryId?: string;
@@ -15,16 +15,12 @@ const QuizList: React.FC<QuizListProps> = ({
   limit = 10
 }) => {
   const { 
-    quizzes, 
-    loading, 
+    data: quizzes = [], 
+    isLoading: loading, 
     error, 
-    hasMore, 
-    loadMore 
-  } = useQuizzes({ 
-    categoryId, 
-    difficulty, 
-    pageSize: limit 
-  });
+    hasNextPage: hasMore, 
+    fetchNextPage: loadMore 
+  } = useQuizzes(categoryId, difficulty, limit);
 
   if (loading && quizzes.length === 0) {
     return (

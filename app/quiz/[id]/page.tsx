@@ -4,9 +4,18 @@ import Link from 'next/link';
 import { getQuizById, getCategories } from '@/app/lib/services/quiz/quizFetchService';
 import { DifficultyLevel } from '@/app/types/quiz';
 import { notFound } from 'next/navigation';
+import { Metadata } from 'next';
+
+type QuizPageParams = {
+  id: string;
+};
+
+type Props = {
+  params: QuizPageParams;
+};
 
 // Generate metadata for the page
-export async function generateMetadata({ params }: { params: { id: string } }) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const quiz = await getQuizById(params.id);
   
   if (!quiz) {
@@ -38,7 +47,7 @@ const getDifficultyColor = (difficulty: DifficultyLevel): string => {
   }
 };
 
-export default async function QuizPage({ params }: { params: { id: string } }) {
+export default async function QuizPage({ params }: Props) {
   // Fetch quiz data
   const quiz = await getQuizById(params.id);
   
