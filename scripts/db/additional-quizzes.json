@@ -1,0 +1,266 @@
+{
+  "quizzes": {
+    "quiz4": {
+      "id": "quiz4",
+      "title": "CSS Mastery",
+      "description": "Test your knowledge of advanced CSS techniques and modern layout methods.",
+      "categoryIds": ["web-development", "css"],
+      "difficulty": "medium",
+      "questionIds": ["q16", "q17", "q18", "q19", "q20"],
+      "shuffleQuestions": true,
+      "estimatedDuration": 1200,
+      "baseXP": 150,
+      "baseCoins": 75,
+      "createdAt": {"_seconds": 1699099200, "_nanoseconds": 0},
+      "updatedAt": {"_seconds": 1699099200, "_nanoseconds": 0},
+      "isActive": true,
+      "timesPlayed": 0,
+      "averageScore": 0,
+      "completionRate": 0,
+      "timeLimit": 1800,
+      "passingScore": 75,
+      "coverImage": "https://example.com/images/css-quiz.jpg"
+    },
+    "quiz5": {
+      "id": "quiz5",
+      "title": "JavaScript ES6+ Features",
+      "description": "Explore the modern features of JavaScript introduced in ES6 and beyond.",
+      "categoryIds": ["programming", "javascript"],
+      "difficulty": "hard",
+      "questionIds": ["q21", "q22", "q23", "q24", "q25"],
+      "shuffleQuestions": true,
+      "estimatedDuration": 1500,
+      "baseXP": 200,
+      "baseCoins": 100,
+      "createdAt": {"_seconds": 1699185600, "_nanoseconds": 0},
+      "updatedAt": {"_seconds": 1699185600, "_nanoseconds": 0},
+      "isActive": true,
+      "timesPlayed": 0,
+      "averageScore": 0,
+      "completionRate": 0,
+      "timeLimit": 2100,
+      "passingScore": 80
+    },
+    "quiz6": {
+      "id": "quiz6",
+      "title": "Next.js Fundamentals",
+      "description": "Learn the basics of Next.js, the React framework for production.",
+      "categoryIds": ["web-development", "react", "nextjs"],
+      "difficulty": "medium",
+      "questionIds": ["q26", "q27", "q28", "q29", "q30"],
+      "shuffleQuestions": true,
+      "estimatedDuration": 1200,
+      "baseXP": 150,
+      "baseCoins": 75,
+      "createdAt": {"_seconds": 1699272000, "_nanoseconds": 0},
+      "updatedAt": {"_seconds": 1699272000, "_nanoseconds": 0},
+      "isActive": true,
+      "timesPlayed": 0,
+      "averageScore": 0,
+      "completionRate": 0,
+      "timeLimit": 1800,
+      "passingScore": 75
+    }
+  },
+  "categories": {
+    "css": {
+      "id": "css",
+      "name": "CSS",
+      "description": "Cascading Style Sheets for web styling",
+      "icon": "css",
+      "parentCategoryId": "web-development"
+    },
+    "javascript": {
+      "id": "javascript",
+      "name": "JavaScript",
+      "description": "JavaScript programming language",
+      "icon": "javascript",
+      "parentCategoryId": "programming"
+    },
+    "nextjs": {
+      "id": "nextjs",
+      "name": "Next.js",
+      "description": "React framework for production",
+      "icon": "nextjs",
+      "parentCategoryId": "react"
+    }
+  },
+  "questions": {
+    "q16": {
+      "id": "q16",
+      "text": "Which CSS property is used to create a grid layout?",
+      "type": "multiple_choice",
+      "difficulty": "medium",
+      "categoryIds": ["web-development", "css"],
+      "answers": [
+        {
+          "id": "a1",
+          "text": "display: grid;",
+          "isCorrect": true,
+          "explanation": "The display: grid; property is used to create a grid layout container."
+        },
+        {
+          "id": "a2",
+          "text": "display: flex;",
+          "isCorrect": false,
+          "explanation": "display: flex; is used to create a flexbox layout, not a grid layout."
+        },
+        {
+          "id": "a3",
+          "text": "position: grid;",
+          "isCorrect": false,
+          "explanation": "position: grid; is not a valid CSS property."
+        },
+        {
+          "id": "a4",
+          "text": "layout: grid;",
+          "isCorrect": false,
+          "explanation": "layout: grid; is not a valid CSS property."
+        }
+      ],
+      "points": 10,
+      "timeLimit": 30,
+      "hint": "Think about the display property in CSS.",
+      "timesAnswered": 0,
+      "timesAnsweredCorrectly": 0,
+      "averageAnswerTime": 0,
+      "skipRate": 0,
+      "tags": ["css", "grid", "layout"],
+      "createdAt": 1699099200,
+      "updatedAt": 1699099200,
+      "isActive": true
+    },
+    "q17": {
+      "id": "q17",
+      "text": "Which CSS property is used to make text bold?",
+      "type": "multiple_choice",
+      "difficulty": "easy",
+      "categoryIds": ["web-development", "css"],
+      "answers": [
+        {
+          "id": "a1",
+          "text": "font-weight: bold;",
+          "isCorrect": true,
+          "explanation": "font-weight: bold; is used to make text bold in CSS."
+        },
+        {
+          "id": "a2",
+          "text": "text-style: bold;",
+          "isCorrect": false,
+          "explanation": "text-style: bold; is not a valid CSS property."
+        },
+        {
+          "id": "a3",
+          "text": "font-style: bold;",
+          "isCorrect": false,
+          "explanation": "font-style is used for italic, not bold."
+        },
+        {
+          "id": "a4",
+          "text": "text-weight: bold;",
+          "isCorrect": false,
+          "explanation": "text-weight: bold; is not a valid CSS property."
+        }
+      ],
+      "points": 5,
+      "timeLimit": 20,
+      "hint": "It's related to the 'weight' of the font.",
+      "timesAnswered": 0,
+      "timesAnsweredCorrectly": 0,
+      "averageAnswerTime": 0,
+      "skipRate": 0,
+      "tags": ["css", "typography", "styling"],
+      "createdAt": 1699099300,
+      "updatedAt": 1699099300,
+      "isActive": true
+    },
+    "q21": {
+      "id": "q21",
+      "text": "Which ES6 feature allows for variable destructuring?",
+      "type": "multiple_choice",
+      "difficulty": "medium",
+      "categoryIds": ["programming", "javascript"],
+      "answers": [
+        {
+          "id": "a1",
+          "text": "Destructuring assignment",
+          "isCorrect": true,
+          "explanation": "Destructuring assignment is an ES6 feature that allows you to extract data from arrays or objects into distinct variables."
+        },
+        {
+          "id": "a2",
+          "text": "Spread operator",
+          "isCorrect": false,
+          "explanation": "The spread operator (...) is used to expand elements, not for destructuring."
+        },
+        {
+          "id": "a3",
+          "text": "Template literals",
+          "isCorrect": false,
+          "explanation": "Template literals are used for string interpolation, not for destructuring."
+        },
+        {
+          "id": "a4",
+          "text": "Arrow functions",
+          "isCorrect": false,
+          "explanation": "Arrow functions provide a more concise syntax for writing functions, not for destructuring."
+        }
+      ],
+      "points": 15,
+      "timeLimit": 40,
+      "hint": "Think about how you can extract values from objects or arrays in a single statement.",
+      "timesAnswered": 0,
+      "timesAnsweredCorrectly": 0,
+      "averageAnswerTime": 0,
+      "skipRate": 0,
+      "tags": ["javascript", "es6", "destructuring"],
+      "createdAt": 1699185600,
+      "updatedAt": 1699185600,
+      "isActive": true
+    },
+    "q26": {
+      "id": "q26",
+      "text": "Which function is used to fetch data at build time in Next.js?",
+      "type": "multiple_choice",
+      "difficulty": "medium",
+      "categoryIds": ["web-development", "react", "nextjs"],
+      "answers": [
+        {
+          "id": "a1",
+          "text": "getStaticProps",
+          "isCorrect": true,
+          "explanation": "getStaticProps is used to fetch data at build time in Next.js."
+        },
+        {
+          "id": "a2",
+          "text": "getServerSideProps",
+          "isCorrect": false,
+          "explanation": "getServerSideProps is used to fetch data at request time, not build time."
+        },
+        {
+          "id": "a3",
+          "text": "getInitialProps",
+          "isCorrect": false,
+          "explanation": "getInitialProps is an older method that can run on both server and client."
+        },
+        {
+          "id": "a4",
+          "text": "fetchData",
+          "isCorrect": false,
+          "explanation": "fetchData is not a Next.js data fetching function."
+        }
+      ],
+      "points": 15,
+      "timeLimit": 40,
+      "hint": "It's related to static site generation (SSG).",
+      "timesAnswered": 0,
+      "timesAnsweredCorrectly": 0,
+      "averageAnswerTime": 0,
+      "skipRate": 0,
+      "tags": ["nextjs", "react", "data-fetching"],
+      "createdAt": 1699272000,
+      "updatedAt": 1699272000,
+      "isActive": true
+    }
+  }
+} 

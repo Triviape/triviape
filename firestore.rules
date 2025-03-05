@@ -1,107 +1,34 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions for security rules
-    function isAuthenticated() {
-      return request.auth != null;
+    // Allow authenticated users to read all documents
+    match /{document=**} {
+      allow read: if request.auth != null;
     }
     
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    // Allow users to read and write their own data
+    match /Users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    function isAdmin() {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid));
+    // Allow users to read quizzes, questions, and categories
+    match /Quizzes/{quizId} {
+      allow read: if request.auth != null;
     }
     
-    function incomingData() {
-      return request.resource.data;
+    match /Questions/{questionId} {
+      allow read: if request.auth != null;
     }
     
-    function existingData() {
-      return resource.data;
+    match /Categories/{categoryId} {
+      allow read: if request.auth != null;
     }
     
-    function isValidUserProfile() {
-      let data = incomingData();
-      return data.keys().hasAll(['displayName', 'email', 'level', 'xp', 'coins']) &&
-        data.displayName is string &&
-        data.email is string &&
-        data.level is number &&
-        data.xp is number &&
-        data.coins is number;
-    }
-    
-    function isValidQuiz() {
-      let data = incomingData();
-      return data.keys().hasAll(['title', 'description', 'questionIds', 'difficulty', 'isActive']) &&
-        data.title is string &&
-        data.description is string &&
-        data.questionIds is list &&
-        data.isActive is bool;
-    }
-    
-    // User collection rules
-    match /users/{userId} {
-      // Users can read and update their own profiles
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && isValidUserProfile();
-      allow update: if (isOwner(userId) || isAdmin()) &&
-        incomingData().diff(existingData()).affectedKeys()
-        .hasAny(['displayName', 'photoURL', 'preferences', 'privacySettings']);
-      
-      // User stats subcollection 
-      match /user_stats/{statId} {
-        allow read: if isOwner(userId) || 
-          (existingData().privacySettings.profileVisibility == 'public');
-        allow write: if isOwner(userId) || isAdmin();
-      }
-      
-      // User inventory subcollection
-      match /user_inventory/{inventoryId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId) || isAdmin();
-      }
-    }
-    
-    // Quizzes collection rules
-    match /quizzes/{quizId} {
-      // Quizzes are public but can only be modified by admins
-      allow read: if resource.data.isActive == true || isAdmin();
-      allow write: if isAdmin();
-      
-      // Quiz attempts subcollection
-      match /quiz_attempts/{attemptId} {
-        allow read: if isOwner(resource.data.userId) || isAdmin();
-        allow create: if isAuthenticated() && incomingData().userId == request.auth.uid;
-        allow update: if false; // Attempts cannot be modified after creation
-      }
-    }
-    
-    // Questions collection rules
-    match /questions/{questionId} {
-      // Question access is limited to prevent cheating
-      allow read: if isAdmin() || (isAuthenticated() && request.query.limit <= 50);
-      allow write: if isAdmin();
-    }
-    
-    // Categories collection rules
-    match /categories/{categoryId} {
-      allow read: if true; // Categories are public
-      allow write: if isAdmin();
-    }
-    
-    // Global stats for leaderboards
-    match /global_stats/{statId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    // Rate limiting collection to prevent abuse
-    match /rate_limits/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if isAdmin();
+    // Allow users to create and read their own quiz attempts
+    match /QuizAttempts/{attemptId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
     }
   }
-} 
+}
