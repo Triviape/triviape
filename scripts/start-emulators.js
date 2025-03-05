@@ -73,6 +73,38 @@ function startEmulators() {
   });
 }
 
+// Function to create sample users for authentication
+function createSampleUsers() {
+  console.log('Creating sample users in Auth emulator...');
+  
+  // Wait for emulators to start before creating users
+  setTimeout(() => {
+    const createUsersProcess = spawn('node', [
+      path.resolve(__dirname, 'create-sample-users.js')
+    ], {
+      stdio: 'inherit',
+      shell: true,
+      env: {
+        ...process.env,
+        USE_FIREBASE_EMULATORS: 'true',
+        FIREBASE_AUTH_EMULATOR_HOST: 'localhost:9099'
+      }
+    });
+    
+    createUsersProcess.on('error', (error) => {
+      console.error('Failed to create sample users:', error);
+    });
+    
+    createUsersProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Create sample users process exited with code ${code}`);
+      } else {
+        console.log('Sample users created successfully!');
+      }
+    });
+  }, 7000); // Wait 7 seconds for emulators to start
+}
+
 // Function to import sample data
 function importSampleData() {
   console.log('Importing sample data...');
@@ -114,4 +146,5 @@ function importSampleData() {
 
 // Start the emulators and import sample data
 startEmulators();
-importSampleData(); 
+importSampleData();
+createSampleUsers(); 

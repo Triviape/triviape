@@ -1,0 +1,352 @@
+{
+  "users": {
+    "user1": {
+      "uid": "user1",
+      "displayName": "Alex Johnson",
+      "email": "alex@example.com",
+      "photoURL": "https://randomuser.me/api/portraits/men/1.jpg",
+      "createdAt": "2023-01-15T08:30:00.000Z",
+      "lastLoginAt": "2023-06-10T14:22:10.000Z",
+      "isActive": true,
+      "level": 8,
+      "xp": 2450,
+      "coins": 780,
+      "preferences": {
+        "theme": "dark",
+        "notifications": {
+          "quizReminders": true,
+          "newQuizzes": true,
+          "achievements": true,
+          "friendActivity": false
+        },
+        "language": "en",
+        "soundEffects": true,
+        "accessibility": {
+          "highContrast": false,
+          "largeText": false,
+          "reducedMotion": false
+        }
+      },
+      "privacySettings": {
+        "profileVisibility": "public",
+        "showActivity": true,
+        "showAchievements": true,
+        "showLevel": true
+      }
+    },
+    "user2": {
+      "uid": "user2",
+      "displayName": "Samantha Lee",
+      "email": "samantha@example.com",
+      "photoURL": "https://randomuser.me/api/portraits/women/2.jpg",
+      "createdAt": "2023-02-20T10:15:00.000Z",
+      "lastLoginAt": "2023-06-09T19:45:30.000Z",
+      "isActive": true,
+      "level": 12,
+      "xp": 4120,
+      "coins": 1250,
+      "preferences": {
+        "theme": "light",
+        "notifications": {
+          "quizReminders": false,
+          "newQuizzes": true,
+          "achievements": true,
+          "friendActivity": true
+        },
+        "language": "en",
+        "soundEffects": false,
+        "accessibility": {
+          "highContrast": true,
+          "largeText": true,
+          "reducedMotion": true
+        }
+      },
+      "privacySettings": {
+        "profileVisibility": "friends",
+        "showActivity": true,
+        "showAchievements": true,
+        "showLevel": true
+      }
+    },
+    "user3": {
+      "uid": "user3",
+      "displayName": "Miguel Rodriguez",
+      "email": "miguel@example.com",
+      "photoURL": "https://randomuser.me/api/portraits/men/3.jpg",
+      "createdAt": "2023-03-05T15:40:00.000Z",
+      "lastLoginAt": "2023-06-10T08:12:45.000Z",
+      "isActive": true,
+      "level": 5,
+      "xp": 1280,
+      "coins": 420,
+      "preferences": {
+        "theme": "system",
+        "notifications": {
+          "quizReminders": true,
+          "newQuizzes": false,
+          "achievements": true,
+          "friendActivity": false
+        },
+        "language": "es",
+        "soundEffects": true,
+        "accessibility": {
+          "highContrast": false,
+          "largeText": false,
+          "reducedMotion": false
+        }
+      },
+      "privacySettings": {
+        "profileVisibility": "private",
+        "showActivity": false,
+        "showAchievements": true,
+        "showLevel": false
+      }
+    }
+  },
+  "userStats": {
+    "user1": {
+      "userId": "user1",
+      "quizzesCompleted": 24,
+      "quizzesPerfect": 8,
+      "totalQuestionsAnswered": 168,
+      "correctAnswers": 132,
+      "incorrectAnswers": 36,
+      "averageScore": 78.5,
+      "fastestQuizTime": 45,
+      "longestStreak": 5,
+      "currentStreak": 2,
+      "categoryPerformance": {
+        "programming": {
+          "quizzesCompleted": 10,
+          "averageScore": 82.3,
+          "bestScore": 95
+        },
+        "web-development": {
+          "quizzesCompleted": 8,
+          "averageScore": 76.8,
+          "bestScore": 90
+        },
+        "typescript": {
+          "quizzesCompleted": 6,
+          "averageScore": 74.2,
+          "bestScore": 85
+        }
+      },
+      "achievements": [
+        {
+          "id": "first-quiz",
+          "name": "First Steps",
+          "description": "Complete your first quiz",
+          "unlockedAt": "2023-01-16T09:20:15.000Z"
+        },
+        {
+          "id": "perfect-score",
+          "name": "Perfect Score",
+          "description": "Get 100% on a quiz",
+          "unlockedAt": "2023-02-05T14:30:22.000Z"
+        },
+        {
+          "id": "streak-3",
+          "name": "On Fire",
+          "description": "Complete 3 quizzes in a row",
+          "unlockedAt": "2023-03-12T11:45:30.000Z"
+        }
+      ]
+    },
+    "user2": {
+      "userId": "user2",
+      "quizzesCompleted": 42,
+      "quizzesPerfect": 15,
+      "totalQuestionsAnswered": 294,
+      "correctAnswers": 256,
+      "incorrectAnswers": 38,
+      "averageScore": 87.1,
+      "fastestQuizTime": 32,
+      "longestStreak": 8,
+      "currentStreak": 0,
+      "categoryPerformance": {
+        "programming": {
+          "quizzesCompleted": 12,
+          "averageScore": 89.5,
+          "bestScore": 100
+        },
+        "web-development": {
+          "quizzesCompleted": 15,
+          "averageScore": 85.3,
+          "bestScore": 95
+        },
+        "typescript": {
+          "quizzesCompleted": 10,
+          "averageScore": 91.2,
+          "bestScore": 100
+        },
+        "react": {
+          "quizzesCompleted": 5,
+          "averageScore": 82.6,
+          "bestScore": 90
+        }
+      },
+      "achievements": [
+        {
+          "id": "first-quiz",
+          "name": "First Steps",
+          "description": "Complete your first quiz",
+          "unlockedAt": "2023-02-21T11:10:05.000Z"
+        },
+        {
+          "id": "perfect-score",
+          "name": "Perfect Score",
+          "description": "Get 100% on a quiz",
+          "unlockedAt": "2023-03-02T16:25:18.000Z"
+        },
+        {
+          "id": "streak-3",
+          "name": "On Fire",
+          "description": "Complete 3 quizzes in a row",
+          "unlockedAt": "2023-03-15T09:30:42.000Z"
+        },
+        {
+          "id": "streak-5",
+          "name": "Unstoppable",
+          "description": "Complete 5 quizzes in a row",
+          "unlockedAt": "2023-04-02T14:15:30.000Z"
+        },
+        {
+          "id": "quiz-master",
+          "name": "Quiz Master",
+          "description": "Complete 25 quizzes",
+          "unlockedAt": "2023-05-10T18:40:12.000Z"
+        }
+      ]
+    },
+    "user3": {
+      "userId": "user3",
+      "quizzesCompleted": 12,
+      "quizzesPerfect": 2,
+      "totalQuestionsAnswered": 84,
+      "correctAnswers": 62,
+      "incorrectAnswers": 22,
+      "averageScore": 73.8,
+      "fastestQuizTime": 58,
+      "longestStreak": 3,
+      "currentStreak": 3,
+      "categoryPerformance": {
+        "programming": {
+          "quizzesCompleted": 5,
+          "averageScore": 70.2,
+          "bestScore": 85
+        },
+        "web-development": {
+          "quizzesCompleted": 4,
+          "averageScore": 75.5,
+          "bestScore": 90
+        },
+        "react": {
+          "quizzesCompleted": 3,
+          "averageScore": 78.3,
+          "bestScore": 95
+        }
+      },
+      "achievements": [
+        {
+          "id": "first-quiz",
+          "name": "First Steps",
+          "description": "Complete your first quiz",
+          "unlockedAt": "2023-03-06T16:30:25.000Z"
+        },
+        {
+          "id": "streak-3",
+          "name": "On Fire",
+          "description": "Complete 3 quizzes in a row",
+          "unlockedAt": "2023-06-08T19:15:40.000Z"
+        }
+      ]
+    }
+  },
+  "quizAttempts": {
+    "attempt1": {
+      "id": "attempt1",
+      "userId": "user1",
+      "quizId": "quiz1",
+      "startedAt": "2023-05-15T14:30:00.000Z",
+      "completedAt": "2023-05-15T14:38:45.000Z",
+      "score": 85,
+      "totalQuestions": 7,
+      "correctAnswers": 6,
+      "incorrectAnswers": 1,
+      "timeSpent": 525,
+      "xpEarned": 120,
+      "coinsEarned": 25,
+      "answers": [
+        {
+          "questionId": "q1",
+          "selectedAnswerId": "a1",
+          "isCorrect": true,
+          "timeSpent": 45
+        },
+        {
+          "questionId": "q2",
+          "selectedAnswerId": "a5",
+          "isCorrect": true,
+          "timeSpent": 62
+        }
+      ]
+    },
+    "attempt2": {
+      "id": "attempt2",
+      "userId": "user2",
+      "quizId": "quiz2",
+      "startedAt": "2023-06-01T10:15:00.000Z",
+      "completedAt": "2023-06-01T10:22:30.000Z",
+      "score": 100,
+      "totalQuestions": 5,
+      "correctAnswers": 5,
+      "incorrectAnswers": 0,
+      "timeSpent": 450,
+      "xpEarned": 150,
+      "coinsEarned": 40,
+      "answers": [
+        {
+          "questionId": "q16",
+          "selectedAnswerId": "a61",
+          "isCorrect": true,
+          "timeSpent": 85
+        },
+        {
+          "questionId": "q17",
+          "selectedAnswerId": "a65",
+          "isCorrect": true,
+          "timeSpent": 92
+        }
+      ]
+    },
+    "attempt3": {
+      "id": "attempt3",
+      "userId": "user3",
+      "quizId": "quiz3",
+      "startedAt": "2023-06-08T18:45:00.000Z",
+      "completedAt": "2023-06-08T18:56:20.000Z",
+      "score": 75,
+      "totalQuestions": 8,
+      "correctAnswers": 6,
+      "incorrectAnswers": 2,
+      "timeSpent": 680,
+      "xpEarned": 90,
+      "coinsEarned": 20,
+      "answers": [
+        {
+          "questionId": "q21",
+          "selectedAnswerId": "a81",
+          "isCorrect": true,
+          "timeSpent": 78
+        },
+        {
+          "questionId": "q26",
+          "selectedAnswerId": "a102",
+          "isCorrect": false,
+          "timeSpent": 105
+        }
+      ]
+    }
+  }
+} 

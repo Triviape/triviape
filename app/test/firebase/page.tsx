@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/app/hooks/useAuth';
-import { app, auth, db } from '@/app/lib/firebase';
+import { getApp, getFirestoreDb, getAuthInstance } from '@/app/lib/firebase';
 import { getDoc, doc, collection, getDocs, limit, query } from 'firebase/firestore';
 
 export default function FirebaseTestPage() {
@@ -16,7 +16,8 @@ export default function FirebaseTestPage() {
   useEffect(() => {
     try {
       // Check if Firebase app is initialized
-      if (app) {
+      const firebaseApp = getApp();
+      if (firebaseApp) {
         setFirebaseStatus('success');
       } else {
         setFirebaseStatus('error');
@@ -32,7 +33,9 @@ export default function FirebaseTestPage() {
   useEffect(() => {
     const testFirestore = async () => {
       try {
-        const testQuery = query(collection(db, 'test_collection'), limit(1));
+        // Use the safe Firestore access function
+        const firestore = getFirestoreDb();
+        const testQuery = query(collection(firestore, 'test_collection'), limit(1));
         await getDocs(testQuery);
         setFirestoreStatus('success');
       } catch (error) {
@@ -51,8 +54,9 @@ export default function FirebaseTestPage() {
   useEffect(() => {
     const testAuth = async () => {
       try {
-        // Just check if auth is initialized
-        if (auth) {
+        // Use the safe Auth access function
+        const authInstance = getAuthInstance();
+        if (authInstance) {
           setAuthStatus('success');
         } else {
           setAuthStatus('error');

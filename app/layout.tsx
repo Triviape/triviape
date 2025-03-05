@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ReactQueryProvider } from "./providers/query-provider";
 import { ResponsiveUIProvider } from "./contexts/responsive-ui-context";
+import PerformanceProvider from "./providers/PerformanceProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +32,9 @@ export default function RootLayout({
       >
         <ReactQueryProvider>
           <ResponsiveUIProvider>
-            {children}
+            <PerformanceProvider>
+              {children}
+            </PerformanceProvider>
           </ResponsiveUIProvider>
         </ReactQueryProvider>
       </body>

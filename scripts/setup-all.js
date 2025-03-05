@@ -1,44 +1,23 @@
 #!/usr/bin/env node
 
 /**
- * Comprehensive setup script for Triviape
+ * Complete setup script for Triviape
  * 
- * This script will:
- * 1. Check if Firebase emulators are installed
- * 2. Start the Firebase emulators if they're not already running
- * 3. Verify that all required Firestore collections exist
- * 4. Import sample quiz data
- * 5. Import additional quiz data
+ * This script runs all the necessary setup steps for the Triviape application:
+ * 1. Firebase setup
+ * 2. Start Firebase emulators
+ * 3. Import sample quiz data
+ * 4. Import sample user data
+ * 5. Create sample authentication users
+ * 6. Verify Firestore collections
  * 
- * Usage: npm run setup:all
+ * Run with: npm run setup:all
  */
 
-const { execSync, spawn } = require('child_process');
-const fs = require('fs');
+const { spawn, execSync } = require('child_process');
 const path = require('path');
-const dotenv = require('dotenv');
+const fs = require('fs');
 const readline = require('readline');
-
-// Load environment variables from .env.local
-const envPath = path.resolve(process.cwd(), '.env.local');
-if (fs.existsSync(envPath)) {
-  console.log(`Loading environment variables from ${envPath}`);
-  dotenv.config({ path: envPath });
-} else {
-  console.log('No .env.local file found. Creating one from .env.local.example...');
-  try {
-    const exampleEnvPath = path.resolve(process.cwd(), '.env.local.example');
-    if (fs.existsSync(exampleEnvPath)) {
-      fs.copyFileSync(exampleEnvPath, envPath);
-      console.log('Created .env.local file from example.');
-      dotenv.config({ path: envPath });
-    } else {
-      console.warn('No .env.local.example file found. You will need to create a .env.local file manually.');
-    }
-  } catch (error) {
-    console.error('Error creating .env.local file:', error);
-  }
-}
 
 // Create readline interface for user input
 const rl = readline.createInterface({
@@ -46,153 +25,149 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-// Function to check if a command exists
-function commandExists(command) {
-  try {
-    execSync(`which ${command}`, { stdio: 'ignore' });
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-// Function to check if a port is in use
-function isPortInUse(port) {
-  try {
-    execSync(`lsof -i:${port} -t`, { stdio: 'ignore' });
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-// Function to check if emulators are running
-function checkEmulatorsRunning() {
-  // Check if Firestore emulator is running (port 8080)
-  const firestoreRunning = isPortInUse(8080);
-  // Check if Auth emulator is running (port 9099)
-  const authRunning = isPortInUse(9099);
-  // Check if Storage emulator is running (port 9199)
-  const storageRunning = isPortInUse(9199);
-  
-  return firestoreRunning && authRunning && storageRunning;
-}
-
-// Function to run a command and return a promise
-function runCommand(command, args = [], options = {}) {
+// Helper function to run a command and return a promise
+function runCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    console.log(`Running: ${command} ${args.join(' ')}`);
+    console.log(`\n🚀 Running: ${command} ${args.join(' ')}`);
     
-    const child = spawn(command, args, {
+    const childProcess = spawn(command, args, {
       stdio: 'inherit',
+      shell: true,
       ...options
     });
     
-    child.on('close', (code) => {
+    childProcess.on('close', (code) => {
       if (code === 0) {
+        console.log(`✅ Command completed successfully: ${command} ${args.join(' ')}`);
         resolve();
       } else {
-        reject(new Error(`Command failed with exit code ${code}`));
+        console.error(`❌ Command failed with code ${code}: ${command} ${args.join(' ')}`);
+        reject(new Error(`Command failed with code ${code}`));
       }
     });
     
-    child.on('error', (error) => {
+    childProcess.on('error', (error) => {
+      console.error(`❌ Failed to start command: ${error.message}`);
       reject(error);
     });
   });
 }
 
-// Function to run an npm script
-async function runNpmScript(scriptName) {
+// Check if .env.local exists, if not create it from example
+function setupEnvFile() {
+  const envPath = path.resolve(process.cwd(), '.env.local');
+  const exampleEnvPath = path.resolve(process.cwd(), '.env.local.example');
+  
+  if (!fs.existsSync(envPath) && fs.existsSync(exampleEnvPath)) {
+    console.log('📄 Creating .env.local from .env.local.example');
+    fs.copyFileSync(exampleEnvPath, envPath);
+    console.log('✅ Created .env.local file');
+  } else if (fs.existsSync(envPath)) {
+    console.log('✅ .env.local file already exists');
+  } else {
+    console.error('❌ .env.local.example not found, cannot create .env.local');
+    throw new Error('.env.local.example not found');
+  }
+}
+
+// Check if emulators are already running
+async function checkEmulatorsRunning() {
   try {
-    await runCommand('npm', ['run', scriptName]);
+    execSync('npm run firebase:check-emulators', { stdio: 'ignore' });
     return true;
   } catch (error) {
-    console.error(`Error running npm script ${scriptName}:`, error.message);
     return false;
   }
 }
 
-// Main function
-async function main() {
-  console.log('=== Triviape Setup Script ===');
+// Main setup function
+async function setup() {
+  console.log('🔥 Starting Triviape setup process...');
   
-  // Check if Firebase CLI is installed
-  if (!commandExists('firebase')) {
-    console.log('Firebase CLI is not installed. Installing...');
-    try {
-      execSync('npm install -g firebase-tools', { stdio: 'inherit' });
-      console.log('Firebase CLI installed successfully.');
-    } catch (error) {
-      console.error('Failed to install Firebase CLI:', error.message);
-      console.log('Please install Firebase CLI manually: npm install -g firebase-tools');
-      process.exit(1);
+  try {
+    // Step 1: Setup environment file
+    setupEnvFile();
+    
+    // Step 2: Run Firebase setup
+    await runCommand('npm', ['run', 'firebase:setup']);
+    
+    // Step 3: Check if emulators are already running
+    const emulatorsRunning = await checkEmulatorsRunning();
+    
+    // Step 4: Start emulators if not already running
+    let emulatorProcess;
+    if (!emulatorsRunning) {
+      console.log('🚀 Starting Firebase emulators...');
+      
+      // Ask user if they want to start emulators in background or foreground
+      const answer = await new Promise((resolve) => {
+        rl.question('Do you want to start emulators in the background? (y/n): ', (answer) => {
+          resolve(answer.toLowerCase());
+        });
+      });
+      
+      if (answer === 'y' || answer === 'yes') {
+        // Start emulators in background
+        emulatorProcess = spawn('npm', ['run', 'emulators:persistent'], {
+          detached: true,
+          stdio: 'ignore',
+          shell: true
+        });
+        
+        emulatorProcess.unref();
+        console.log('🔥 Firebase emulators started in background with persistence enabled');
+        
+        // Wait for emulators to start
+        console.log('⏳ Waiting for emulators to start (15 seconds)...');
+        await new Promise(resolve => setTimeout(resolve, 15000));
+      } else {
+        // Tell user to start emulators in another terminal
+        console.log('\n⚠️ Please start Firebase emulators in another terminal with:');
+        console.log('npm run emulators:persistent');
+        
+        const confirmed = await new Promise((resolve) => {
+          rl.question('\nHave you started the emulators? (y/n): ', (answer) => {
+            resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
+          });
+        });
+        
+        if (!confirmed) {
+          console.log('❌ Setup aborted. Please start emulators and try again.');
+          rl.close();
+          return;
+        }
+      }
+    } else {
+      console.log('✅ Firebase emulators are already running');
     }
-  } else {
-    console.log('Firebase CLI is already installed.');
-  }
-  
-  // Check if Firebase emulators are running
-  if (!checkEmulatorsRunning()) {
-    console.log('Firebase emulators are not running. Starting them...');
     
-    // Start emulators in a separate process
-    const emulatorProcess = spawn('npm', ['run', 'firebase:start-emulators'], {
-      detached: true,
-      stdio: 'inherit'
-    });
+    // Step 5: Import sample quiz data
+    await runCommand('npm', ['run', 'firebase:import-data']);
     
-    // Wait for emulators to start
-    console.log('Waiting for emulators to start...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    // Step 6: Import sample user data
+    await runCommand('npm', ['run', 'firebase:add-users']);
     
-    if (!checkEmulatorsRunning()) {
-      console.error('Failed to start Firebase emulators. Please start them manually: npm run firebase:start-emulators');
-      process.exit(1);
-    }
+    // Step 7: Create sample authentication users
+    await runCommand('npm', ['run', 'firebase:create-sample-users']);
     
-    console.log('Firebase emulators started successfully.');
-  } else {
-    console.log('Firebase emulators are already running.');
+    // Step 8: Verify Firestore collections
+    await runCommand('npm', ['run', 'firebase:verify']);
+    
+    // Step 9: Export emulator data for persistence
+    await runCommand('npm', ['run', 'emulators:export']);
+    
+    console.log('\n🎉 Triviape setup completed successfully!');
+    console.log('\nNext steps:');
+    console.log('1. Run the development server with emulators: npm run dev:with-persistent-emulators');
+    console.log('2. Open http://localhost:3030 in your browser');
+    console.log('\nHappy coding! 🚀');
+    
+  } catch (error) {
+    console.error('❌ Setup failed:', error.message);
+  } finally {
+    rl.close();
   }
-  
-  // Verify Firestore collections
-  console.log('\n=== Verifying Firestore Collections ===');
-  const verifySuccess = await runNpmScript('firebase:verify');
-  if (!verifySuccess) {
-    console.warn('Failed to verify Firestore collections. Continuing anyway...');
-  }
-  
-  // Import basic quiz data
-  console.log('\n=== Importing Basic Quiz Data ===');
-  const importSuccess = await runNpmScript('firebase:import-data');
-  if (!importSuccess) {
-    console.warn('Failed to import basic quiz data. Continuing anyway...');
-  }
-  
-  // Import additional quiz data
-  console.log('\n=== Importing Additional Quiz Data ===');
-  const importAdditionalSuccess = await runNpmScript('firebase:import-additional-data');
-  if (!importAdditionalSuccess) {
-    console.warn('Failed to import additional quiz data. Continuing anyway...');
-  }
-  
-  console.log('\n=== Setup Complete ===');
-  console.log('Your Triviape development environment is now set up!');
-  console.log('\nNext steps:');
-  console.log('1. Start the development server: npm run dev');
-  console.log('2. Open http://localhost:3000 in your browser');
-  console.log('3. Access the Firebase Emulator UI at http://localhost:4000');
-  
-  // Close readline interface
-  rl.close();
-  
-  // Exit successfully
-  process.exit(0);
 }
 
-// Run the main function
-main().catch(error => {
-  console.error('Setup failed:', error);
-  process.exit(1);
-}); 
+// Run the setup
+setup(); 

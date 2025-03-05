@@ -170,4 +170,21 @@ export interface UserInventory {
     quantity: number;
     acquired: number;
   }[];
+}
+
+/**
+ * Authentication result interface
+ */
+export interface AuthResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  token?: string;
+  user?: {
+    uid: string;
+    email?: string | null;
+    displayName?: string | null;
+  };
+  redirectTo?: string;
+  errors?: Record<string, string[]>;
 } 
