@@ -27,15 +27,56 @@ npm run setup:all
 ```
 
 This script will:
-1. Check if Firebase CLI is installed and install it if needed
-2. Start the Firebase emulators if they're not already running
-3. Verify that all required Firestore collections exist
+1. Create a `.env.local` file if it doesn't exist
+2. Run the Firebase setup script
+3. Start the Firebase emulators if they're not already running
 4. Import sample quiz data
-5. Import additional quiz data
+5. Import sample user data
+6. Create sample authentication users
+7. Verify Firestore collections
+8. Export emulator data for persistence
 
-After running this script, you can start the development server with `npm run dev` and begin working with the application immediately.
+After running this script, you can start the development server with one of these commands:
+- `npm run dev` - Start only the Next.js development server
+- `npm run dev:with-emulators` - Start both emulators and the development server
+- `npm run dev:with-persistent-emulators` - Start both emulators (with data persistence) and the development server
+- `npm run dev:complete` - Start emulators, create sample users, and start the development server
+
+For a complete restart of all processes:
+```bash
+./scripts/restart-dev.sh
+```
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Environment Setup and Security
+
+This project requires proper environment configuration for Firebase services. For security reasons, sensitive credentials should never be committed to version control.
+
+### Environment Files
+
+The application uses several environment files:
+
+- `.env.local` - Local development environment variables (not committed to git)
+- `.env.test` - Test environment variables
+- `.env` - Default environment variables
+- `.env.example` - Example environment file with placeholders (committed to git)
+
+### Securing Firebase Service Account
+
+For server-side Firebase operations, a service account is required. We provide a script to securely handle these credentials:
+
+```bash
+# Run the script with your service account file
+node scripts/secure-credentials.js path/to/your-service-account.json
+
+# Or let it auto-detect the service account file
+node scripts/secure-credentials.js
+```
+
+This script stores your service account credentials in the `FIREBASE_ADMIN_CREDENTIALS` environment variable in `.env.local`.
+
+For detailed information about environment setup and security best practices, see the [Environment Setup Guide](./docs/environment-setup.md).
 
 ## Firebase Authentication
 
@@ -55,6 +96,12 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
 NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-measurement-id
+
+# Firebase Emulator Configuration
+NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true
+FIRESTORE_EMULATOR_HOST=localhost:8080
+FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+FIREBASE_STORAGE_EMULATOR_HOST=localhost:9199
 ```
 
 4. Enable Email/Password authentication in the Firebase Console
@@ -72,23 +119,51 @@ npm run firebase:setup
 # Verify that all required Firestore collections exist
 npm run firebase:verify
 
-# Import basic sample quiz data into your Firestore database
+# Import sample quiz data into your Firestore database
 npm run firebase:import-data
 
-# Import additional quiz data with more categories and questions
-npm run firebase:import-additional-data
+# Import sample user data with profiles and statistics
+npm run firebase:add-users
+
+# Create sample users in the Auth emulator
+npm run firebase:create-sample-users
 
 # Check if Firebase emulators are running
 npm run firebase:check-emulators
+
+# Check if Auth emulator is properly configured
+npm run firebase:check-auth
 
 # Start the Firebase emulators
 npm run firebase:start-emulators
 
 # Deploy your Firebase configuration
 npm run firebase:deploy
+
+# Run the complete setup process
+npm run setup:all
 ```
 
 These scripts automate common Firebase tasks and ensure your development environment is properly configured.
+
+### Sample User Data
+
+The application includes sample user data for testing and development:
+
+- **Alex Johnson** (alex@example.com / password123)
+  - Level 8, 2450 XP, 780 coins
+  - 24 quizzes completed, 78.5% average score
+  - Dark theme preference
+
+- **Samantha Lee** (samantha@example.com / password123)
+  - Level 12, 4120 XP, 1250 coins
+  - 42 quizzes completed, 87.1% average score
+  - Light theme preference, accessibility features enabled
+
+- **Miguel Rodriguez** (miguel@example.com / password123)
+  - Level 5, 1280 XP, 420 coins
+  - 12 quizzes completed, 73.8% average score
+  - System theme preference, Spanish language
 
 ### Authentication Testing
 
@@ -117,15 +192,32 @@ npm run check-ports
 # Start only auth, firestore, and storage emulators
 npm run emulators
 
+# Start emulators with data persistence
+npm run emulators:persistent
+
 # Start all emulators (including functions, hosting, etc.)
 npm run emulators:all
 
 # Start the emulators and the Next.js development server simultaneously
 npm run dev:with-emulators
 
+# Start persistent emulators and the Next.js development server
+npm run dev:with-persistent-emulators
+
+# Start everything (emulators, sample users, and Next.js)
+npm run dev:complete
+
 # Check ports, then start emulators and Next.js (recommended)
 npm run safe-start
+
+# Check ports, then start persistent emulators and Next.js
+npm run safe-start:persistent
+
+# Check ports, then start complete development environment
+npm run safe-start:complete
 ```
+
+For a comprehensive guide to Firebase Emulator setup, see [Firebase Emulator Setup Guide](./docs/FIREBASE_EMULATOR_SETUP.md).
 
 ### Emulator Ports
 
@@ -143,9 +235,9 @@ The Firebase emulators run on the following ports:
 
 For detailed port configuration information, see [Port Configuration Guide](./docs/port-configuration.md).
 
-### Emulator Data
+### Emulator Data Persistence
 
-You can export and import data to/from the emulators:
+You can enable data persistence for emulators to maintain your data between restarts:
 
 ```bash
 # Export emulator data
@@ -153,6 +245,12 @@ npm run emulators:export
 
 # Start emulators with imported data
 npm run emulators:import
+
+# Start emulators with persistent data
+npm run emulators:persistent
+
+# Start development with persistent emulators
+npm run dev:with-persistent-emulators
 ```
 
 ### Troubleshooting Emulators
@@ -169,7 +267,17 @@ If you encounter issues with the emulators:
    npm run kill-ports
    ```
 
-3. If specific ports are consistently causing issues, see the [Port Configuration Guide](./docs/port-configuration.md) for instructions on how to modify the port assignments.
+3. For authentication issues, create sample users:
+   ```bash
+   npm run firebase:create-sample-users
+   ```
+
+4. For a complete reset and restart:
+   ```bash
+   ./scripts/restart-dev.sh
+   ```
+
+5. If specific ports are consistently causing issues, see the [Port Configuration Guide](./docs/port-configuration.md) for instructions on how to modify the port assignments.
 
 ## Authentication Testing
 
@@ -216,14 +324,6 @@ The authentication testing plan includes the following categories:
 - `app/__tests__/hooks/useAuth.test.ts` - Tests for the useAuth hook
 - `app/__tests__/integration/auth-flow.test.tsx` - Integration tests for authentication flows
 - `app/__tests__/api/auth-api.test.ts` - Tests for authentication API routes
-- `app/__tests__/security/token-validation.test.ts` - Security tests for token validation
-- `app/__tests__/security/api-protection.test.ts` - Security tests for API route protection
-- `app/__tests__/e2e/auth-flow.spec.ts` - End-to-end tests for authentication flows
-
-### Test Utilities
-
-- `app/__tests__/utils/test-utils.ts` - General test utilities
-- `app/__tests__/utils/firebase-test-utils.ts` - Firebase-specific test utilities
 
 ## Learn More
 
