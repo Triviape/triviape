@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { recordMetric, MetricType } from '@/app/lib/performanceAnalyzer';
@@ -26,10 +26,8 @@ interface PerformanceProviderProps {
   children: ReactNode;
 }
 
-/**
- * Performance Provider Component
- */
-export default function PerformanceProvider({ children }: PerformanceProviderProps) {
+// Component that uses searchParams wrapped in Suspense
+function NavigationMetricsTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isClient, setIsClient] = useState(false);
@@ -38,14 +36,6 @@ export default function PerformanceProvider({ children }: PerformanceProviderPro
   useEffect(() => {
     setIsClient(true);
   }, []);
-  
-  // Enable network monitoring in development mode
-  const showDashboard = process.env.NODE_ENV === 'development' && isClient;
-  useNetworkMonitor({
-    trackFetch: showDashboard,
-    trackResources: showDashboard,
-    trackNavigation: showDashboard
-  });
   
   // Track page navigation
   useEffect(() => {
@@ -98,10 +88,39 @@ export default function PerformanceProvider({ children }: PerformanceProviderPro
     }
   }, [pathname, searchParams, isClient]);
   
+  return null;
+}
+
+/**
+ * Performance Provider Component
+ */
+export default function PerformanceProvider({ children }: PerformanceProviderProps) {
+  const [isClient, setIsClient] = useState(false);
+  
+  // Set isClient to true on client-side hydration
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  // Enable network monitoring in development mode
+  const showDashboard = process.env.NODE_ENV === 'development' && isClient;
+  useNetworkMonitor({
+    trackFetch: showDashboard,
+    trackResources: showDashboard,
+    trackNavigation: showDashboard
+  });
+  
   return (
     <>
       {children}
-      {showDashboard && <PerformanceDashboard />}
+      {showDashboard && (
+        <>
+          <Suspense fallback={null}>
+            <NavigationMetricsTracker />
+          </Suspense>
+          <PerformanceDashboard />
+        </>
+      )}
     </>
   );
 } 
