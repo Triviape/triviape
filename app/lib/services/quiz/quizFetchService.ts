@@ -11,13 +11,12 @@ import {
   getDocs,
   getDoc,
   doc,
-  startAfter,
-  Timestamp,
   documentId,
   CollectionReference,
   Query,
   DocumentData,
-  QueryDocumentSnapshot
+  QueryDocumentSnapshot,
+  startAfter
 } from 'firebase/firestore';
 import { getFirestoreDb } from '../../firebase';
 import { 
@@ -25,12 +24,9 @@ import {
   Question, 
   QuizCategory, 
   DifficultyLevel,
-  QuestionSummary,
-  QuestionType
 } from '../../../types/quiz';
 import { 
   COLLECTIONS, 
-  PaginationResult, 
   QuizServiceErrorType,
   QuizServiceError
 } from './types';
@@ -82,93 +78,108 @@ function handleServiceError(errorMessage: string, error: unknown): never {
 }
 
 /**
- * Fetches a paginated list of quizzes with optional filters
+ * Interface for quiz fetch options
  */
-export async function getQuizzes(
-  options: {
-    categoryId?: string;
-    difficulty?: DifficultyLevel;
-    pageSize?: number;
-    startAfterQuiz?: Quiz;
-  } = {}
-): Promise<PaginationResult<Quiz>> {
+interface GetQuizzesOptions {
+  categoryId?: string;
+  difficulty?: DifficultyLevel;
+  startAfterQuiz?: Quiz;
+  pageSize?: number;
+}
+
+/**
+ * Interface for paginated quiz results
+ */
+interface PaginatedQuizResult {
+  items: Quiz[];
+  hasMore: boolean;
+  lastDoc: Quiz | null;
+}
+
+/**
+ * Fetches quizzes with optional filtering and pagination
+ */
+export async function getQuizzes(options: GetQuizzesOptions = {}): Promise<PaginatedQuizResult> {
   try {
     const db = getFirestoreDb();
     const quizzesRef = collection(db, COLLECTIONS.QUIZZES);
     
-    // Build the query
-    let quizzesQuery: Query<DocumentData> = query(quizzesRef);
+    // Start building the query
+    let quizzesQuery: Query<DocumentData> = quizzesRef;
     
-    // Apply filters if provided
+    // Apply category filter if provided
     if (options.categoryId) {
       quizzesQuery = query(quizzesQuery, where('categoryId', '==', options.categoryId));
     }
     
+    // Apply difficulty filter if provided
     if (options.difficulty) {
       quizzesQuery = query(quizzesQuery, where('difficulty', '==', options.difficulty));
     }
     
-    // Apply sorting
+    // Apply sorting by creation date (newest first)
     quizzesQuery = query(quizzesQuery, orderBy('createdAt', 'desc'));
     
-    // Apply pagination
+    // Apply pagination if a starting document is provided
     if (options.startAfterQuiz) {
-      quizzesQuery = query(quizzesQuery, startAfter(options.startAfterQuiz));
+      const startDoc = await getDoc(doc(db, COLLECTIONS.QUIZZES, options.startAfterQuiz.id));
+      if (startDoc.exists()) {
+        quizzesQuery = query(quizzesQuery, startAfter(startDoc));
+      }
     }
     
-    // Fetch one more than requested to determine if there are more results
-    quizzesQuery = query(quizzesQuery, limit(options.pageSize || 10 + 1));
+    // Apply limit
+    const pageSize = options.pageSize || 10;
+    quizzesQuery = query(quizzesQuery, limit(pageSize + 1)); // Fetch one extra to check if there are more
     
     // Execute the query
     const querySnapshot = await getDocs(quizzesQuery);
     
+    // Process the results
     const quizzes: Quiz[] = [];
-    let lastDoc = null;
+    let hasMore = false;
     
-    querySnapshot.forEach((document) => {
-      // Only process up to pageSize documents if we're within the page size
-      if (quizzes.length < (options.pageSize || 10)) {
-        const data = document.data();
-        const timestamp = data.createdAt?.toDate?.() || new Date();
-        
-        // Convert to Quiz object with proper type mapping
-        quizzes.push({
-          id: document.id,
-          title: data.title,
-          description: data.description,
-          categoryIds: [data.categoryId], // Convert to array for type compatibility
-          difficulty: data.difficulty,
-          questionIds: data.questionIds || [],
-          shuffleQuestions: data.shuffleQuestions || false,
-          estimatedDuration: data.estimatedDuration || 0,
-          baseXP: data.baseXP || 0,
-          baseCoins: data.baseCoins || 0,
-          createdAt: timestamp.getTime(),
-          updatedAt: (data.updatedAt?.toDate?.() || timestamp).getTime(),
-          isActive: data.isActive ?? true,
-          timesPlayed: data.timesPlayed || 0,
-          averageScore: data.averageScore || 0,
-          completionRate: data.completionRate || 0,
-          timeLimit: data.timeLimit,
-          passingScore: data.passingScore,
-          coverImage: data.imageUrl
-        });
-      }
+    // If we got more items than the page size, there are more items available
+    if (querySnapshot.docs.length > pageSize) {
+      hasMore = true;
+      querySnapshot.docs.pop(); // Remove the extra item
+    }
+    
+    // Convert the documents to Quiz objects
+    querySnapshot.forEach(doc => {
+      const data = doc.data();
+      const timestamp = data.createdAt?.toDate?.() || new Date();
       
-      // Keep track of the last document for pagination
-      lastDoc = document;
+      quizzes.push({
+        id: doc.id,
+        title: data.title,
+        description: data.description,
+        categoryIds: [data.categoryId], // Convert to array for type compatibility
+        difficulty: data.difficulty,
+        questionIds: data.questionIds || [],
+        shuffleQuestions: data.shuffleQuestions || false,
+        estimatedDuration: data.estimatedDuration || 0,
+        baseXP: data.baseXP || 0,
+        baseCoins: data.baseCoins || 0,
+        createdAt: timestamp.getTime(),
+        updatedAt: (data.updatedAt?.toDate?.() || timestamp).getTime(),
+        isActive: data.isActive ?? true,
+        timesPlayed: data.timesPlayed || 0,
+        averageScore: data.averageScore || 0,
+        completionRate: data.completionRate || 0,
+        timeLimit: data.timeLimit,
+        passingScore: data.passingScore,
+        coverImage: data.imageUrl
+      });
     });
-    
-    // Determine if there are more results
-    const hasMore = querySnapshot.size > (options.pageSize || 10);
     
     return {
       items: quizzes,
       hasMore,
-      lastDoc: hasMore ? lastDoc : null
+      lastDoc: quizzes.length > 0 ? quizzes[quizzes.length - 1] : null
     };
   } catch (error) {
-    handleServiceError(`Failed to fetch quizzes`, error);
+    handleServiceError('Failed to fetch quizzes', error);
   }
 }
 
@@ -251,15 +262,15 @@ export async function getQuestionsByIds(questionIds: string[]): Promise<Question
         questions.push({
           id: document.id,
           text: data.text,
-          type: data.type as QuestionType,
-          difficulty: data.difficulty as DifficultyLevel,
-          categoryIds: [data.categoryId], // Convert to array for type compatibility
-          answers: data.options?.map((option: any, index: number) => ({
+          type: data.type,
+          difficulty: data.difficulty,
+          categoryIds: data.categoryIds || [data.categoryId], // Handle both formats
+          answers: data.options ? data.options.map((option: string, index: number) => ({
             id: `option-${index}`,
             text: option,
-            isCorrect: index === data.correctOption
-          })) || [],
-          points: data.points || 1,
+            isCorrect: index === data.correctOptionIndex
+          })) : [],
+          points: data.points || 10,
           timeLimit: data.timeLimit,
           hint: data.hint,
           timesAnswered: data.timesAnswered || 0,
@@ -274,91 +285,9 @@ export async function getQuestionsByIds(questionIds: string[]): Promise<Question
       });
     });
     
-    // Sort questions to match the order of questionIds
-    const questionMap = new Map<string, Question>();
-    questions.forEach(question => questionMap.set(question.id, question));
-    
-    return questionIds
-      .map(id => questionMap.get(id))
-      .filter((question): question is Question => !!question);
+    return questions;
   } catch (error) {
-    handleServiceError(`Failed to fetch questions with IDs: ${questionIds.join(', ')}`, error);
-  }
-}
-
-/**
- * Fetches a paginated list of question summaries with optional filters
- */
-export async function getQuestionSummaries(
-  options: {
-    categoryId?: string;
-    difficulty?: DifficultyLevel;
-    pageSize?: number;
-    startAfterQuestion?: QuestionSummary;
-  } = {}
-): Promise<PaginationResult<QuestionSummary>> {
-  try {
-    const db = getFirestoreDb();
-    const questionsRef = collection(db, COLLECTIONS.QUESTIONS);
-    
-    // Build the query
-    let questionsQuery: Query<DocumentData> = query(questionsRef);
-    
-    // Apply filters if provided
-    if (options.categoryId) {
-      questionsQuery = query(questionsQuery, where('categoryId', '==', options.categoryId));
-    }
-    
-    if (options.difficulty) {
-      questionsQuery = query(questionsQuery, where('difficulty', '==', options.difficulty));
-    }
-    
-    // Apply sorting
-    questionsQuery = query(questionsQuery, orderBy('createdAt', 'desc'));
-    
-    // Apply pagination
-    if (options.startAfterQuestion) {
-      questionsQuery = query(questionsQuery, startAfter(options.startAfterQuestion));
-    }
-    
-    // Fetch one more than requested to determine if there are more results
-    questionsQuery = query(questionsQuery, limit(options.pageSize || 20 + 1));
-    
-    // Execute the query
-    const querySnapshot = await getDocs(questionsQuery);
-    
-    const questionSummaries: QuestionSummary[] = [];
-    let lastDocument = null;
-    
-    querySnapshot.forEach((document) => {
-      // Only process up to pageSize documents if we're within the page size
-      if (questionSummaries.length < (options.pageSize || 20)) {
-        const data = document.data();
-        questionSummaries.push({
-          id: document.id,
-          text: data.text,
-          type: data.type as QuestionType,
-          difficulty: data.difficulty as DifficultyLevel,
-          categoryIds: [data.categoryId], // Convert to array for type compatibility
-          points: data.points || 1,
-          isActive: data.isActive ?? true
-        });
-      }
-      
-      // Keep track of the last document for pagination
-      lastDocument = document;
-    });
-    
-    // Determine if there are more results
-    const hasMore = querySnapshot.size > (options.pageSize || 20);
-    
-    return {
-      items: questionSummaries,
-      hasMore,
-      lastDoc: hasMore ? lastDocument : null
-    };
-  } catch (error) {
-    handleServiceError(`Failed to fetch question summaries`, error);
+    handleServiceError(`Failed to fetch questions`, error);
   }
 }
 
@@ -376,11 +305,13 @@ export async function getCategories(): Promise<QuizCategory[]> {
     
     querySnapshot.forEach(document => {
       const data = document.data();
+      const timestamp = data.createdAt?.toDate?.() || new Date();
+      
       categories.push({
         id: document.id,
         name: data.name,
-        description: data.description || '',
-        icon: data.iconUrl || undefined,
+        description: data.description,
+        icon: data.iconUrl,
         parentCategoryId: data.parentCategoryId
       });
     });

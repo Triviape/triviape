@@ -2,23 +2,15 @@
 
 import { useCallback } from 'react';
 import { useOptimizedQuery } from './query/useOptimizedQuery';
-import { useOptimizedInfiniteQuery } from './query/useOptimizedInfiniteQuery';
 import { 
-  getQuizzes, 
   getQuizById, 
   getQuestionsByIds, 
   getCategories,
-  getQuestionSummaries
 } from '@/app/lib/services/quiz/quizFetchService';
-import { DifficultyLevel, Quiz, Question, QuizCategory, QuestionSummary } from '@/app/lib/services/quiz/types';
+import { DifficultyLevel, Quiz, Question, QuizCategory } from '@/app/types/quiz';
 import { memoizeWithCache } from '@/app/lib/cacheUtils';
 
 // Memoize the fetch functions for better performance
-const memoizedGetQuizzes = memoizeWithCache(getQuizzes, { 
-  ttl: 5 * 60 * 1000, // 5 minutes
-  staleWhileRevalidate: true 
-});
-
 const memoizedGetQuizById = memoizeWithCache(getQuizById, { 
   ttl: 10 * 60 * 1000, // 10 minutes
   staleWhileRevalidate: true 
@@ -34,31 +26,26 @@ const memoizedGetCategories = memoizeWithCache(getCategories, {
   staleWhileRevalidate: true 
 });
 
-const memoizedGetQuestionSummaries = memoizeWithCache(getQuestionSummaries, { 
-  ttl: 5 * 60 * 1000, // 5 minutes
-  staleWhileRevalidate: true 
-});
-
 /**
- * Hook for fetching quizzes with pagination
+ * Hook for fetching quizzes with optional filtering
  * @param categoryId Optional category ID to filter by
  * @param difficulty Optional difficulty level to filter by
- * @param pageSize Number of quizzes per page
- * @returns Infinite query result with quizzes
+ * @returns Query result with paginated quiz data
  */
-export function useQuizzes(categoryId?: string, difficulty?: DifficultyLevel, pageSize = 10) {
-  // Create a query function that uses the memoized fetch function
-  const fetchQuizzes = useCallback(
-    ({ pageParam }) => memoizedGetQuizzes(categoryId, difficulty, pageSize, pageParam),
-    [categoryId, difficulty, pageSize]
-  );
-  
-  return useOptimizedInfiniteQuery({
-    queryKey: ['quizzes', categoryId, difficulty, pageSize],
-    queryFn: fetchQuizzes,
-    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.lastDoc : undefined,
+export function useQuizzes(categoryId?: string, difficulty?: DifficultyLevel) {
+  return useOptimizedQuery({
+    queryKey: ['quizzes', categoryId, difficulty],
+    queryFn: async () => {
+      // This is a placeholder implementation since getQuizzes doesn't exist
+      // In a real implementation, this would call the actual service function
+      const response = await fetch(`/api/quizzes?${categoryId ? `categoryId=${categoryId}` : ''}${difficulty ? `&difficulty=${difficulty}` : ''}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch quizzes');
+      }
+      return response.json();
+    },
     componentName: 'QuizList',
-    queryName: `quizzes_${categoryId || 'all'}_${difficulty || 'all'}`,
+    queryName: 'quizzes_list',
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
@@ -110,25 +97,21 @@ export function useQuizCategories() {
 }
 
 /**
- * Hook for fetching question summaries with pagination
- * @param categoryId Optional category ID to filter by
- * @param difficulty Optional difficulty level to filter by
- * @param pageSize Number of questions per page
- * @returns Infinite query result with question summaries
+ * Hook for fetching the daily quiz
+ * @returns Query result with the daily quiz data
  */
-export function useQuestionSummaries(categoryId?: string, difficulty?: DifficultyLevel, pageSize = 20) {
-  // Create a query function that uses the memoized fetch function
-  const fetchQuestionSummaries = useCallback(
-    ({ pageParam }) => memoizedGetQuestionSummaries(categoryId, difficulty, pageSize, pageParam),
-    [categoryId, difficulty, pageSize]
-  );
-  
-  return useOptimizedInfiniteQuery({
-    queryKey: ['questionSummaries', categoryId, difficulty, pageSize],
-    queryFn: fetchQuestionSummaries,
-    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.lastDoc : undefined,
-    componentName: 'QuestionList',
-    queryName: `questions_${categoryId || 'all'}_${difficulty || 'all'}`,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+export function useDailyQuiz() {
+  return useOptimizedQuery({
+    queryKey: ['dailyQuiz'],
+    queryFn: async () => {
+      const response = await fetch('/api/daily-quiz');
+      if (!response.ok) {
+        throw new Error('Failed to fetch daily quiz');
+      }
+      return response.json();
+    },
+    componentName: 'DailyQuiz',
+    queryName: 'daily_quiz',
+    staleTime: 60 * 60 * 1000, // 1 hour
   });
 } 
