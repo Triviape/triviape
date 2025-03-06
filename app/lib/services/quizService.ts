@@ -16,9 +16,10 @@ import {
   writeBatch,
   CollectionReference,
   Query,
-  DocumentData
+  DocumentData,
+  serverTimestamp
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, getFirestoreDb } from '../firebase';
 import { 
   Quiz, 
   Question, 
@@ -55,91 +56,109 @@ export class QuizService {
     lastQuizDoc?: any
   ) {
     try {
-      // Start building the query
-      const collectionRef = collection(db, COLLECTIONS.QUIZZES);
-      let constraints = [];
-
-      // Add filters if provided
-      if (categoryId) {
-        constraints.push(where('categoryIds', 'array-contains', categoryId));
+      // Start with a base query
+      let quizQuery: Query<DocumentData>;
+      
+      // Create the collection reference
+      const quizzesRef = collection(getFirestoreDb(), COLLECTIONS.QUIZZES);
+      
+      // Build the query based on filters
+      if (categoryId && difficulty) {
+        quizQuery = query(
+          quizzesRef,
+          where('categoryId', '==', categoryId),
+          where('difficulty', '==', difficulty),
+          orderBy('createdAt', 'desc')
+        );
+      } else if (categoryId) {
+        quizQuery = query(
+          quizzesRef,
+          where('categoryId', '==', categoryId),
+          orderBy('createdAt', 'desc')
+        );
+      } else if (difficulty) {
+        quizQuery = query(
+          quizzesRef,
+          where('difficulty', '==', difficulty),
+          orderBy('createdAt', 'desc')
+        );
+      } else {
+        quizQuery = query(
+          quizzesRef,
+          orderBy('createdAt', 'desc')
+        );
       }
       
-      if (difficulty) {
-        constraints.push(where('difficulty', '==', difficulty));
-      }
-      
-      // Always filter for active quizzes
-      constraints.push(where('isActive', '==', true));
-      
-      // Add ordering
-      constraints.push(orderBy('updatedAt', 'desc'));
-      
-      // Add pagination limit
-      constraints.push(limit(pageSize));
-      
-      // Add startAfter if we have a last document
+      // Apply pagination
       if (lastQuizDoc) {
-        constraints.push(startAfter(lastQuizDoc));
+        quizQuery = query(
+          quizQuery,
+          startAfter(lastQuizDoc),
+          limit(pageSize)
+        );
+      } else {
+        quizQuery = query(
+          quizQuery,
+          limit(pageSize)
+        );
       }
-      
-      // Build the final query
-      const q = query(collectionRef, ...constraints);
       
       // Execute the query
-      const snapshot = await getDocs(q);
+      const quizSnapshot = await getDocs(quizQuery);
       
       // Process the results
       const quizzes: Quiz[] = [];
-      snapshot.forEach(doc => {
-        const data = doc.data();
+      quizSnapshot.forEach(doc => {
+        const quizData = doc.data();
         quizzes.push({
           id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toMillis() || 0,
-          updatedAt: data.updatedAt?.toMillis() || 0
+          ...quizData,
+          createdAt: quizData.createdAt?.toDate() || new Date(),
+          updatedAt: quizData.updatedAt?.toDate() || new Date()
         } as Quiz);
       });
       
-      // Get the last document for pagination
-      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-      
-      return { quizzes, lastVisible };
+      // Return the quizzes and the last document for pagination
+      return {
+        quizzes,
+        lastDoc: quizSnapshot.docs[quizSnapshot.docs.length - 1] || null
+      };
     } catch (error) {
       console.error('Error fetching quizzes:', error);
       throw error;
     }
   }
-
+  
   /**
-   * Fetch a single quiz by ID
-   * @param quizId The ID of the quiz to fetch
-   * @returns The quiz object or null if not found
+   * Get a single quiz by ID
+   * @param quizId Quiz ID
+   * @returns Quiz object or null if not found
    */
   static async getQuizById(quizId: string): Promise<Quiz | null> {
     try {
-      const quizDoc = await getDoc(doc(db, COLLECTIONS.QUIZZES, quizId));
+      const quizDoc = await getDoc(doc(getFirestoreDb(), COLLECTIONS.QUIZZES, quizId));
       
       if (!quizDoc.exists()) {
         return null;
       }
       
-      const data = quizDoc.data();
+      const quizData = quizDoc.data();
       return {
         id: quizDoc.id,
-        ...data,
-        createdAt: data.createdAt?.toMillis() || 0,
-        updatedAt: data.updatedAt?.toMillis() || 0
+        ...quizData,
+        createdAt: quizData.createdAt?.toDate() || new Date(),
+        updatedAt: quizData.updatedAt?.toDate() || new Date()
       } as Quiz;
     } catch (error) {
-      console.error(`Error fetching quiz with ID ${quizId}:`, error);
+      console.error(`Error fetching quiz ${quizId}:`, error);
       throw error;
     }
   }
-
+  
   /**
-   * Fetch questions for a quiz efficiently
-   * @param questionIds Array of question IDs to fetch
-   * @returns Array of questions
+   * Get multiple questions by their IDs
+   * @param questionIds Array of question IDs
+   * @returns Array of Question objects
    */
   static async getQuestionsByIds(questionIds: string[]): Promise<Question[]> {
     try {
@@ -147,8 +166,8 @@ export class QuizService {
         return [];
       }
       
-      // Firestore has a limit of 10 items for 'in' queries,
-      // so we need to batch our requests if we have more IDs
+      // Firestore has a limit of 10 items in an 'in' query
+      // So we need to batch our requests if we have more than 10 IDs
       const questions: Question[] = [];
       const batchSize = 10;
       
@@ -156,37 +175,38 @@ export class QuizService {
       for (let i = 0; i < questionIds.length; i += batchSize) {
         const batch = questionIds.slice(i, i + batchSize);
         
-        const q = query(
-          collection(db, COLLECTIONS.QUESTIONS),
-          where(documentId(), 'in', batch),
-          where('isActive', '==', true)
+        const questionsQuery = query(
+          collection(getFirestoreDb(), COLLECTIONS.QUESTIONS),
+          where(documentId(), 'in', batch)
         );
         
-        const snapshot = await getDocs(q);
+        const questionSnapshot = await getDocs(questionsQuery);
         
-        snapshot.forEach(doc => {
-          const data = doc.data();
+        questionSnapshot.forEach(doc => {
+          const questionData = doc.data();
           questions.push({
             id: doc.id,
-            ...data,
-            createdAt: data.createdAt?.toMillis() || 0,
-            updatedAt: data.updatedAt?.toMillis() || 0
+            ...questionData,
+            createdAt: questionData.createdAt?.toDate() || new Date(),
+            updatedAt: questionData.updatedAt?.toDate() || new Date()
           } as Question);
         });
       }
       
-      // Return questions in the same order as the input IDs
-      return questionIds.map(id => 
+      // Sort questions to match the order of the input IDs
+      const orderedQuestions = questionIds.map(id => 
         questions.find(q => q.id === id)
-      ).filter(Boolean) as Question[];
+      ).filter(q => q !== undefined) as Question[];
+      
+      return orderedQuestions;
     } catch (error) {
       console.error('Error fetching questions by IDs:', error);
       throw error;
     }
   }
-
+  
   /**
-   * Get a list of question summaries (lighter version of questions for list views)
+   * Get a paginated list of question summaries
    * @param categoryId Optional category ID to filter by
    * @param difficulty Optional difficulty level to filter by
    * @param pageSize Number of questions to fetch
@@ -200,81 +220,104 @@ export class QuizService {
     lastDoc?: any
   ) {
     try {
-      // Start building the query
-      const collectionRef = collection(db, COLLECTIONS.QUESTIONS);
-      let constraints = [];
+      // Start with a base query
+      let questionsQuery: Query<DocumentData>;
       
-      // Add filters if provided
-      if (categoryId) {
-        constraints.push(where('categoryIds', 'array-contains', categoryId));
+      // Create the collection reference
+      const questionsRef = collection(getFirestoreDb(), COLLECTIONS.QUESTIONS);
+      
+      // Build the query based on filters
+      if (categoryId && difficulty) {
+        questionsQuery = query(
+          questionsRef,
+          where('categoryId', '==', categoryId),
+          where('difficulty', '==', difficulty),
+          orderBy('createdAt', 'desc')
+        );
+      } else if (categoryId) {
+        questionsQuery = query(
+          questionsRef,
+          where('categoryId', '==', categoryId),
+          orderBy('createdAt', 'desc')
+        );
+      } else if (difficulty) {
+        questionsQuery = query(
+          questionsRef,
+          where('difficulty', '==', difficulty),
+          orderBy('createdAt', 'desc')
+        );
+      } else {
+        questionsQuery = query(
+          questionsRef,
+          orderBy('createdAt', 'desc')
+        );
       }
       
-      if (difficulty) {
-        constraints.push(where('difficulty', '==', difficulty));
-      }
-      
-      // Always filter for active questions
-      constraints.push(where('isActive', '==', true));
-      
-      // Add ordering
-      constraints.push(orderBy('updatedAt', 'desc'));
-      
-      // Add pagination limit
-      constraints.push(limit(pageSize));
-      
-      // Add startAfter if we have a last document
+      // Apply pagination
       if (lastDoc) {
-        constraints.push(startAfter(lastDoc));
+        questionsQuery = query(
+          questionsQuery,
+          startAfter(lastDoc),
+          limit(pageSize)
+        );
+      } else {
+        questionsQuery = query(
+          questionsQuery,
+          limit(pageSize)
+        );
       }
-      
-      // Build the final query
-      const q = query(collectionRef, ...constraints);
       
       // Execute the query
-      const snapshot = await getDocs(q);
+      const questionSnapshot = await getDocs(questionsQuery);
       
       // Process the results
-      const summaries: QuestionSummary[] = [];
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        summaries.push({
+      const questionSummaries: QuestionSummary[] = [];
+      questionSnapshot.forEach(doc => {
+        const questionData = doc.data();
+        questionSummaries.push({
           id: doc.id,
-          text: data.text,
-          type: data.type,
-          difficulty: data.difficulty,
-          categoryIds: data.categoryIds,
-          points: data.points,
-          isActive: data.isActive
+          text: questionData.text,
+          type: questionData.type,
+          difficulty: questionData.difficulty,
+          categoryIds: questionData.categoryId ? [questionData.categoryId] : [],
+          points: questionData.points || 10,
+          isActive: questionData.isActive !== false
         });
       });
       
-      // Get the last document for pagination
-      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-      
-      return { summaries, lastVisible };
+      // Return the question summaries and the last document for pagination
+      return {
+        questionSummaries,
+        lastDoc: questionSnapshot.docs[questionSnapshot.docs.length - 1] || null
+      };
     } catch (error) {
       console.error('Error fetching question summaries:', error);
       throw error;
     }
   }
-
+  
   /**
-   * Get all categories
+   * Get all quiz categories
    * @returns Array of quiz categories
    */
   static async getCategories(): Promise<QuizCategory[]> {
     try {
-      const snapshot = await getDocs(
-        query(collection(db, COLLECTIONS.CATEGORIES), 
-        orderBy('name'))
+      const categoriesQuery = query(
+        collection(getFirestoreDb(), COLLECTIONS.CATEGORIES),
+        orderBy('name', 'asc')
       );
       
+      const categorySnapshot = await getDocs(categoriesQuery);
+      
       const categories: QuizCategory[] = [];
-      snapshot.forEach(doc => {
+      categorySnapshot.forEach(doc => {
+        const categoryData = doc.data();
         categories.push({
           id: doc.id,
-          ...doc.data()
-        } as QuizCategory);
+          name: categoryData.name,
+          description: categoryData.description,
+          icon: categoryData.iconUrl
+        });
       });
       
       return categories;
@@ -283,12 +326,12 @@ export class QuizService {
       throw error;
     }
   }
-
+  
   /**
    * Update question analytics after a user answers
    * @param questionId Question ID
    * @param wasCorrect Whether the answer was correct
-   * @param answerTime Time spent answering in seconds
+   * @param answerTime Time taken to answer in seconds
    * @param wasSkipped Whether the question was skipped
    */
   static async updateQuestionAnalytics(
@@ -298,77 +341,60 @@ export class QuizService {
     wasSkipped: boolean
   ): Promise<void> {
     try {
-      const questionRef = doc(db, COLLECTIONS.QUESTIONS, questionId);
-      
-      const updates: Record<string, any> = {
-        timesAnswered: increment(1)
-      };
-      
-      if (wasCorrect) {
-        updates.timesAnsweredCorrectly = increment(1);
-      }
-      
-      // Update average answer time
-      // This requires a transaction to read the current values first,
-      // but for simplicity in this example, we'll use a field to track total time
-      // and compute the average on read
-      updates.totalAnswerTime = increment(answerTime);
+      const questionRef = doc(getFirestoreDb(), COLLECTIONS.QUESTIONS, questionId);
       
       if (wasSkipped) {
-        updates.timesSkipped = increment(1);
+        // If skipped, just increment the times answered counter
+        await updateDoc(questionRef, {
+          'stats.timesAnswered': increment(1),
+          'stats.timesSkipped': increment(1)
+        });
+      } else {
+        // Update analytics based on the answer
+        const updates: any = {
+          'stats.timesAnswered': increment(1)
+        };
+        
+        if (wasCorrect) {
+          updates['stats.timesCorrect'] = increment(1);
+        }
+        
+        // Update the average answer time
+        // We need to get the current stats first
+        const questionDoc = await getDoc(questionRef);
+        if (questionDoc.exists()) {
+          const stats = questionDoc.data().stats || { timesAnswered: 0, averageTime: 0 };
+          const currentTotal = stats.averageTime * stats.timesAnswered;
+          const newTotal = currentTotal + answerTime;
+          const newAverage = newTotal / (stats.timesAnswered + 1);
+          
+          updates['stats.averageTime'] = newAverage;
+        } else {
+          updates['stats.averageTime'] = answerTime;
+        }
+        
+        await updateDoc(questionRef, updates);
       }
-      
-      await updateDoc(questionRef, updates);
     } catch (error) {
       console.error(`Error updating analytics for question ${questionId}:`, error);
-      // Don't throw here as this is a non-critical operation
-      // that shouldn't break the user experience
+      // Don't throw here, just log the error
     }
   }
-
+  
   /**
    * Record a quiz attempt
-   * @param attempt The quiz attempt data
-   * @returns The ID of the created attempt document
+   * @param attempt Quiz attempt data
+   * @returns ID of the created attempt document
    */
   static async recordQuizAttempt(attempt: any): Promise<string> {
     try {
-      // Create the attempt document
-      const attemptRef = await addDoc(collection(db, COLLECTIONS.QUIZ_ATTEMPTS), {
+      const attemptsRef = collection(getFirestoreDb(), COLLECTIONS.QUIZ_ATTEMPTS);
+      const attemptDoc = await addDoc(attemptsRef, {
         ...attempt,
-        startedAt: Timestamp.fromMillis(attempt.startedAt),
-        completedAt: attempt.completedAt ? Timestamp.fromMillis(attempt.completedAt) : null
+        timestamp: serverTimestamp()
       });
       
-      // Update quiz analytics in a batch
-      const batch = writeBatch(db);
-      
-      // Update quiz play count
-      const quizRef = doc(db, COLLECTIONS.QUIZZES, attempt.quizId);
-      batch.update(quizRef, {
-        timesPlayed: increment(1),
-        // If completed, update the completion rate and average score
-        ...(attempt.completedAt ? {
-          completionCount: increment(1),
-          totalScoreSum: increment(attempt.score)
-        } : {})
-      });
-      
-      // Update question analytics in the same batch
-      attempt.answers.forEach((answer: any) => {
-        if (!answer.wasSkipped) {
-          const questionRef = doc(db, COLLECTIONS.QUESTIONS, answer.questionId);
-          batch.update(questionRef, {
-            timesAnswered: increment(1),
-            ...(answer.wasCorrect ? { timesAnsweredCorrectly: increment(1) } : {}),
-            totalAnswerTime: increment(answer.timeSpent)
-          });
-        }
-      });
-      
-      await batch.commit();
-      
-      return attemptRef.id;
+      return attemptDoc.id;
     } catch (error) {
       console.error('Error recording quiz attempt:', error);
       throw error;

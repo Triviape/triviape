@@ -12,10 +12,30 @@ interface ResponsiveUIContextType {
   setUIScale: (scale: 'compact' | 'regular' | 'large') => void;
 }
 
-const ResponsiveUIContext = createContext<ResponsiveUIContextType | undefined>(undefined);
+// Default values for server-side rendering to prevent hydration mismatch
+const defaultContextValue: ResponsiveUIContextType = {
+  deviceInfo: {
+    isMobile: false,
+    isTablet: false,
+    isDesktop: true,
+    browserName: 'unknown',
+    supportsTouch: false,
+    supportsWebGL: false,
+    devicePerformance: 'medium',
+    screenSize: 'medium'
+  },
+  isTouch: false,
+  uiScale: 'regular',
+  animationLevel: 'full',
+  setAnimationLevel: () => {},
+  setUIScale: () => {}
+};
+
+const ResponsiveUIContext = createContext<ResponsiveUIContextType>(defaultContextValue);
 
 export function ResponsiveUIProvider({ children }: { children: React.ReactNode }) {
   const deviceInfo = useDeviceInfo();
+  const [isClient, setIsClient] = useState(false);
   
   // Determine default UI scale based on device info
   const getDefaultUIScale = (): 'compact' | 'regular' | 'large' => {
@@ -31,20 +51,30 @@ export function ResponsiveUIProvider({ children }: { children: React.ReactNode }
     return 'full';
   };
 
-  const [uiScale, setUIScale] = useState<'compact' | 'regular' | 'large'>(getDefaultUIScale());
-  const [animationLevel, setAnimationLevel] = useState<'full' | 'reduced' | 'minimal'>(getDefaultAnimationLevel());
+  // Start with default values to prevent hydration mismatch
+  const [uiScale, setUIScale] = useState<'compact' | 'regular' | 'large'>('regular');
+  const [animationLevel, setAnimationLevel] = useState<'full' | 'reduced' | 'minimal'>('full');
   
-  // Update defaults when device info changes
+  // Only update values after initial client-side render to prevent hydration mismatch
   useEffect(() => {
+    setIsClient(true);
     setUIScale(getDefaultUIScale());
     setAnimationLevel(getDefaultAnimationLevel());
-  }, [deviceInfo.screenSize, deviceInfo.devicePerformance]);
+  }, []);
+  
+  // Update defaults when device info changes, but only after initial render
+  useEffect(() => {
+    if (isClient) {
+      setUIScale(getDefaultUIScale());
+      setAnimationLevel(getDefaultAnimationLevel());
+    }
+  }, [isClient, deviceInfo.screenSize, deviceInfo.devicePerformance]);
 
   return (
     <ResponsiveUIContext.Provider
       value={{
         deviceInfo,
-        isTouch: deviceInfo.supportsTouch,
+        isTouch: isClient ? deviceInfo.supportsTouch : false,
         uiScale,
         animationLevel,
         setAnimationLevel,
@@ -58,10 +88,5 @@ export function ResponsiveUIProvider({ children }: { children: React.ReactNode }
 
 export function useResponsiveUI() {
   const context = useContext(ResponsiveUIContext);
-  
-  if (context === undefined) {
-    throw new Error('useResponsiveUI must be used within a ResponsiveUIProvider');
-  }
-  
   return context;
 } 

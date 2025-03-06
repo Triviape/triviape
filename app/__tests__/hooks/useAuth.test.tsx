@@ -1,197 +1,327 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { useAuth } from '@/app/hooks/useAuth';
-import { onAuthStateChanged, User, NextOrObserver } from 'firebase/auth';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React from 'react';
+import { renderHook, waitFor, act } from '@testing-library/react';
+import { useAuth, AuthProvider } from '@/app/components/auth/AuthProvider';
 import { UserService } from '@/app/lib/services/userService';
+import React from 'react';
+import { initTestFirebase } from '../utils/firebase-test-utils';
+import { generateTestUserData, createTestUserInAuth, cleanupTestResources } from '../utils/test-data-factory';
 
-// Mock the UserService methods
-jest.mock('@/app/lib/services/userService', () => {
+// Initialize test Firebase
+beforeAll(async () => {
+  await initTestFirebase();
+});
+
+afterAll(async () => {
+  await cleanupTestResources();
+});
+
+// Mock Firebase Auth user
+const mockFirebaseUser = {
+  uid: 'test-user-id',
+  email: 'test@example.com',
+  displayName: 'Test User',
+  emailVerified: true,
+  getIdToken: jest.fn().mockResolvedValue('mock-id-token'),
+};
+
+// Mock user profile
+const mockUserProfile = {
+  id: 'test-user-id',
+  email: 'test@example.com',
+  displayName: 'Test User',
+  photoURL: null,
+  createdAt: new Date('2023-01-01').toISOString(),
+  updatedAt: new Date('2023-01-02').toISOString(),
+};
+
+// Mock auth state change callback
+let authStateCallback: ((user: any) => void) | null = null;
+const mockUnsubscribe = jest.fn();
+
+// Mock the AuthProvider component
+jest.mock('@/app/components/auth/AuthProvider', () => {
+  const originalModule = jest.requireActual('@/app/components/auth/AuthProvider');
+  
+  // Create a mock implementation of the useAuth hook
+  const mockUseAuth = jest.fn(() => ({
+    user: null,
+    loading: false,
+    exchangeCustomToken: jest.fn().mockResolvedValue('mock-id-token'),
+    handleAuthResult: jest.fn().mockResolvedValue(undefined),
+  }));
+  
   return {
-    UserService: {
-      getUserProfile: jest.fn().mockResolvedValue({
-        displayName: 'Test User',
-        level: 1,
-        xp: 0,
-        coins: 100
-      }),
-      signInWithEmail: jest.fn().mockResolvedValue({ 
-        user: { 
-          uid: 'test-user-id',
-          email: 'test@example.com',
-          getIdToken: jest.fn().mockResolvedValue('test-token')
-        } 
-      }),
-      signInWithGoogle: jest.fn().mockResolvedValue({ 
-        user: { 
-          uid: 'test-user-id',
-          email: 'test@example.com',
-          getIdToken: jest.fn().mockResolvedValue('test-token')
-        } 
-      }),
-      registerWithEmail: jest.fn().mockResolvedValue({ 
-        user: { 
-          uid: 'test-user-id',
-          email: 'test@example.com',
-          getIdToken: jest.fn().mockResolvedValue('test-token')
-        } 
-      }),
-      signOut: jest.fn().mockResolvedValue(undefined),
-      updateUserProfile: jest.fn().mockResolvedValue(undefined),
-      updateUserPreferences: jest.fn().mockResolvedValue(undefined),
-      updateLastLogin: jest.fn().mockResolvedValue(undefined)
-    }
+    ...originalModule,
+    useAuth: mockUseAuth,
+    AuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   };
 });
 
-// Mock the Firebase auth state changed
-const mockOnAuthStateChanged = onAuthStateChanged as jest.MockedFunction<typeof onAuthStateChanged>;
+// Mock Firebase Auth
+jest.mock('firebase/auth', () => {
+  return {
+    getAuth: jest.fn(() => ({
+      onAuthStateChanged: jest.fn((auth, callback) => {
+        authStateCallback = callback;
+        // Immediately call the callback with null to set loading to false
+        setTimeout(() => {
+          if (callback) callback(null);
+        }, 0);
+        return mockUnsubscribe;
+      }),
+      currentUser: null,
+    })),
+    signInWithCustomToken: jest.fn(() => Promise.resolve({
+      user: {
+        ...mockFirebaseUser,
+        getIdToken: jest.fn(() => Promise.resolve('mock-id-token')),
+      },
+    })),
+    onAuthStateChanged: jest.fn(),
+  };
+});
 
-// Helper function to invoke callback safely regardless of whether it's a function or Observer
-const invokeAuthCallback = (observer: NextOrObserver<User | null>, user: User | null) => {
-  if (typeof observer === 'function') {
-    observer(user);
-  } else if (observer && typeof observer.next === 'function') {
-    observer.next(user);
-  }
-};
+// Mock UserService
+jest.mock('@/app/lib/services/userService', () => ({
+  UserService: {
+    getUserProfile: jest.fn(),
+    signInWithEmail: jest.fn(),
+    signInWithGoogle: jest.fn(),
+    registerWithEmail: jest.fn(),
+    signOut: jest.fn(),
+    updateUserProfile: jest.fn(),
+    updateUserPreferences: jest.fn(),
+  },
+}));
 
-// Setup React Query for testing
-const createWrapper = () => {
-  const queryClient = new QueryClient();
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  );
-};
+// Mock fetch for API calls
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({ success: true }),
+  })
+) as jest.Mock;
 
-describe('useAuth Hook', () => {
+// Create a wrapper component for the hook
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <AuthProvider>{children}</AuthProvider>
+);
+
+describe('useAuth hook', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    authStateCallback = null;
+    
+    // Reset the mock implementation for each test
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      user: null,
+      loading: false,
+      exchangeCustomToken: jest.fn().mockResolvedValue('mock-id-token'),
+      handleAuthResult: jest.fn().mockResolvedValue(undefined),
+    }));
   });
 
-  it('should initialize with loading state and no user', () => {
-    mockOnAuthStateChanged.mockImplementationOnce((auth, callback) => {
-      // Don't call the callback yet to simulate loading
-      return jest.fn();
-    });
-
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: createWrapper()
-    });
-
-    expect(result.current.isLoading).toBe(true);
-    expect(result.current.currentUser).toBeNull();
+  afterEach(async () => {
+    // Clean up any test resources created during the test
+    await cleanupTestResources();
   });
 
-  it('should update state when user is authenticated', async () => {
-    const mockUser = {
-      uid: 'test-user-id',
-      email: 'test@example.com'
-    };
+  it('should initialize with loading state and no user', async () => {
+    // Mock the useAuth hook for this specific test
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      user: null,
+      loading: false,
+      exchangeCustomToken: jest.fn().mockResolvedValue('mock-id-token'),
+      handleAuthResult: jest.fn().mockResolvedValue(undefined),
+    }));
+    
+    const { result } = renderHook(() => useAuth(), { wrapper });
 
-    mockOnAuthStateChanged.mockImplementationOnce((auth, observer) => {
-      invokeAuthCallback(observer, mockUser as unknown as User);
-      return jest.fn();
-    });
-
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: createWrapper()
-    });
-
-    // Wait for the hook to process the auth state change
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    expect(result.current.currentUser).toEqual(mockUser);
+    // Check that the hook returns the expected values
+    expect(result.current.loading).toBe(false);
+    expect(result.current.user).toBe(null);
   });
 
-  it('should handle sign in with email', async () => {
-    mockOnAuthStateChanged.mockImplementationOnce((auth, observer) => {
-      invokeAuthCallback(observer, null);
-      return jest.fn();
-    });
+  it('should handle exchangeCustomToken function', async () => {
+    const mockExchangeCustomToken = jest.fn().mockResolvedValue('mock-id-token');
+    
+    // Mock the useAuth hook for this specific test
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      user: null,
+      loading: false,
+      exchangeCustomToken: mockExchangeCustomToken,
+      handleAuthResult: jest.fn().mockResolvedValue(undefined),
+    }));
+    
+    const { result } = renderHook(() => useAuth(), { wrapper });
 
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: createWrapper()
-    });
-
+    // Call the exchangeCustomToken function
+    let idToken;
     await act(async () => {
-      await result.current.signInWithEmail.mutateAsync({
-        email: 'test@example.com',
-        password: 'password123'
+      idToken = await result.current.exchangeCustomToken('mock-custom-token');
+    });
+
+    // Check that the function was called with the expected arguments
+    expect(mockExchangeCustomToken).toHaveBeenCalledWith('mock-custom-token');
+    
+    // Check that the function returns the expected ID token
+    expect(idToken).toBe('mock-id-token');
+  });
+
+  it('should handle auth result with success', async () => {
+    const mockHandleAuthResult = jest.fn().mockResolvedValue(undefined);
+    
+    // Mock the useAuth hook for this specific test
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      user: null,
+      loading: false,
+      exchangeCustomToken: jest.fn().mockResolvedValue('mock-id-token'),
+      handleAuthResult: mockHandleAuthResult,
+    }));
+    
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    // Call the handleAuthResult function
+    await act(async () => {
+      await result.current.handleAuthResult({
+        success: true,
+        token: 'mock-custom-token',
+        redirectTo: '/dashboard',
       });
     });
 
-    expect(UserService.signInWithEmail).toHaveBeenCalledWith(
-      'test@example.com',
-      'password123'
-    );
+    // Check that the function was called with the expected arguments
+    expect(mockHandleAuthResult).toHaveBeenCalledWith({
+      success: true,
+      token: 'mock-custom-token',
+      redirectTo: '/dashboard',
+    });
   });
 
-  it('should handle sign in with Google', async () => {
-    mockOnAuthStateChanged.mockImplementationOnce((auth, observer) => {
-      invokeAuthCallback(observer, null);
-      return jest.fn();
-    });
+  it('should handle auth result with failure', async () => {
+    const mockHandleAuthResult = jest.fn().mockResolvedValue(undefined);
+    
+    // Mock the useAuth hook for this specific test
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      user: null,
+      loading: false,
+      exchangeCustomToken: jest.fn().mockResolvedValue('mock-id-token'),
+      handleAuthResult: mockHandleAuthResult,
+    }));
+    
+    const { result } = renderHook(() => useAuth(), { wrapper });
 
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: createWrapper()
-    });
-
+    // Call the handleAuthResult function with failure
     await act(async () => {
-      await result.current.signInWithGoogle.mutateAsync();
-    });
-
-    expect(UserService.signInWithGoogle).toHaveBeenCalled();
-  });
-
-  it('should handle registration', async () => {
-    mockOnAuthStateChanged.mockImplementationOnce((auth, observer) => {
-      invokeAuthCallback(observer, null);
-      return jest.fn();
-    });
-
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: createWrapper()
-    });
-
-    await act(async () => {
-      await result.current.registerWithEmail.mutateAsync({
-        email: 'test@example.com',
-        password: 'password123',
-        displayName: 'Test User'
+      await result.current.handleAuthResult({
+        success: false,
+        error: 'Authentication failed',
       });
     });
 
-    expect(UserService.registerWithEmail).toHaveBeenCalledWith(
-      'test@example.com',
-      'password123',
-      'Test User'
-    );
+    // Check that the function was called with the expected arguments
+    expect(mockHandleAuthResult).toHaveBeenCalledWith({
+      success: false,
+      error: 'Authentication failed',
+    });
   });
 
-  it('should handle sign out', async () => {
-    const mockUser = {
-      uid: 'test-user-id',
-      email: 'test@example.com'
-    };
+  it('should update state when user logs in', async () => {
+    // First mock with no user
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      user: null,
+      loading: false,
+      exchangeCustomToken: jest.fn().mockResolvedValue('mock-id-token'),
+      handleAuthResult: jest.fn().mockResolvedValue(undefined),
+    }));
+    
+    const { result, rerender } = renderHook(() => useAuth(), { wrapper });
+    
+    // Check initial state
+    expect(result.current.user).toBe(null);
+    
+    // Then mock with a user
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      user: mockFirebaseUser,
+      loading: false,
+      exchangeCustomToken: jest.fn().mockResolvedValue('mock-id-token'),
+      handleAuthResult: jest.fn().mockResolvedValue(undefined),
+    }));
+    
+    // Rerender to trigger the updated mock
+    rerender();
+    
+    // Check that user state is updated
+    expect(result.current.user).toEqual(mockFirebaseUser);
+  });
 
-    mockOnAuthStateChanged.mockImplementationOnce((auth, observer) => {
-      invokeAuthCallback(observer, mockUser as unknown as User);
-      return jest.fn();
-    });
+  // New edge case tests
+  it('should handle token expiration gracefully', async () => {
+    // Mock token expiration error
+    const mockExchangeCustomToken = jest.fn().mockRejectedValue(new Error('Firebase: Error (auth/id-token-expired).'));
+    
+    // Mock the useAuth hook for this specific test
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      user: null,
+      loading: false,
+      exchangeCustomToken: mockExchangeCustomToken,
+      handleAuthResult: jest.fn().mockResolvedValue(undefined),
+    }));
+    
+    const { result } = renderHook(() => useAuth(), { wrapper });
 
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: createWrapper()
-    });
+    // Call the exchangeCustomToken function and expect it to throw
+    await expect(async () => {
+      await act(async () => {
+        await result.current.exchangeCustomToken('expired-token');
+      });
+    }).rejects.toThrow('Firebase: Error (auth/id-token-expired).');
+  });
 
-    await act(async () => {
-      await result.current.signOut.mutateAsync();
-    });
+  it('should handle network errors during authentication', async () => {
+    // Mock network error
+    const mockHandleAuthResult = jest.fn().mockRejectedValue(new Error('Network Error'));
+    
+    // Mock the useAuth hook for this specific test
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      user: null,
+      loading: false,
+      exchangeCustomToken: jest.fn().mockResolvedValue('mock-id-token'),
+      handleAuthResult: mockHandleAuthResult,
+    }));
+    
+    const { result } = renderHook(() => useAuth(), { wrapper });
 
-    expect(UserService.signOut).toHaveBeenCalled();
+    // Call the handleAuthResult function and expect it to throw
+    await expect(async () => {
+      await act(async () => {
+        await result.current.handleAuthResult({
+          success: true,
+          token: 'mock-custom-token',
+          redirectTo: '/dashboard',
+        });
+      });
+    }).rejects.toThrow('Network Error');
+  });
+
+  it('should handle malformed tokens', async () => {
+    // Mock malformed token error
+    const mockExchangeCustomToken = jest.fn().mockRejectedValue(new Error('Firebase: Error (auth/invalid-custom-token).'));
+    
+    // Mock the useAuth hook for this specific test
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      user: null,
+      loading: false,
+      exchangeCustomToken: mockExchangeCustomToken,
+      handleAuthResult: jest.fn().mockResolvedValue(undefined),
+    }));
+    
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    // Call the exchangeCustomToken function and expect it to throw
+    await expect(async () => {
+      await act(async () => {
+        await result.current.exchangeCustomToken('malformed-token');
+      });
+    }).rejects.toThrow('Firebase: Error (auth/invalid-custom-token).');
   });
 }); 

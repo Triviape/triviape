@@ -4,6 +4,10 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { UserService } from '@/app/lib/services/userService';
 import { createSessionCookie, revokeSession } from '@/app/lib/authUtils';
+import { getAuthErrorMessage } from '@/app/lib/authErrorHandler';
+import { FirebaseError } from 'firebase/app';
+import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
+import { AuthResult } from '@/app/types/user';
 
 // Schema for login
 const LoginSchema = z.object({
@@ -38,42 +42,86 @@ export async function login(prevState: any, formData: FormData) {
       };
     }
     
-    // Sign in with Firebase Auth
-    const result = await UserService.signInWithEmail(
-      validatedFields.data.email,
-      validatedFields.data.password
-    );
-    
-    // Get the user's ID token for session creation
-    const idToken = await result.user.getIdToken();
-    
-    // Create a session cookie
-    const sessionResult = await createSessionCookie(idToken);
-    
-    if (!sessionResult.success) {
+    // Check if we're on the server side
+    if (typeof window === 'undefined') {
+      // We're on the server side, use the API route
+      try {
+        // Call the API route for login
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: validatedFields.data.email,
+            password: validatedFields.data.password,
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          return {
+            success: false,
+            error: errorData.error || 'Login failed',
+          };
+        }
+        
+        const data = await response.json();
+        
+        // Create a session cookie
+        const sessionResult = await createSessionCookie(data.idToken);
+        
+        if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
+          return {
+            success: false,
+            error: sessionResult.error || 'Failed to create session',
+          };
+        }
+        
+        return {
+          success: true,
+          redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
+        };
+      } catch (error) {
+        console.error('Server-side login error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Login failed',
+        };
+      }
+    } else {
+      // Client-side login
+      const result = await UserService.signInWithEmail(
+        validatedFields.data.email,
+        validatedFields.data.password
+      );
+      
+      // Get the user's ID token for session creation
+      const idToken = await result.user.getIdToken();
+      
+      // Create a session cookie
+      const sessionResult = await createSessionCookie(idToken);
+      
+      if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
+        return {
+          success: false,
+          error: sessionResult.error || 'Failed to create session',
+        };
+      }
+      
+      // Update last login
+      await UserService.updateLastLogin(result.user.uid);
+      
       return {
-        success: false,
-        error: 'Failed to create session',
+        success: true,
+        redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
       };
     }
-    
-    // Update last login
-    await UserService.updateLastLogin(result.user.uid);
-    
-    return {
-      success: true,
-      redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
-    };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Login error:', error);
     
-    // Handle specific Firebase Auth errors
-    let errorMessage = 'Failed to sign in';
-    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-      errorMessage = 'Invalid email or password';
-    } else if (error.code === 'auth/too-many-requests') {
-      errorMessage = 'Too many login attempts. Please try again later';
-    }
+    // Use the error handler to get a user-friendly message
+    const errorMessage = getAuthErrorMessage(error);
     
     return {
       success: false,
@@ -103,42 +151,85 @@ export async function register(prevState: any, formData: FormData) {
       };
     }
     
-    // Register with Firebase Auth
-    const result = await UserService.registerWithEmail(
-      validatedFields.data.email,
-      validatedFields.data.password,
-      validatedFields.data.displayName
-    );
-    
-    // Get the user's ID token for session creation
-    const idToken = await result.user.getIdToken();
-    
-    // Create a session cookie
-    const sessionResult = await createSessionCookie(idToken);
-    
-    if (!sessionResult.success) {
+    // Check if we're on the server side
+    if (typeof window === 'undefined') {
+      // We're on the server side, use the API route
+      try {
+        // Call the API route for registration
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: validatedFields.data.email,
+            password: validatedFields.data.password,
+            displayName: validatedFields.data.displayName,
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          return {
+            success: false,
+            error: errorData.error || 'Registration failed',
+          };
+        }
+        
+        const data = await response.json();
+        
+        // Create a session cookie
+        const sessionResult = await createSessionCookie(data.idToken);
+        
+        if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
+          return {
+            success: false,
+            error: sessionResult.error || 'Failed to create session',
+          };
+        }
+        
+        return {
+          success: true,
+          redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
+        };
+      } catch (error) {
+        console.error('Server-side registration error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Registration failed',
+        };
+      }
+    } else {
+      // Client-side registration
+      const result = await UserService.registerWithEmail(
+        validatedFields.data.email,
+        validatedFields.data.password,
+        validatedFields.data.displayName
+      );
+      
+      // Get the user's ID token for session creation
+      const idToken = await result.user.getIdToken();
+      
+      // Create a session cookie
+      const sessionResult = await createSessionCookie(idToken);
+      
+      if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
+        return {
+          success: false,
+          error: sessionResult.error || 'Failed to create session',
+        };
+      }
+      
       return {
-        success: false,
-        error: 'Failed to create session',
+        success: true,
+        redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
       };
     }
-    
-    return {
-      success: true,
-      redirectTo: '/dashboard',
-    };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Registration error:', error);
     
-    // Handle specific Firebase Auth errors
-    let errorMessage = 'Failed to register';
-    if (error.code === 'auth/email-already-in-use') {
-      errorMessage = 'Email is already in use';
-    } else if (error.code === 'auth/invalid-email') {
-      errorMessage = 'Invalid email address';
-    } else if (error.code === 'auth/weak-password') {
-      errorMessage = 'Password is too weak';
-    }
+    // Use the error handler to get a user-friendly message
+    const errorMessage = getAuthErrorMessage(error);
     
     return {
       success: false,
@@ -151,6 +242,84 @@ export async function register(prevState: any, formData: FormData) {
  * Server action to handle logout
  */
 export async function logout() {
-  await revokeSession();
-  redirect('/');
+  try {
+    await revokeSession();
+    redirect('/');
+  } catch (error) {
+    console.error('Logout error:', error);
+    // Even if there's an error, redirect to home
+    redirect('/');
+  }
+}
+
+/**
+ * Direct API for login with email and password
+ * This is used by the API routes
+ */
+export async function loginWithEmailPassword(email: string, password: string): Promise<AuthResult> {
+  try {
+    // First, authenticate the user with Firebase Admin
+    const userRecord = await FirebaseAdminService.getUserByEmail(email);
+    
+    // Generate a custom token for this user
+    const customToken = await FirebaseAdminService.createCustomToken(userRecord.uid);
+    
+    // Return the custom token - client side will need to exchange this for an ID token
+    return {
+      success: true,
+      message: 'Login successful',
+      token: customToken,
+      user: {
+        uid: userRecord.uid,
+        email: userRecord.email || email,
+        displayName: userRecord.displayName || '',
+      }
+    };
+  } catch (error) {
+    console.error('Login error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error during login',
+    };
+  }
+}
+
+/**
+ * Direct API for registering a new user
+ * This is used by the API routes
+ */
+export async function registerNewUser(
+  email: string, 
+  password: string, 
+  displayName: string
+): Promise<AuthResult> {
+  try {
+    // Create the user with Firebase Admin
+    const userRecord = await FirebaseAdminService.createUser({
+      email,
+      password,
+      displayName,
+    });
+    
+    // Generate a custom token for this user
+    const customToken = await FirebaseAdminService.createCustomToken(userRecord.uid);
+    
+    // Return the custom token - client side will need to exchange this for an ID token
+    return {
+      success: true,
+      message: 'Registration successful',
+      token: customToken,
+      user: {
+        uid: userRecord.uid,
+        email: userRecord.email || email,
+        displayName: userRecord.displayName || displayName,
+      }
+    };
+  } catch (error) {
+    console.error('Registration error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error during registration',
+    };
+  }
 } 

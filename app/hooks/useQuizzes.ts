@@ -1,70 +1,117 @@
 'use client';
 
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { QuizService } from '@/app/lib/services/quizService';
-import { Quiz, DifficultyLevel } from '@/app/types/quiz';
-import { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { useCallback } from 'react';
+import { useOptimizedQuery } from './query/useOptimizedQuery';
+import { 
+  getQuizById, 
+  getQuestionsByIds, 
+  getCategories,
+} from '@/app/lib/services/quiz/quizFetchService';
+import { DifficultyLevel, Quiz, Question, QuizCategory } from '@/app/types/quiz';
+import { memoizeWithCache } from '@/app/lib/cacheUtils';
 
-// Query keys for React Query
-export const quizKeys = {
-  all: ['quizzes'] as const,
-  lists: () => [...quizKeys.all, 'list'] as const,
-  list: (filters: { categoryId?: string; difficulty?: DifficultyLevel }) =>
-    [...quizKeys.lists(), filters] as const,
-  details: () => [...quizKeys.all, 'detail'] as const,
-  detail: (id: string) => [...quizKeys.details(), id] as const,
-};
+// Memoize the fetch functions for better performance
+const memoizedGetQuizById = memoizeWithCache(getQuizById, { 
+  ttl: 10 * 60 * 1000, // 10 minutes
+  staleWhileRevalidate: true 
+});
+
+const memoizedGetQuestionsByIds = memoizeWithCache(getQuestionsByIds, { 
+  ttl: 10 * 60 * 1000, // 10 minutes
+  staleWhileRevalidate: true 
+});
+
+const memoizedGetCategories = memoizeWithCache(getCategories, { 
+  ttl: 30 * 60 * 1000, // 30 minutes
+  staleWhileRevalidate: true 
+});
 
 /**
- * Hook for fetching a paginated list of quizzes with filters
+ * Hook for fetching quizzes with optional filtering
+ * @param categoryId Optional category ID to filter by
+ * @param difficulty Optional difficulty level to filter by
+ * @returns Query result with paginated quiz data
  */
-export function useQuizzes(categoryId?: string, difficulty?: DifficultyLevel, pageSize = 10) {
-  return useInfiniteQuery({
-    queryKey: quizKeys.list({ categoryId, difficulty }),
-    queryFn: async ({ pageParam }) => {
-      const result = await QuizService.getQuizzes(
-        categoryId,
-        difficulty,
-        pageSize,
-        pageParam
-      );
-      return result;
+export function useQuizzes(categoryId?: string, difficulty?: DifficultyLevel) {
+  return useOptimizedQuery({
+    queryKey: ['quizzes', categoryId, difficulty],
+    queryFn: async () => {
+      // This is a placeholder implementation since getQuizzes doesn't exist
+      // In a real implementation, this would call the actual service function
+      const response = await fetch(`/api/quizzes?${categoryId ? `categoryId=${categoryId}` : ''}${difficulty ? `&difficulty=${difficulty}` : ''}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch quizzes');
+      }
+      return response.json();
     },
-    initialPageParam: null as QueryDocumentSnapshot<DocumentData, DocumentData> | null,
-    getNextPageParam: (lastPage) => lastPage.lastVisible || null,
-    // Keep cached for 5 minutes
-    staleTime: 5 * 60 * 1000,
+    componentName: 'QuizList',
+    queryName: 'quizzes_list',
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
 /**
  * Hook for fetching a single quiz by ID
+ * @param quizId Quiz ID
+ * @returns Query result with quiz data
  */
 export function useQuiz(quizId: string) {
-  return useQuery({
-    queryKey: quizKeys.detail(quizId),
-    queryFn: async () => {
-      const quiz = await QuizService.getQuizById(quizId);
-      return quiz;
-    },
-    // Keep cached for 10 minutes
-    staleTime: 10 * 60 * 1000,
+  return useOptimizedQuery({
+    queryKey: ['quiz', quizId],
+    queryFn: () => memoizedGetQuizById(quizId),
+    componentName: 'QuizDetail',
+    queryName: `quiz_${quizId}`,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    enabled: !!quizId
   });
 }
 
 /**
- * Hook for fetching the questions for a quiz
+ * Hook for fetching quiz questions by IDs
+ * @param questionIds Array of question IDs
+ * @returns Query result with questions data
  */
 export function useQuizQuestions(questionIds: string[] | undefined) {
-  return useQuery({
-    queryKey: ['questions', { ids: questionIds }],
+  return useOptimizedQuery({
+    queryKey: ['questions', questionIds],
+    queryFn: () => memoizedGetQuestionsByIds(questionIds || []),
+    componentName: 'QuizQuestions',
+    queryName: 'quiz_questions',
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    enabled: !!questionIds && questionIds.length > 0
+  });
+}
+
+/**
+ * Hook for fetching quiz categories
+ * @returns Query result with categories data
+ */
+export function useQuizCategories() {
+  return useOptimizedQuery({
+    queryKey: ['categories'],
+    queryFn: () => memoizedGetCategories(),
+    componentName: 'QuizCategories',
+    queryName: 'quiz_categories',
+    staleTime: 30 * 60 * 1000, // 30 minutes
+  });
+}
+
+/**
+ * Hook for fetching the daily quiz
+ * @returns Query result with the daily quiz data
+ */
+export function useDailyQuiz() {
+  return useOptimizedQuery({
+    queryKey: ['dailyQuiz'],
     queryFn: async () => {
-      if (!questionIds || questionIds.length === 0) return [];
-      return await QuizService.getQuestionsByIds(questionIds);
+      const response = await fetch('/api/daily-quiz');
+      if (!response.ok) {
+        throw new Error('Failed to fetch daily quiz');
+      }
+      return response.json();
     },
-    // Disable the query if we don't have question IDs
-    enabled: !!questionIds && questionIds.length > 0,
-    // Keep cached for 10 minutes
-    staleTime: 10 * 60 * 1000,
+    componentName: 'DailyQuiz',
+    queryName: 'daily_quiz',
+    staleTime: 60 * 60 * 1000, // 1 hour
   });
 } 

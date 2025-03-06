@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
     ],
   },
   reactStrictMode: true,
-  swcMinify: true,
+  // swcMinify: true, // Removed as it's enabled by default in Next.js 15
   experimental: {
     optimizeCss: true,
     turbo: {
@@ -23,8 +23,8 @@ const nextConfig: NextConfig = {
       }
     }
   },
-  // Disable server components for specific paths (if needed)
-  serverComponentsExternalPackages: [
+  // Renamed from serverComponentsExternalPackages to serverExternalPackages
+  serverExternalPackages: [
     'firebase-admin'
   ],
 };

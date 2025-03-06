@@ -1,0 +1,183 @@
+{
+  "quizzes": {
+    "quiz1": {
+      "id": "quiz1",
+      "title": "Introduction to JavaScript",
+      "description": "Learn the basics of JavaScript programming language with this beginner-friendly quiz.",
+      "categoryIds": ["programming", "web-development"],
+      "difficulty": "easy",
+      "questionIds": ["q1", "q2", "q3", "q4", "q5"],
+      "shuffleQuestions": true,
+      "estimatedDuration": 900,
+      "baseXP": 100,
+      "baseCoins": 50,
+      "createdAt": {"_seconds": 1698840000, "_nanoseconds": 0},
+      "updatedAt": {"_seconds": 1698840000, "_nanoseconds": 0},
+      "isActive": true,
+      "timesPlayed": 0,
+      "averageScore": 0,
+      "completionRate": 0,
+      "timeLimit": 1200,
+      "passingScore": 70,
+      "coverImage": "https://example.com/images/js-quiz.jpg"
+    },
+    "quiz2": {
+      "id": "quiz2",
+      "title": "Advanced TypeScript",
+      "description": "Test your knowledge of TypeScript's advanced features and type system.",
+      "categoryIds": ["programming", "typescript"],
+      "difficulty": "hard",
+      "questionIds": ["q6", "q7", "q8", "q9", "q10"],
+      "shuffleQuestions": true,
+      "estimatedDuration": 1800,
+      "baseXP": 200,
+      "baseCoins": 100,
+      "createdAt": {"_seconds": 1698926400, "_nanoseconds": 0},
+      "updatedAt": {"_seconds": 1698926400, "_nanoseconds": 0},
+      "isActive": true,
+      "timesPlayed": 0,
+      "averageScore": 0,
+      "completionRate": 0,
+      "timeLimit": 2400,
+      "passingScore": 80
+    },
+    "quiz3": {
+      "id": "quiz3",
+      "title": "React Fundamentals",
+      "description": "Test your understanding of React core concepts and hooks.",
+      "categoryIds": ["programming", "web-development", "react"],
+      "difficulty": "medium",
+      "questionIds": ["q11", "q12", "q13", "q14", "q15"],
+      "shuffleQuestions": true,
+      "estimatedDuration": 1200,
+      "baseXP": 150,
+      "baseCoins": 75,
+      "createdAt": {"_seconds": 1699012800, "_nanoseconds": 0},
+      "updatedAt": {"_seconds": 1699012800, "_nanoseconds": 0},
+      "isActive": true,
+      "timesPlayed": 0,
+      "averageScore": 0,
+      "completionRate": 0,
+      "timeLimit": 1800,
+      "passingScore": 75
+    }
+  },
+  "categories": {
+    "programming": {
+      "id": "programming",
+      "name": "Programming",
+      "description": "General programming concepts and languages",
+      "icon": "code"
+    },
+    "web-development": {
+      "id": "web-development",
+      "name": "Web Development",
+      "description": "Frontend and backend web development technologies",
+      "icon": "web"
+    },
+    "typescript": {
+      "id": "typescript",
+      "name": "TypeScript",
+      "description": "TypeScript language and ecosystem",
+      "icon": "typescript",
+      "parentCategoryId": "programming"
+    },
+    "react": {
+      "id": "react",
+      "name": "React",
+      "description": "React library and ecosystem",
+      "icon": "react",
+      "parentCategoryId": "web-development"
+    }
+  },
+  "questions": {
+    "q1": {
+      "id": "q1",
+      "text": "What is JavaScript?",
+      "type": "multiple_choice",
+      "difficulty": "easy",
+      "categoryIds": ["programming", "web-development"],
+      "answers": [
+        {
+          "id": "a1",
+          "text": "A programming language for the web",
+          "isCorrect": true,
+          "explanation": "JavaScript is a programming language commonly used to create interactive effects within web browsers."
+        },
+        {
+          "id": "a2",
+          "text": "A markup language",
+          "isCorrect": false,
+          "explanation": "HTML is a markup language, not JavaScript."
+        },
+        {
+          "id": "a3",
+          "text": "A database technology",
+          "isCorrect": false,
+          "explanation": "JavaScript is not a database technology, though it can interact with databases."
+        },
+        {
+          "id": "a4",
+          "text": "A styling language",
+          "isCorrect": false,
+          "explanation": "CSS is a styling language, not JavaScript."
+        }
+      ],
+      "points": 10,
+      "timeLimit": 30,
+      "hint": "Think about what you use to add interactivity to websites.",
+      "timesAnswered": 0,
+      "timesAnsweredCorrectly": 0,
+      "averageAnswerTime": 0,
+      "skipRate": 0,
+      "tags": ["javascript", "basics", "web"],
+      "createdAt": 1698840000,
+      "updatedAt": 1698840000,
+      "isActive": true
+    },
+    "q2": {
+      "id": "q2",
+      "text": "Which of the following is a valid JavaScript variable declaration?",
+      "type": "multiple_choice",
+      "difficulty": "easy",
+      "categoryIds": ["programming", "web-development"],
+      "answers": [
+        {
+          "id": "a1",
+          "text": "var myVar = 5;",
+          "isCorrect": true,
+          "explanation": "This is a valid variable declaration using the 'var' keyword."
+        },
+        {
+          "id": "a2",
+          "text": "variable myVar = 5;",
+          "isCorrect": false,
+          "explanation": "'variable' is not a valid keyword for variable declaration in JavaScript."
+        },
+        {
+          "id": "a3",
+          "text": "v myVar = 5;",
+          "isCorrect": false,
+          "explanation": "'v' is not a valid keyword for variable declaration in JavaScript."
+        },
+        {
+          "id": "a4",
+          "text": "int myVar = 5;",
+          "isCorrect": false,
+          "explanation": "'int' is not a valid keyword for variable declaration in JavaScript, though it is in some other languages."
+        }
+      ],
+      "points": 10,
+      "timeLimit": 30,
+      "hint": "JavaScript has three keywords for variable declaration: var, let, and const.",
+      "timesAnswered": 0,
+      "timesAnsweredCorrectly": 0,
+      "averageAnswerTime": 0,
+      "skipRate": 0,
+      "tags": ["javascript", "variables", "syntax"],
+      "createdAt": 1698840100,
+      "updatedAt": 1698840100,
+      "isActive": true
+    }
+  }
+} 

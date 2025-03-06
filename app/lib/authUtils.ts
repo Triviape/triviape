@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { adminAuth } from './firebaseAdmin';
+import { FirebaseAdminService } from './firebaseAdmin';
 import { UserService } from './services/userService';
 
 /**
@@ -11,38 +11,45 @@ import { UserService } from './services/userService';
 const SESSION_DURATION = 5 * 24 * 60 * 60 * 1000;
 
 /**
- * Create a session cookie from an ID token
- * This should be called from a server action when a user signs in
+ * Create a session cookie from a Firebase ID token
  */
-export async function createSessionCookie(idToken: string) {
+export async function createSessionCookie(idToken: string, maxAge: number = 60 * 60 * 24 * 5 * 1000): Promise<string | { success: boolean; error?: string }> {
   try {
+    // First check if this is a custom token
+    if (idToken.startsWith('eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.')) {
+      console.log('Detected custom token, exchanging for ID token first');
+      // We need to exchange the custom token for an ID token
+      // This requires client-side auth, which we can't do server-side
+      // Instead, return the custom token and let the client handle the exchange
+      return idToken;
+    }
+    
     // Verify the ID token
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const decodedToken = await FirebaseAdminService.getAuth().verifyIdToken(idToken);
     
     // Create a session cookie
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn: SESSION_DURATION
+    const sessionCookie = await FirebaseAdminService.getAuth().createSessionCookie(idToken, {
+      expiresIn: maxAge,
     });
     
-    // Set the cookie in the browser
-    // @ts-ignore - Next.js types are not up to date
-    cookies().set({
+    // Set the cookie - cookies() returns a Promise in Next.js 14
+    const cookieStore = await cookies();
+    cookieStore.set({
       name: 'session',
       value: sessionCookie,
-      maxAge: SESSION_DURATION / 1000,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      maxAge: maxAge / 1000, // Convert to seconds
       path: '/',
-      sameSite: 'lax'
     });
-    
-    // Update the last login timestamp
-    await UserService.updateLastLogin(decodedToken.uid);
     
     return { success: true };
   } catch (error) {
     console.error('Error creating session:', error);
-    return { success: false, error: 'Authentication failed' };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error creating session'
+    };
   }
 }
 
@@ -52,27 +59,27 @@ export async function createSessionCookie(idToken: string) {
  */
 export async function revokeSession() {
   try {
-    // Get the session cookie
-    // @ts-ignore - Next.js types are not up to date
-    const sessionCookie = cookies().get('session')?.value;
+    // Get the session cookie - cookies() returns a Promise in Next.js 14
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
     
     if (sessionCookie) {
       // Verify and revoke the session
-      const decodedToken = await adminAuth.verifySessionCookie(sessionCookie);
-      await adminAuth.revokeRefreshTokens(decodedToken.uid);
+      const decodedToken = await FirebaseAdminService.getAuth().verifySessionCookie(sessionCookie);
+      await FirebaseAdminService.getAuth().revokeRefreshTokens(decodedToken.uid);
     }
     
     // Clear the cookie
-    // @ts-ignore - Next.js types are not up to date
-    cookies().delete('session');
+    const cookieStoreForDelete = await cookies();
+    cookieStoreForDelete.delete('session');
     
     return { success: true };
   } catch (error) {
     console.error('Error revoking session:', error);
     
     // Clear the cookie anyway to be safe
-    // @ts-ignore - Next.js types are not up to date
-    cookies().delete('session');
+    const cookieStoreForDelete = await cookies();
+    cookieStoreForDelete.delete('session');
     
     return { success: false, error: 'Failed to sign out properly' };
   }
@@ -84,15 +91,16 @@ export async function revokeSession() {
  */
 export async function getAuthenticatedUser() {
   try {
-    // @ts-ignore - Next.js types are not up to date
-    const sessionCookie = cookies().get('session')?.value;
+    // Get the session cookie - cookies() returns a Promise in Next.js 14
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
     
     if (!sessionCookie) {
       return null;
     }
     
-    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const userRecord = await adminAuth.getUser(decodedToken.uid);
+    const decodedToken = await FirebaseAdminService.getAuth().verifySessionCookie(sessionCookie, true);
+    const userRecord = await FirebaseAdminService.getAuth().getUser(decodedToken.uid);
     
     return {
       uid: userRecord.uid,
