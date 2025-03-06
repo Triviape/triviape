@@ -1,4 +1,8 @@
 /** @type {import('next').NextConfig} */
+const withBundleAnalyzer = process.env.ANALYZE === 'true' 
+  ? require('@next/bundle-analyzer')({ enabled: true })
+  : (config) => config;
+
 const nextConfig = {
   /* config options here */
   images: {
@@ -12,7 +16,6 @@ const nextConfig = {
     ],
   },
   reactStrictMode: true,
-  // swcMinify: true, // Removed as it's enabled by default in Next.js 15
   experimental: {
     optimizeCss: true,
     turbo: {
@@ -20,7 +23,11 @@ const nextConfig = {
         // Include all files in the app directory
         '**/*': ['static']
       }
-    }
+    },
+    // Enable memory cache for faster builds
+    memoryBasedWorkersCount: true,
+    // Optimize bundle size
+    optimizePackageImports: ['react', 'react-dom', 'lucide-react', '@radix-ui/react-*'],
   },
   // Renamed from serverComponentsExternalPackages to serverExternalPackages
   serverExternalPackages: [
@@ -33,6 +40,14 @@ const nextConfig = {
     // !! WARN !!
     ignoreBuildErrors: true, // Always ignore build errors for now
   },
+  // Add compiler options for faster builds
+  compiler: {
+    // Remove console.log in production
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  // Increase build performance
+  poweredByHeader: false,
+  compress: true,
 };
 
-module.exports = nextConfig; 
+module.exports = withBundleAnalyzer(nextConfig); 

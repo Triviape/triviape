@@ -15,6 +15,7 @@ interface AppLayoutProps {
   className?: string;
   contentClassName?: string;
   showSidebar?: boolean;
+  useShadcnSidebar?: boolean;
 }
 
 export function AppLayout({
@@ -27,10 +28,59 @@ export function AppLayout({
   className,
   contentClassName,
   showSidebar = true,
+  useShadcnSidebar = false,
 }: AppLayoutProps) {
   const { deviceInfo } = useResponsiveUI();
   const isMobile = deviceInfo.isMobile;
   
+  // If using shadcn sidebar, we render a simpler layout
+  if (useShadcnSidebar) {
+    return (
+      <div className={cn(
+        "min-h-screen flex flex-col bg-background",
+        className
+      )}>
+        {/* Header */}
+        {header && (
+          <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <ResponsiveContainer maxWidth={maxWidth} padding={padding}>
+              {header}
+            </ResponsiveContainer>
+          </header>
+        )}
+        
+        {/* Main content with sidebar */}
+        <div className="flex-1 flex">
+          {/* Sidebar container with fixed width */}
+          <div className="w-[var(--sidebar-width-icon)] shrink-0">
+            {/* Sidebar is rendered by the SidebarProvider */}
+            {sidebar}
+          </div>
+          
+          {/* Main content */}
+          <main className={cn(
+            "flex-1",
+            contentClassName
+          )}>
+            <ResponsiveContainer maxWidth={maxWidth} padding={padding}>
+              {children}
+            </ResponsiveContainer>
+          </main>
+        </div>
+        
+        {/* Footer */}
+        {footer && (
+          <footer className="border-t bg-muted/50">
+            <ResponsiveContainer maxWidth={maxWidth} padding={padding}>
+              {footer}
+            </ResponsiveContainer>
+          </footer>
+        )}
+      </div>
+    );
+  }
+  
+  // Original layout for backward compatibility
   return (
     <div className={cn(
       "min-h-screen flex flex-col bg-background",

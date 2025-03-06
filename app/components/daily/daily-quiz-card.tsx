@@ -13,22 +13,20 @@ export function DailyQuizCard() {
   
   if (isLoading) {
     return (
-      <Card className="w-full max-w-3xl mx-auto">
-        <CardHeader>
-          <Skeleton className="h-8 w-3/4 mb-2" />
+      <Card className="w-full">
+        <CardHeader className="pb-2">
+          <Skeleton className="h-6 w-3/4 mb-2" />
           <Skeleton className="h-4 w-full" />
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-24" />
-            </div>
+        <CardContent className="pb-2">
+          <div className="flex flex-wrap gap-3">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-20" />
           </div>
         </CardContent>
-        <CardFooter>
-          <Skeleton className="h-10 w-full" />
+        <CardFooter className="pt-2">
+          <Skeleton className="h-9 w-full" />
         </CardFooter>
       </Card>
     );
@@ -36,14 +34,14 @@ export function DailyQuizCard() {
   
   if (error || !dailyQuiz) {
     return (
-      <Card className="w-full max-w-3xl mx-auto">
-        <CardHeader>
-          <CardTitle>Daily Quiz</CardTitle>
+      <Card className="w-full">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">Daily Quiz</CardTitle>
           <CardDescription>
             {error ? 'Error loading daily quiz' : 'No daily quiz available'}
           </CardDescription>
         </CardHeader>
-        <CardFooter>
+        <CardFooter className="pt-2">
           <Link href="/" className="w-full">
             <Button variant="outline" className="w-full">Back to Home</Button>
           </Link>
@@ -53,36 +51,34 @@ export function DailyQuizCard() {
   }
   
   return (
-    <Card className="w-full max-w-3xl mx-auto">
-      <CardHeader>
+    <Card className="w-full">
+      <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-2xl">{dailyQuiz.title}</CardTitle>
-            <CardDescription className="mt-2">{dailyQuiz.description}</CardDescription>
+            <CardTitle className="text-xl">{dailyQuiz.title}</CardTitle>
+            <CardDescription className="mt-1 line-clamp-2">{dailyQuiz.description}</CardDescription>
           </div>
           <Badge variant="outline">{dailyQuiz.difficulty}</Badge>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <span className="font-medium">{dailyQuiz.questionIds?.length || 0}</span> questions
-            </div>
-            {dailyQuiz.estimatedDuration && (
-              <div className="flex items-center gap-1">
-                <span className="font-medium">{dailyQuiz.estimatedDuration}</span> minutes
-              </div>
-            )}
-            {dailyQuiz.baseXP && (
-              <div className="flex items-center gap-1">
-                <span className="font-medium">{dailyQuiz.baseXP}</span> XP
-              </div>
-            )}
+      <CardContent className="pb-2">
+        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <span className="font-medium">{dailyQuiz.questionIds?.length || 0}</span> questions
           </div>
+          {dailyQuiz.estimatedDuration && (
+            <div className="flex items-center gap-1">
+              <span className="font-medium">{dailyQuiz.estimatedDuration}</span> min
+            </div>
+          )}
+          {dailyQuiz.baseXP && (
+            <div className="flex items-center gap-1">
+              <span className="font-medium">{dailyQuiz.baseXP}</span> XP
+            </div>
+          )}
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="pt-2">
         <Link href={`/quiz/${dailyQuiz.id}`} className="w-full">
           <Button className="w-full">Start Quiz</Button>
         </Link>

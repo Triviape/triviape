@@ -5,7 +5,7 @@ import { useAuth } from '@/app/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { AppLayout } from '@/app/components/layouts/app-layout';
 import { Navbar } from '@/app/components/navigation/navbar';
-import { DashboardSidebar } from '@/app/components/navigation/dashboard-sidebar';
+import { ShadcnSidebar } from '@/app/components/navigation/shadcn-sidebar';
 
 export default function DashboardLayout({
   children,
@@ -33,8 +33,9 @@ export default function DashboardLayout({
   return (
     <AppLayout
       header={<Navbar />}
-      sidebar={<DashboardSidebar />}
+      sidebar={<ShadcnSidebar />}
       className="bg-background"
+      useShadcnSidebar={true}
     >
       {children}
     </AppLayout>
