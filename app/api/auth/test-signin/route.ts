@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     console.error('Test signin error:', error);
     
     const errorMessage = getAuthErrorMessage(error);
-    const errorCode = error.code ? error.code : 'unknown';
+    const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : 'unknown';
     
     return NextResponse.json({
       success: false,

@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       });
     } catch (signInError) {
       // If error is not because the user doesn't exist, rethrow
-      if (signInError.code !== 'auth/user-not-found') {
+      if (signInError && typeof signInError === 'object' && 'code' in signInError && signInError.code !== 'auth/user-not-found') {
         throw signInError;
       }
       
@@ -68,10 +68,10 @@ export async function POST(request: Request) {
       });
     }
   } catch (error) {
-    console.error('Create test account error:', error);
+    console.error('Error creating test account:', error);
     
     const errorMessage = getAuthErrorMessage(error);
-    const errorCode = error.code ? error.code : 'unknown';
+    const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : 'unknown';
     
     return NextResponse.json({
       success: false,
