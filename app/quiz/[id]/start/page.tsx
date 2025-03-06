@@ -23,7 +23,12 @@ interface QuizSessionState {
   timeRemaining?: number;
 }
 
-export default function QuizStartPage({ params }: { params: { id: string } }) {
+interface PageProps {
+  params: { id: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
+}
+
+export default function QuizStartPage({ params }: PageProps) {
   const router = useRouter();
   const { currentUser } = useAuth();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
