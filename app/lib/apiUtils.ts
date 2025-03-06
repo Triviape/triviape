@@ -96,9 +96,11 @@ export async function fetchWithRetry(
         category: ErrorCategory.API,
         severity: attempt > retries! ? ErrorSeverity.ERROR : ErrorSeverity.WARNING,
         context: {
-          url: fullUrl,
-          attempt,
-          maxRetries: retries,
+          additionalData: {
+            url: fullUrl,
+            attempt,
+            maxRetries: retries,
+          }
         },
       });
       

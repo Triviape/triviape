@@ -32,7 +32,7 @@ export async function getUserStats(userId: string): Promise<any> {
       'Failed to get user stats',
       UserServiceErrorType.STATS_ERROR,
       error instanceof FirebaseError ? error.code : undefined,
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
   }
 }
@@ -67,7 +67,7 @@ export async function updateQuizStats(
       'Failed to update quiz stats',
       UserServiceErrorType.STATS_ERROR,
       error instanceof FirebaseError ? error.code : undefined,
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
   }
 }
@@ -89,7 +89,7 @@ export async function incrementQuizzesCreated(userId: string): Promise<void> {
       'Failed to update quizzes created count',
       UserServiceErrorType.STATS_ERROR,
       error instanceof FirebaseError ? error.code : undefined,
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
   }
 } 

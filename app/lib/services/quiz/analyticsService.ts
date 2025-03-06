@@ -78,7 +78,7 @@ export async function updateQuestionAnalytics(
       'Failed to update question analytics',
       QuizServiceErrorType.UPDATE_ERROR,
       error instanceof FirebaseError ? error.code : undefined,
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
   }
 }
@@ -133,7 +133,7 @@ export async function recordQuizAttempt(attempt: QuizAttempt): Promise<string> {
       'Failed to record quiz attempt',
       QuizServiceErrorType.CREATE_ERROR,
       error instanceof FirebaseError ? error.code : undefined,
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
   }
 } 

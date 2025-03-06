@@ -29,11 +29,11 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 
 // Default privacy settings
 export const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
+  showOnLeaderboards: true,
   profileVisibility: 'public',
-  showOnlineStatus: true,
-  showActivity: true,
+  shareActivityWithFriends: true,
   allowFriendRequests: true,
-  allowTeamInvites: true
+  showOnlineStatus: true
 };
 
 // User service error types

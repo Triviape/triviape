@@ -36,7 +36,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
       'Failed to get user profile',
       UserServiceErrorType.PROFILE_ERROR,
       error instanceof FirebaseError ? error.code : undefined,
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
   }
 }
@@ -75,7 +75,7 @@ export async function updateUserProfile(
       'Failed to update user profile',
       UserServiceErrorType.PROFILE_ERROR,
       error instanceof FirebaseError ? error.code : undefined,
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
   }
 }
@@ -105,7 +105,7 @@ export async function updateUserPreferences(
       'Failed to update user preferences',
       UserServiceErrorType.PREFERENCES_ERROR,
       error instanceof FirebaseError ? error.code : undefined,
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
   }
 }
@@ -135,7 +135,7 @@ export async function updatePrivacySettings(
       'Failed to update privacy settings',
       UserServiceErrorType.PREFERENCES_ERROR,
       error instanceof FirebaseError ? error.code : undefined,
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
   }
 } 
