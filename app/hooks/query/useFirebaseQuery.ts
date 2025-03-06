@@ -25,7 +25,8 @@ import {
   CollectionReference,
   DocumentData,
   QueryConstraint,
-  Firestore
+  Firestore,
+  WithFieldValue
 } from 'firebase/firestore';
 import { getFirestoreDb } from '@/app/lib/firebase';
 import { useCallback } from 'react';
@@ -259,7 +260,8 @@ export function useFirebasePaginatedCollection<T = DocumentData>(
   }, Error>({
     queryKey: ['firestore', 'paginated', path, constraints, pageSize],
     queryFn: fetchPaginatedCollection,
-    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.lastDoc : undefined,
+    getNextPageParam: (lastPage: { items: T[]; lastDoc: DocumentData | null; hasMore: boolean }) => 
+      lastPage.hasMore ? lastPage.lastDoc : undefined,
     componentName,
     queryName: `paginated_${path.replace(/\//g, '_')}`,
     trackPerformance,
@@ -306,7 +308,7 @@ export function useFirebaseAddDocument<T = DocumentData>(
   // Create a memoized mutation function
   const addDocument = useCallback(async (data: T) => {
     const collectionRef = collection(db, collectionPath);
-    const docRef = await addDoc(collectionRef, data);
+    const docRef = await addDoc(collectionRef, data as WithFieldValue<DocumentData>);
     return docRef.id;
   }, [db, collectionPath]);
   
@@ -353,7 +355,7 @@ export function useFirebaseSetDocument<T = DocumentData>(
   // Create a memoized mutation function
   const setDocument = useCallback(async ({ path, data, merge = false }: { path: string; data: T; merge?: boolean }) => {
     const docRef = doc(db, path);
-    await setDoc(docRef, data, { merge });
+    await setDoc(docRef, data as WithFieldValue<DocumentData>, { merge });
   }, [db]);
   
   // Use the optimized mutation

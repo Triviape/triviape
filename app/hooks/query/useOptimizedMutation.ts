@@ -85,8 +85,7 @@ export function useOptimizedMutation<
     usePerformanceMonitor({
       componentName: `${componentName}_${mutationName}`,
       trackRenders: true,
-      trackMounts: true,
-      trackUnmounts: true
+      trackTimeOnScreen: true
     });
   }
   
@@ -135,9 +134,12 @@ export function useOptimizedMutation<
               category: ErrorCategory.MUTATION,
               severity: errorSeverity,
               context: {
-                componentName,
-                mutationName,
-                variables: JSON.stringify(variables).substring(0, 200) // Truncate for logging
+                action: mutationName,
+                additionalData: {
+                  componentName,
+                  mutationName,
+                  variables: JSON.stringify(variables).substring(0, 200) // Truncate for logging
+                }
               }
             });
           }
@@ -173,15 +175,39 @@ export function useOptimizedMutation<
         category: ErrorCategory.MUTATION,
         severity: errorSeverity,
         context: {
-          componentName,
-          mutationName,
-          variables: JSON.stringify(variables).substring(0, 200) // Truncate for logging
+          action: mutationName,
+          additionalData: {
+            componentName,
+            mutationName,
+            variables: JSON.stringify(variables).substring(0, 200) // Truncate for logging
+          }
         }
       });
-      
-      if (originalOnError) {
-        originalOnError(error, variables, context);
+    };
+  } else if (originalOnError) {
+    const typedOriginalOnError = originalOnError as (
+      error: TError,
+      variables: TVariables,
+      context: TContext
+    ) => void;
+    
+    mutationOptions.onError = (error, variables, context) => {
+      if (logErrors) {
+        logError(error as Error, {
+          category: ErrorCategory.MUTATION,
+          severity: errorSeverity,
+          context: {
+            action: mutationName,
+            additionalData: {
+              componentName,
+              mutationName,
+              variables: JSON.stringify(variables).substring(0, 200) // Truncate for logging
+            }
+          }
+        });
       }
+      
+      typedOriginalOnError(error, variables, context as TContext);
     };
   }
   

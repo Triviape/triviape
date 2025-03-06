@@ -118,14 +118,9 @@ export function usePerformanceMonitor({
   ): T => {
     return measureExecutionTime(
       operation,
-      (duration) => {
-        recordMetric({
-          type: MetricType.CUSTOM,
-          name: `${componentName}: ${operationName}`,
-          value: duration,
-          metadata: { componentName, operationType: 'sync' }
-        });
-      }
+      MetricType.CUSTOM,
+      `${componentName}: ${operationName}`,
+      { componentName, operationType: 'sync' }
     );
   };
   
@@ -138,14 +133,9 @@ export function usePerformanceMonitor({
   ): Promise<T> => {
     return measureAsyncExecutionTime(
       operation,
-      (duration) => {
-        recordMetric({
-          type: MetricType.CUSTOM,
-          name: `${componentName}: ${operationName}`,
-          value: duration,
-          metadata: { componentName, operationType: 'async' }
-        });
-      }
+      MetricType.CUSTOM,
+      `${componentName}: ${operationName}`,
+      { componentName, operationType: 'async' }
     );
   };
   

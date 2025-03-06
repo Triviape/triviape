@@ -60,8 +60,7 @@ export function useOptimizedQuery<TData = unknown, TError = Error>(
     usePerformanceMonitor({
       componentName: `${componentName}_${queryName}`,
       trackRenders: true,
-      trackMounts: true,
-      trackUnmounts: true
+      trackTimeOnScreen: true
     });
   }
   
@@ -69,6 +68,8 @@ export function useOptimizedQuery<TData = unknown, TError = Error>(
   const originalQueryFn = queryOptions.queryFn;
   
   if (originalQueryFn) {
+    const typedQueryFn = originalQueryFn as (...args: any[]) => Promise<TData>;
+    
     queryOptions.queryFn = async (...args: any[]) => {
       let endTracking: (() => void) | undefined;
       
@@ -77,7 +78,7 @@ export function useOptimizedQuery<TData = unknown, TError = Error>(
       }
       
       try {
-        const result = await originalQueryFn(...args);
+        const result = await typedQueryFn(...args);
         
         if (endTracking) {
           endTracking();
@@ -94,9 +95,12 @@ export function useOptimizedQuery<TData = unknown, TError = Error>(
             category: ErrorCategory.QUERY,
             severity: errorSeverity,
             context: {
-              componentName,
-              queryName,
-              queryKey: options.queryKey
+              action: queryName,
+              additionalData: {
+                componentName,
+                queryName,
+                queryKey: options.queryKey
+              }
             }
           });
         }

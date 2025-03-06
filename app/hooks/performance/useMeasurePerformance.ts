@@ -48,18 +48,11 @@ export function useMeasurePerformance({
   ): T => {
     return measureExecutionTime(
       operation,
-      (duration) => {
-        if (autoLog) {
-          recordMetric({
-            type: metricType,
-            name: `${context}: ${name}`,
-            value: duration,
-            metadata: {
-              context,
-              operationType: 'sync'
-            }
-          });
-        }
+      metricType,
+      `${context}: ${name}`,
+      {
+        context,
+        operationType: 'sync'
       }
     );
   }, [context, autoLog]);
@@ -79,18 +72,11 @@ export function useMeasurePerformance({
   ): Promise<T> => {
     return measureAsyncExecutionTime(
       operation,
-      (duration) => {
-        if (autoLog) {
-          recordMetric({
-            type: metricType,
-            name: `${context}: ${name}`,
-            value: duration,
-            metadata: {
-              context,
-              operationType: 'async'
-            }
-          });
-        }
+      metricType,
+      `${context}: ${name}`,
+      {
+        context,
+        operationType: 'async'
       }
     );
   }, [context, autoLog]);
