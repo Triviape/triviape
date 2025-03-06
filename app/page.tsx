@@ -16,25 +16,56 @@ export default function Home() {
       maxWidth="xl"
     >
       <div className="w-full py-6 relative">
-        {/* Main content layout with hero on left and game modes on right */}
+        {/* Main content layout with hero on left and content on right */}
         <div className="flex flex-col md:flex-row w-full gap-8 min-h-[calc(100vh-12rem)]">
-          {/* Hero Section - Left side, vertically centered */}
-          <div className="w-full md:w-3/5 lg:w-3/5 flex items-center">
-            <HeroSection />
+          {/* Hero Section - Left side, newspaper style */}
+          <div className="w-full md:w-3/5 lg:w-3/5 flex flex-col">
+            <HeroSection className="mb-8" />
+            
+            {/* Character illustration at the bottom */}
+            <div className="flex-grow flex items-end justify-center pb-8">
+              <div className="relative">
+                {/* Simple character illustration */}
+                <div className="w-48 h-48 rounded-full bg-amber-200 absolute bottom-0 z-0"></div>
+                <div className="relative z-10 flex flex-col items-center">
+                  {/* Character */}
+                  <div className="w-32 h-48 flex flex-col items-center justify-center">
+                    {/* Head */}
+                    <div className="w-16 h-16 bg-amber-800 rounded-full flex items-center justify-center">
+                      {/* Face */}
+                      <div className="flex space-x-4">
+                        <div className="w-1 h-1 bg-black rounded-full"></div>
+                        <div className="w-1 h-1 bg-black rounded-full"></div>
+                      </div>
+                    </div>
+                    {/* Body */}
+                    <div className="w-20 h-24 bg-gray-100 mt-2"></div>
+                    {/* Legs */}
+                    <div className="flex space-x-2 mt-1">
+                      <div className="w-6 h-12 bg-blue-500"></div>
+                      <div className="w-6 h-12 bg-blue-500"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Microphone stand */}
+                  <div className="absolute left-[-20px] bottom-12 h-32 w-1 bg-gray-700"></div>
+                  <div className="absolute left-[-24px] bottom-44 h-6 w-4 bg-gray-800 rounded"></div>
+                </div>
+              </div>
+            </div>
           </div>
           
-          {/* Right side content - Positioned in the middle vertically */}
-          <div className="w-full md:w-2/5 lg:w-2/5 flex flex-col justify-center gap-8">
-            {/* Game Modes */}
-            <div className="w-full">
-              <h2 className="text-2xl font-bold mb-4">Play Now</h2>
-              <GameModes className="bg-transparent shadow-none border-none" />
-            </div>
-            
-            {/* Daily Quiz Card */}
-            <div className="w-full">
+          {/* Right side content - Organized in a flex column */}
+          <div className="w-full md:w-2/5 lg:w-2/5 flex flex-col">
+            {/* Top section with Daily Quiz Card */}
+            <div className="w-full mb-8">
               <h2 className="text-2xl font-bold mb-4">Today's Quiz</h2>
               <DailyQuizCard />
+            </div>
+            
+            {/* Bottom section with Game Modes */}
+            <div className="w-full mt-auto">
+              <GameModes className="bg-transparent shadow-none border-none" />
             </div>
           </div>
         </div>
