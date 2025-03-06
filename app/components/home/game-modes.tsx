@@ -40,30 +40,26 @@ export function GameModes({ className }: GameModesProps) {
   
   return (
     <Card className={cn(
-      "flex flex-col gap-3 p-4 bg-card",
+      "p-4 bg-card",
       className
     )}>
-      <div className="flex flex-col gap-3 w-full">
+      <div className="flex justify-center gap-4 w-full">
         {gameModes.map((mode) => (
           <Link 
             key={mode.id} 
             href={mode.href} 
-            className="w-full"
+            className="flex flex-col items-center"
           >
             <Button
               className={cn(
-                "w-full text-white justify-start h-16 px-4 rounded-lg shadow-sm transition-all",
+                "w-16 h-16 rounded-full text-white flex items-center justify-center shadow-md transition-all",
                 mode.color
               )}
+              title={mode.name}
             >
-              <div className="flex items-center w-full">
-                <span className="text-2xl mr-3">{mode.icon}</span>
-                <div className="flex flex-col items-start">
-                  <span className="font-bold text-lg">{mode.name}</span>
-                  <span className="text-xs opacity-90 line-clamp-1">{mode.description}</span>
-                </div>
-              </div>
+              <span className="text-2xl">{mode.icon}</span>
             </Button>
+            <span className="mt-2 text-xs font-medium text-center">{mode.name}</span>
           </Link>
         ))}
       </div>

@@ -27,8 +27,8 @@ export default function Home() {
           <div className="w-full md:w-2/5 lg:w-2/5 flex flex-col justify-center gap-8">
             {/* Game Modes */}
             <div className="w-full">
-              <h2 className="text-2xl font-bold mb-4">Game Modes</h2>
-              <GameModes />
+              <h2 className="text-2xl font-bold mb-4">Play Now</h2>
+              <GameModes className="bg-transparent shadow-none border-none" />
             </div>
             
             {/* Daily Quiz Card */}
