@@ -21,38 +21,6 @@ export default function Home() {
           {/* Hero Section - Left side, newspaper style */}
           <div className="w-full md:w-3/5 lg:w-3/5 flex flex-col">
             <HeroSection className="mb-8" />
-            
-            {/* Character illustration at the bottom */}
-            <div className="flex-grow flex items-end justify-center pb-8">
-              <div className="relative">
-                {/* Simple character illustration */}
-                <div className="w-48 h-48 rounded-full bg-amber-200 absolute bottom-0 z-0"></div>
-                <div className="relative z-10 flex flex-col items-center">
-                  {/* Character */}
-                  <div className="w-32 h-48 flex flex-col items-center justify-center">
-                    {/* Head */}
-                    <div className="w-16 h-16 bg-amber-800 rounded-full flex items-center justify-center">
-                      {/* Face */}
-                      <div className="flex space-x-4">
-                        <div className="w-1 h-1 bg-black rounded-full"></div>
-                        <div className="w-1 h-1 bg-black rounded-full"></div>
-                      </div>
-                    </div>
-                    {/* Body */}
-                    <div className="w-20 h-24 bg-gray-100 mt-2"></div>
-                    {/* Legs */}
-                    <div className="flex space-x-2 mt-1">
-                      <div className="w-6 h-12 bg-blue-500"></div>
-                      <div className="w-6 h-12 bg-blue-500"></div>
-                    </div>
-                  </div>
-                  
-                  {/* Microphone stand */}
-                  <div className="absolute left-[-20px] bottom-12 h-32 w-1 bg-gray-700"></div>
-                  <div className="absolute left-[-24px] bottom-44 h-6 w-4 bg-gray-800 rounded"></div>
-                </div>
-              </div>
-            </div>
           </div>
           
           {/* Right side content - Organized in a flex column */}

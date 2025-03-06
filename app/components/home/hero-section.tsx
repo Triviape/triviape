@@ -1,41 +1,55 @@
 import React from 'react';
-import Image from 'next/image';
 import { cn } from '@/app/lib/utils';
-import { Button } from '@/app/components/ui/button';
+import { format } from 'date-fns';
 
 interface HeroSectionProps {
   className?: string;
 }
 
 export function HeroSection({ className }: HeroSectionProps) {
+  // Get current date
+  const today = new Date();
+  const formattedDate = format(today, "MMMM d, yyyy");
+  const dayOfWeek = format(today, "EEEE");
+  
+  // Format location and date like a newspaper
+  const locationDate = `San Francisco, ${dayOfWeek}, ${formattedDate}`;
+  
+  // Volume and issue information
+  const volumeInfo = "VOL. I... No. 1";
+  
   return (
     <div className={cn(
-      "flex flex-col items-start text-left w-full gap-8 pr-4",
+      "flex flex-col items-start text-left w-full gap-6 pr-4 pt-8",
       className
     )}>
-      <div className="space-y-6">
-        <h1 className="text-4xl font-extrabold tracking-tight lg:text-6xl">
-          Welcome to <span className="text-primary">Triviape</span>
+      {/* Empty box at the top (like in the image) */}
+      <div className="w-full border border-blue-400 h-20 mb-4"></div>
+      
+      {/* Newspaper title */}
+      <div className="w-full">
+        <h1 className="text-6xl md:text-7xl lg:text-8xl font-serif tracking-wide leading-none text-center" 
+            style={{ 
+              fontWeight: 300,
+              fontStyle: 'italic',
+              letterSpacing: '-0.02em',
+              color: 'transparent',
+              WebkitTextStroke: '1px #333',
+              textShadow: 'none'
+            }}>
+          Triviape
         </h1>
-        
-        <p className="text-xl text-muted-foreground max-w-[600px]">
-          Test your knowledge with fun trivia games. Play daily quizzes, team challenges, 
-          or face off against friends in thrilling competitions.
-        </p>
-
-        <div className="flex flex-wrap gap-4 pt-2">
-          <Button size="lg">Start Playing</Button>
-          <Button size="lg" variant="outline">Explore Games</Button>
-        </div>
+        <div className="text-xs text-right mt-1 pr-2">2023 Kahuna Gaming</div>
       </div>
       
-      <div className="relative w-full h-48 sm:h-60 md:h-80 rounded-lg overflow-hidden shadow-lg mt-4">
-        {/* This is a placeholder for a hero image - replace with your own image */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary opacity-20 z-10"></div>
-        <div className="absolute inset-0 flex items-center justify-center z-20 text-white text-2xl font-bold p-4 text-center">
-          The Ultimate Trivia Experience
-        </div>
+      {/* Location, date and volume info */}
+      <div className="w-full flex justify-between items-center mt-2 text-sm">
+        <div className="text-gray-700">{locationDate}</div>
+        <div className="text-gray-700">{volumeInfo}</div>
       </div>
+      
+      {/* Optional: Add some decorative line or element */}
+      <div className="w-full border-t border-gray-300 mt-2"></div>
     </div>
   );
 } 
