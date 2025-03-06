@@ -8,7 +8,11 @@ import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
-export function DailyQuizCard() {
+interface DailyQuizCardProps {
+  onStartClick?: () => void;
+}
+
+export function DailyQuizCard({ onStartClick }: DailyQuizCardProps) {
   const { data: dailyQuiz, isLoading, error } = useDailyQuiz();
   
   if (isLoading) {
@@ -50,6 +54,12 @@ export function DailyQuizCard() {
     );
   }
   
+  const handleStartClick = () => {
+    if (onStartClick) {
+      onStartClick();
+    }
+  };
+  
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
@@ -79,9 +89,13 @@ export function DailyQuizCard() {
         </div>
       </CardContent>
       <CardFooter className="pt-2">
-        <Link href={`/quiz/${dailyQuiz.id}`} className="w-full">
-          <Button className="w-full">Start Quiz</Button>
-        </Link>
+        {onStartClick ? (
+          <Button className="w-full" onClick={handleStartClick}>Start Quiz</Button>
+        ) : (
+          <Link href={`/quiz/${dailyQuiz.id}`} className="w-full">
+            <Button className="w-full">Start Quiz</Button>
+          </Link>
+        )}
       </CardFooter>
     </Card>
   );

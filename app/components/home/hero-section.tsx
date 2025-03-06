@@ -20,36 +20,38 @@ export function HeroSection({ className }: HeroSectionProps) {
   
   return (
     <div className={cn(
-      "flex flex-col items-start text-left w-full gap-6 pr-4 pt-8",
+      "flex flex-col items-start justify-center text-left w-full h-full",
       className
     )}>
-      {/* Empty box at the top (like in the image) */}
-      <div className="w-full border border-blue-400 h-20 mb-4"></div>
-      
-      {/* Newspaper title */}
-      <div className="w-full">
-        <h1 className="text-6xl md:text-7xl lg:text-8xl font-serif tracking-wide leading-none text-center" 
-            style={{ 
-              fontWeight: 300,
-              fontStyle: 'italic',
-              letterSpacing: '-0.02em',
-              color: 'transparent',
-              WebkitTextStroke: '1px #333',
-              textShadow: 'none'
-            }}>
+      {/* Main newspaper title - much larger and centered vertically */}
+      <div className="w-full flex flex-col justify-center items-start my-auto">
+        <h1 
+          className="text-[8rem] sm:text-[10rem] md:text-[12rem] lg:text-[15rem] font-serif tracking-wide leading-none text-left" 
+          style={{ 
+            fontWeight: 300,
+            fontStyle: 'italic',
+            letterSpacing: '-0.05em',
+            color: 'transparent',
+            WebkitTextStroke: '2px #333',
+            textShadow: 'none',
+            lineHeight: '0.9'
+          }}
+        >
           Triviape
         </h1>
-        <div className="text-xs text-right mt-1 pr-2">2023 Kahuna Gaming</div>
+        
+        {/* Company info moved to bottom of the section */}
+        <div className="text-xs text-right self-end mt-2 pr-2">2023 Kahuna Gaming</div>
       </div>
       
-      {/* Location, date and volume info */}
-      <div className="w-full flex justify-between items-center mt-2 text-sm">
+      {/* Location, date and volume info on same y-axis */}
+      <div className="w-full flex justify-between items-center mt-8 text-base">
         <div className="text-gray-700">{locationDate}</div>
         <div className="text-gray-700">{volumeInfo}</div>
       </div>
       
-      {/* Optional: Add some decorative line or element */}
-      <div className="w-full border-t border-gray-300 mt-2"></div>
+      {/* Decorative line */}
+      <div className="w-full border-t border-gray-300 mt-4"></div>
     </div>
   );
 } 

@@ -8,9 +8,10 @@ import { Card } from '@/app/components/ui/card';
 
 interface GameModesProps {
   className?: string;
+  onDailyQuizClick?: () => void;
 }
 
-export function GameModes({ className }: GameModesProps) {
+export function GameModes({ className, onDailyQuizClick }: GameModesProps) {
   const gameModes = [
     {
       id: 'daily',
@@ -44,24 +45,46 @@ export function GameModes({ className }: GameModesProps) {
       className
     )}>
       <div className="flex justify-center gap-4 w-full">
-        {gameModes.map((mode) => (
-          <Link 
-            key={mode.id} 
-            href={mode.href} 
-            className="flex flex-col items-center"
-          >
-            <Button
-              className={cn(
-                "w-16 h-16 rounded-full text-white flex items-center justify-center shadow-md transition-all",
-                mode.color
-              )}
-              title={mode.name}
+        {gameModes.map((mode) => {
+          // For daily quiz, use the callback if provided
+          if (mode.id === 'daily' && onDailyQuizClick) {
+            return (
+              <div key={mode.id} className="flex flex-col items-center">
+                <Button
+                  className={cn(
+                    "w-16 h-16 rounded-full text-white flex items-center justify-center shadow-md transition-all",
+                    mode.color
+                  )}
+                  title={mode.name}
+                  onClick={onDailyQuizClick}
+                >
+                  <span className="text-2xl">{mode.icon}</span>
+                </Button>
+                <span className="mt-2 text-xs font-medium text-center">{mode.name}</span>
+              </div>
+            );
+          }
+          
+          // For other modes, use the Link
+          return (
+            <Link 
+              key={mode.id} 
+              href={mode.href} 
+              className="flex flex-col items-center"
             >
-              <span className="text-2xl">{mode.icon}</span>
-            </Button>
-            <span className="mt-2 text-xs font-medium text-center">{mode.name}</span>
-          </Link>
-        ))}
+              <Button
+                className={cn(
+                  "w-16 h-16 rounded-full text-white flex items-center justify-center shadow-md transition-all",
+                  mode.color
+                )}
+                title={mode.name}
+              >
+                <span className="text-2xl">{mode.icon}</span>
+              </Button>
+              <span className="mt-2 text-xs font-medium text-center">{mode.name}</span>
+            </Link>
+          );
+        })}
       </div>
     </Card>
   );

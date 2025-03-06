@@ -9,6 +9,7 @@ import {
 } from '@/app/lib/services/quiz/quizFetchService';
 import { DifficultyLevel, Quiz, Question, QuizCategory } from '@/app/types/quiz';
 import { memoizeWithCache } from '@/app/lib/cacheUtils';
+import { mockDailyQuiz, mockQuestions } from '@/app/lib/services/quiz/mockDailyQuiz';
 
 // Memoize the fetch functions for better performance
 const memoizedGetQuizById = memoizeWithCache(getQuizById, { 
@@ -58,7 +59,15 @@ export function useQuizzes(categoryId?: string, difficulty?: DifficultyLevel) {
 export function useQuiz(quizId: string) {
   return useOptimizedQuery({
     queryKey: ['quiz', quizId],
-    queryFn: () => memoizedGetQuizById(quizId),
+    queryFn: () => {
+      // Use mock data for development
+      if (quizId === 'daily-quiz-1') {
+        return mockDailyQuiz;
+      }
+      
+      // Use the real service for other quiz IDs
+      return memoizedGetQuizById(quizId);
+    },
     componentName: 'QuizDetail',
     queryName: `quiz_${quizId}`,
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -74,7 +83,15 @@ export function useQuiz(quizId: string) {
 export function useQuizQuestions(questionIds: string[] | undefined) {
   return useOptimizedQuery({
     queryKey: ['questions', questionIds],
-    queryFn: () => memoizedGetQuestionsByIds(questionIds || []),
+    queryFn: () => {
+      // Use mock data for development
+      if (questionIds && questionIds.length > 0 && questionIds[0].startsWith('question-')) {
+        return mockQuestions;
+      }
+      
+      // Use the real service for other question IDs
+      return memoizedGetQuestionsByIds(questionIds || []);
+    },
     componentName: 'QuizQuestions',
     queryName: 'quiz_questions',
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -104,11 +121,15 @@ export function useDailyQuiz() {
   return useOptimizedQuery({
     queryKey: ['dailyQuiz'],
     queryFn: async () => {
-      const response = await fetch('/api/daily-quiz');
-      if (!response.ok) {
-        throw new Error('Failed to fetch daily quiz');
-      }
-      return response.json();
+      // Use mock data for development
+      return mockDailyQuiz;
+      
+      // Uncomment this when ready to use the real API
+      // const response = await fetch('/api/daily-quiz');
+      // if (!response.ok) {
+      //   throw new Error('Failed to fetch daily quiz');
+      // }
+      // return response.json();
     },
     componentName: 'DailyQuiz',
     queryName: 'daily_quiz',
