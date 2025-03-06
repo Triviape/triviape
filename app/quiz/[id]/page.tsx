@@ -44,13 +44,17 @@ const getDifficultyColor = (difficulty: DifficultyLevel): string => {
 };
 
 // Define the params type for page
-type PageProps = {
-  params: { id: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
-};
+interface QuizPageParams {
+  id: string;
+}
 
 // Define the page component
-export default async function QuizPage({ params }: PageProps) {
+export default async function QuizPage({ 
+  params 
+}: { 
+  params: QuizPageParams;
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
   // Fetch quiz data
   const quiz = await getQuizById(params.id);
   

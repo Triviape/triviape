@@ -5,13 +5,27 @@ import Link from 'next/link';
 import { cn } from '@/app/lib/utils';
 import { Button } from '@/app/components/ui/button';
 import { useAuth } from '@/app/hooks/useAuth';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
+import { 
+  User,
+  Settings,
+  LogOut,
+  ChevronDown
+} from 'lucide-react';
 
 interface NavbarProps {
   className?: string;
 }
 
 export function Navbar({ className }: NavbarProps) {
-  const { currentUser, signOut } = useAuth();
+  const { currentUser, profile, signOut } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   
   // Set isMounted to true on client-side hydration
@@ -34,6 +48,45 @@ export function Navbar({ className }: NavbarProps) {
       alert('Share this page: ' + window.location.href);
     }
   };
+
+  // Get display name from profile or currentUser
+  const displayName = profile?.displayName || currentUser?.displayName || 'User';
+  
+  // User dropdown menu for authenticated users
+  const UserMenu = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="flex items-center gap-1">
+          <span>{displayName}</span>
+          <ChevronDown size={16} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48 z-[100]" sideOffset={8}>
+        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+            <User size={16} />
+            <span>Profile</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
+            <Settings size={16} />
+            <span>Settings</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem 
+          onClick={() => signOut.mutate()}
+          className="flex items-center gap-2 cursor-pointer text-destructive"
+        >
+          <LogOut size={16} />
+          <span>Sign Out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
   
   return (
     <nav className={cn(
@@ -61,15 +114,9 @@ export function Navbar({ className }: NavbarProps) {
               Share
             </Button>
             
-            {/* Auth Buttons */}
+            {/* Auth Buttons or User Menu */}
             {currentUser ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => signOut.mutate()}
-              >
-                Sign Out
-              </Button>
+              <UserMenu />
             ) : (
               <Link href="/auth">
                 <Button variant="default" size="sm">

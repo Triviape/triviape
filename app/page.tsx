@@ -23,8 +23,8 @@ export default function Home() {
             <HeroSection />
           </div>
           
-          {/* Right side content */}
-          <div className="w-full md:w-2/5 lg:w-2/5 flex flex-col gap-8">
+          {/* Right side content - Positioned in the middle vertically */}
+          <div className="w-full md:w-2/5 lg:w-2/5 flex flex-col justify-center gap-8">
             {/* Game Modes */}
             <div className="w-full">
               <h2 className="text-2xl font-bold mb-4">Game Modes</h2>
