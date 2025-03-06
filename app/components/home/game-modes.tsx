@@ -40,7 +40,7 @@ export function GameModes({ className }: GameModesProps) {
   
   return (
     <Card className={cn(
-      "flex flex-col gap-3 p-4 bg-card",
+      "flex flex-col gap-3 p-4 bg-card mt-16",
       className
     )}>
       <div className="flex flex-col gap-3 w-full">

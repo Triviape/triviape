@@ -24,7 +24,7 @@ export default function Home() {
           </div>
           
           {/* Right side content */}
-          <div className="w-full md:w-2/5 lg:w-2/5 flex flex-col gap-8">
+          <div className="w-full md:w-2/5 lg:w-2/5 flex flex-col gap-8 pt-12">
             {/* Game Modes */}
             <div className="w-full">
               <h2 className="text-2xl font-bold mb-4">Game Modes</h2>
