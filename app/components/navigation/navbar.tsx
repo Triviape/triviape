@@ -93,11 +93,9 @@ export function Navbar({ className }: NavbarProps) {
       "w-full py-3 flex items-center justify-between",
       className
     )}>
-      {/* Logo/Brand */}
+      {/* Logo/Brand - Removed */}
       <div className="flex items-center">
-        <Link href="/" className="text-xl font-bold">
-          Triviape
-        </Link>
+        {/* Logo removed as requested */}
       </div>
       
       {/* Navigation Actions */}
