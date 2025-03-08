@@ -42,7 +42,7 @@ export function AppLayout({
       )}>
         {/* Header */}
         {header && (
-          <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <header className="sticky top-0 z-40 w-full border-b bg-background">
             <ResponsiveContainer maxWidth={maxWidth} padding={padding}>
               {header}
             </ResponsiveContainer>
@@ -50,16 +50,13 @@ export function AppLayout({
         )}
         
         {/* Main content with sidebar */}
-        <div className="flex-1 flex">
-          {/* Sidebar container with fixed width */}
-          <div className="w-[var(--sidebar-width-icon)] shrink-0">
-            {/* Sidebar is rendered by the SidebarProvider */}
-            {sidebar}
-          </div>
+        <div className="flex-1 flex relative">
+          {/* Sidebar is rendered by the SidebarProvider and will overlay content */}
+          {sidebar}
           
-          {/* Main content */}
+          {/* Main content - takes full width regardless of sidebar state */}
           <main className={cn(
-            "flex-1",
+            "flex-1 w-full relative z-0",
             contentClassName
           )}>
             <ResponsiveContainer maxWidth={maxWidth} padding={padding}>
@@ -70,7 +67,7 @@ export function AppLayout({
         
         {/* Footer */}
         {footer && (
-          <footer className="border-t bg-muted/50">
+          <footer className="border-t bg-muted/50 relative z-0">
             <ResponsiveContainer maxWidth={maxWidth} padding={padding}>
               {footer}
             </ResponsiveContainer>
@@ -88,7 +85,7 @@ export function AppLayout({
     )}>
       {/* Header */}
       {header && (
-        <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-0 z-40 w-full border-b bg-background">
           <ResponsiveContainer maxWidth={maxWidth} padding={padding}>
             {header}
           </ResponsiveContainer>
@@ -120,7 +117,7 @@ export function AppLayout({
       
       {/* Footer */}
       {footer && (
-        <footer className="border-t bg-muted/50">
+        <footer className="border-t bg-muted/50 relative z-0">
           <ResponsiveContainer maxWidth={maxWidth} padding={padding}>
             {footer}
           </ResponsiveContainer>

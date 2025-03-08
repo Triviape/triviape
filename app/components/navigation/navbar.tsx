@@ -27,25 +27,42 @@ interface NavbarProps {
 export function Navbar({ className }: NavbarProps) {
   const { currentUser, profile, signOut } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
   
   // Set isMounted to true on client-side hydration
   useEffect(() => {
     setIsMounted(true);
   }, []);
   
-  const handleShare = () => {
+  const handleShare = async () => {
     if (!isMounted) return;
     
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      navigator.share({
-        title: 'Triviape - The Ultimate Trivia Game',
-        text: 'Check out Triviape - The Ultimate Trivia Game!',
-        url: window.location.href,
-      })
-        .catch((error) => console.log('Error sharing:', error));
-    } else {
-      // Fallback for browsers that don't support the Web Share API
-      alert('Share this page: ' + window.location.href);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({
+          title: 'Triviape - The Ultimate Trivia Game',
+          text: 'Check out Triviape - The Ultimate Trivia Game!',
+          url: window.location.href,
+        });
+      } else {
+        // Fallback: Copy to clipboard
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Link copied to clipboard!');
+      }
+      setShareError(null);
+    } catch (error) {
+      console.error('Error sharing:', error);
+      setShareError('Failed to share. Please try again.');
+      
+      // Try clipboard fallback if share fails
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Link copied to clipboard!');
+        setShareError(null);
+      } catch (clipboardError) {
+        console.error('Clipboard fallback failed:', clipboardError);
+        setShareError('Unable to share or copy link. Please try again.');
+      }
     }
   };
 
@@ -108,6 +125,8 @@ export function Navbar({ className }: NavbarProps) {
               variant="outline" 
               size="sm"
               onClick={handleShare}
+              disabled={!!shareError}
+              title={shareError || 'Share Triviape'}
             >
               Share
             </Button>
@@ -116,7 +135,7 @@ export function Navbar({ className }: NavbarProps) {
             {currentUser ? (
               <UserMenu />
             ) : (
-              <Link href="/auth">
+              <Link href="/auth" prefetch>
                 <Button variant="default" size="sm">
                   Sign In/Up
                 </Button>

@@ -11,6 +11,7 @@ export function HeroSection({ className }: HeroSectionProps) {
   const today = new Date();
   const formattedDate = format(today, "MMMM d, yyyy");
   const dayOfWeek = format(today, "EEEE");
+  const currentYear = format(today, "yyyy");
   
   // Format location and date like a newspaper
   const locationDate = `San Francisco, ${dayOfWeek}, ${formattedDate}`;
@@ -32,7 +33,7 @@ export function HeroSection({ className }: HeroSectionProps) {
             fontStyle: 'italic',
             letterSpacing: '-0.05em',
             color: 'transparent',
-            WebkitTextStroke: '2px #333',
+            WebkitTextStroke: '2px hsl(var(--foreground))',
             textShadow: 'none',
             lineHeight: '0.9'
           }}
@@ -41,17 +42,17 @@ export function HeroSection({ className }: HeroSectionProps) {
         </h1>
         
         {/* Company info moved to bottom of the section */}
-        <div className="text-xs text-right self-end mt-2 pr-2">2023 Kahuna Gaming</div>
+        <div className="text-xs text-right self-end mt-2 pr-2">{currentYear} Kahuna Gaming</div>
       </div>
       
       {/* Location, date and volume info on same y-axis */}
       <div className="w-full flex justify-between items-center mt-8 text-base">
-        <div className="text-gray-700">{locationDate}</div>
-        <div className="text-gray-700">{volumeInfo}</div>
+        <div className="text-muted-foreground">{locationDate}</div>
+        <div className="text-muted-foreground">{volumeInfo}</div>
       </div>
       
       {/* Decorative line */}
-      <div className="w-full border-t border-gray-300 mt-4"></div>
+      <div className="w-full border-t border-border mt-4"></div>
     </div>
   );
 } 

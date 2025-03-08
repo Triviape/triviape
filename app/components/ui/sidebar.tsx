@@ -40,6 +40,10 @@ type SidebarContext = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  enableHover: boolean
+  hoverDelay: number
+  handleMouseEnter: () => void
+  handleMouseLeave: () => void
 }
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
@@ -54,7 +58,9 @@ function useSidebar() {
 }
 
 function SidebarProvider({
-  defaultOpen = true,
+  defaultOpen = false,
+  enableHover = false,
+  hoverDelay = 300,
   open: openProp,
   onOpenChange: setOpenProp,
   className,
@@ -65,14 +71,20 @@ function SidebarProvider({
   defaultOpen?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  enableHover?: boolean
+  hoverDelay?: number
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(false) // Default to collapsed
+  const [_open, _setOpen] = React.useState(defaultOpen) // Default to collapsed
   const open = openProp ?? _open
+  
+  // Timeout ref for hover
+  const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value
@@ -92,6 +104,64 @@ function SidebarProvider({
   const toggleSidebar = React.useCallback(() => {
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
+  
+  // Mouse event handlers for hover functionality
+  const handleMouseEnter = React.useCallback(() => {
+    console.log("Mouse enter triggered", { enableHover, isMobile, open });
+    if (enableHover && !isMobile && !open) {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+        hoverTimeoutRef.current = null
+      }
+      setOpen(true)
+    }
+  }, [enableHover, isMobile, open, setOpen])
+  
+  const handleMouseLeave = React.useCallback(() => {
+    console.log("Mouse leave triggered", { enableHover, isMobile, open });
+    if (enableHover && !isMobile && open) {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
+      hoverTimeoutRef.current = setTimeout(() => {
+        setOpen(false)
+      }, hoverDelay)
+    }
+  }, [enableHover, isMobile, open, setOpen, hoverDelay])
+  
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
+    }
+  }, [])
+  
+  // Expose the setOpen function for direct access
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && enableHover) {
+      // Use a type-safe approach
+      const win = window as any;
+      win.__triggerSidebarHover = () => {
+        if (!isMobile && !open) {
+          setOpen(true);
+        }
+      };
+      
+      win.__closeSidebarHover = () => {
+        if (!isMobile && open) {
+          setOpen(false);
+        }
+      };
+      
+      return () => {
+        // Clean up
+        delete win.__triggerSidebarHover;
+        delete win.__closeSidebarHover;
+      };
+    }
+  }, [enableHover, isMobile, open, setOpen]);
 
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
@@ -122,8 +192,12 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      enableHover,
+      hoverDelay,
+      handleMouseEnter,
+      handleMouseLeave
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, enableHover, hoverDelay, handleMouseEnter, handleMouseLeave]
   )
 
   return (
@@ -139,7 +213,7 @@ function SidebarProvider({
             } as React.CSSProperties
           }
           className={cn(
-            "group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-auto",
+            "group/sidebar-wrapper flex min-h-svh w-full",
             className
           )}
           {...props}
@@ -163,7 +237,13 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { isMobile, state, openMobile, setOpenMobile, enableHover, handleMouseEnter, handleMouseLeave } = useSidebar()
+
+  // Only apply hover handlers if enableHover is true and not on mobile
+  const hoverProps = enableHover && !isMobile ? {
+    onMouseEnter: handleMouseEnter,
+    onMouseLeave: handleMouseLeave
+  } : {}
 
   if (collapsible === "none") {
     return (
@@ -182,24 +262,17 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+      <Sheet open={openMobile} onOpenChange={setOpenMobile}>
         <SheetContent
-          data-sidebar="sidebar"
-          data-slot="sidebar"
-          data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
           side={side}
+          className={cn(
+            "flex w-[var(--sidebar-width-mobile)] flex-col gap-4 p-0",
+            "data-[state=closed]:duration-300 data-[state=open]:duration-500",
+            className
+          )}
+          {...props}
         >
-          <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-          </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          {children}
         </SheetContent>
       </Sheet>
     )
@@ -207,45 +280,44 @@ function Sidebar({
 
   return (
     <div
-      className="group peer text-sidebar-foreground hidden md:block"
-      data-state={state}
-      data-collapsible={state === "collapsed" ? collapsible : ""}
-      data-variant={variant}
-      data-side={side}
       data-slot="sidebar"
+      data-collapsible={collapsible}
+      data-state={state}
+      data-variant={variant}
+      className={cn(
+        "group/sidebar relative flex h-full flex-col overflow-hidden",
+        // Base styles
+        "bg-background",
+        // Variants
+        variant === "sidebar" && [
+          "w-[var(--sidebar-width)]",
+          "data-[state=collapsed]:w-[var(--sidebar-width-icon)]",
+          "data-[collapsible=icon]:data-[state=collapsed]:w-[var(--sidebar-width-icon)]",
+          "data-[collapsible=offcanvas]:data-[state=collapsed]:-ml-[var(--sidebar-width)]",
+        ],
+        variant === "floating" && [
+          "fixed top-0 bottom-0 z-50",
+          side === "left" && "left-0",
+          side === "right" && "right-0",
+          "w-[var(--sidebar-width)]",
+          "data-[state=collapsed]:w-[var(--sidebar-width-icon)]",
+          "data-[collapsible=icon]:data-[state=collapsed]:w-[var(--sidebar-width-icon)]",
+          "data-[collapsible=offcanvas]:data-[state=collapsed]:-translate-x-full",
+          "shadow-lg",
+          "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75"
+        ],
+        variant === "inset" && [
+          "w-[var(--sidebar-width)]",
+          "data-[state=collapsed]:w-[var(--sidebar-width-icon)]",
+          "data-[collapsible=icon]:data-[state=collapsed]:w-[var(--sidebar-width-icon)]",
+          "data-[collapsible=offcanvas]:data-[state=collapsed]:-translate-x-full",
+        ],
+        className
+      )}
+      {...hoverProps}
+      {...props}
     >
-      {/* This is what handles the sidebar gap on desktop */}
-      <div
-        className={cn(
-          "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
-          "group-data-[collapsible=offcanvas]:w-0",
-          "group-data-[side=right]:rotate-180",
-          variant === "floating" || variant === "inset"
-            ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)"
-        )}
-      />
-      <div
-        className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex",
-          side === "left"
-            ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-            : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-          // Adjust the padding for floating and inset variants.
-          variant === "floating" || variant === "inset"
-            ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
-          className
-        )}
-        {...props}
-      >
-        <div
-          data-sidebar="sidebar"
-          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
-        >
-          {children}
-        </div>
-      </div>
+      {children}
     </div>
   )
 }
@@ -277,7 +349,13 @@ function SidebarTrigger({
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, state, enableHover, handleMouseEnter, handleMouseLeave } = useSidebar()
+
+  // Only apply hover handlers if enableHover is true
+  const hoverProps = enableHover ? {
+    onMouseEnter: handleMouseEnter,
+    onMouseLeave: handleMouseLeave
+  } : {}
 
   return (
     <button
@@ -288,13 +366,20 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       onClick={toggleSidebar}
       title="Toggle Sidebar"
       className={cn(
-        "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
+        "hover:after:bg-sidebar-border absolute inset-y-0 z-30 w-6 transition-all ease-linear group-data-[side=left]:-right-6 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
         "in-data-[side=left][data-state=collapsed]_&]:cursor-e-resize in-data-[side=right][data-state=collapsed]_&]:cursor-w-resize",
-        "hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
+        "hover:group-data-[collapsible=offcanvas]:bg-sidebar/10 group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
+        // Enhanced visibility for collapsed state
+        "group-data-[state=collapsed]:after:opacity-100 group-data-[state=collapsed]:after:w-[3px]",
+        // Arrow indicator (only when collapsed)
+        "group-data-[state=collapsed]:before:content-[''] group-data-[state=collapsed]:before:absolute group-data-[state=collapsed]:before:top-1/2 group-data-[state=collapsed]:before:left-1/2 group-data-[state=collapsed]:before:w-2 group-data-[state=collapsed]:before:h-4 group-data-[state=collapsed]:before:-translate-y-1/2 group-data-[state=collapsed]:before:-translate-x-1/2 group-data-[state=collapsed]:before:border-t-2 group-data-[state=collapsed]:before:border-r-2 group-data-[state=collapsed]:before:border-sidebar-foreground/70 group-data-[state=collapsed]:before:rotate-45",
+        // Make sure it's visible
+        "group-data-[state=collapsed]:flex",
         className
       )}
+      {...hoverProps}
       {...props}
     />
   )
@@ -306,7 +391,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
       data-slot="sidebar-inset"
       className={cn(
         "bg-background relative flex w-full flex-1 flex-col",
-        "md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+        "md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm",
         className
       )}
       {...props}
