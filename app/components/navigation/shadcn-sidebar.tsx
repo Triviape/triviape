@@ -30,6 +30,8 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
+  SidebarRail,
+  SidebarInset
 } from "@/app/components/ui/sidebar";
 
 export function ShadcnSidebar() {
@@ -116,17 +118,34 @@ export function ShadcnSidebar() {
   };
   
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider 
+      defaultOpen={false}
+      enableHover={true}
+      hoverDelay={300}
+    >
+      {/* Add a hover trigger area at the edge of the screen */}
+      <div 
+        className="fixed left-0 top-0 bottom-0 w-2 z-40 bg-transparent"
+        onMouseEnter={() => {
+          console.log("Edge hover triggered");
+          // Use the global function to trigger the sidebar
+          const win = window as any;
+          if (win.__triggerSidebarHover) {
+            win.__triggerSidebarHover();
+          }
+        }}
+      />
+      
       <Sidebar 
-        collapsible="icon" 
-        className="group transition-all duration-300 ease-in-out"
-        variant="inset"
+        collapsible="offcanvas" 
+        variant="floating"
+        className="z-50 shadow-lg transition-all duration-300 ease-in-out bg-gray-200 border-r"
       >
-        <SidebarHeader className="px-2 py-2">
-          <h2 className="text-base font-semibold">Triviape</h2>
+        <SidebarHeader className="px-2 py-2 border-b">
+          {/* Removed the Triviape text */}
         </SidebarHeader>
         
-        <SidebarContent>
+        <SidebarContent className="bg-gray-200">
           {/* Main Navigation Group */}
           <SidebarGroup>
             <SidebarGroupLabel className="px-2 text-xs font-medium text-muted-foreground">
@@ -164,13 +183,23 @@ export function ShadcnSidebar() {
           </SidebarGroup>
         </SidebarContent>
         
-        <SidebarFooter className="px-2 py-2">
+        <SidebarFooter className="px-2 py-2 border-t">
           <div className="text-xs text-muted-foreground">
             © 2023 Kahuna Gaming
           </div>
         </SidebarFooter>
       </Sidebar>
-      <SidebarTrigger className="fixed bottom-4 right-4 z-50" />
+      
+      {/* Make sure the rail is visible */}
+      <SidebarRail className="hover:bg-muted/10 bg-gray-200" />
+      
+      {/* Only show trigger on mobile */}
+      <SidebarTrigger className="fixed bottom-4 right-4 z-50 md:hidden" />
+      
+      {/* Main content area - doesn't shift with sidebar */}
+      <div className="flex-1 w-full">
+        {/* Your page content goes here */}
+      </div>
     </SidebarProvider>
   );
 } 

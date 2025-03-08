@@ -18,6 +18,16 @@ export default function Home() {
   const handleBackToHome = () => {
     setShowPreQuiz(false);
   };
+
+  const handleStartTeamQuiz = () => {
+    // Navigate to team quiz page
+    window.location.href = '/team';
+  };
+
+  const handleStartChallengeQuiz = () => {
+    // Navigate to challenge quiz page
+    window.location.href = '/challenge';
+  };
   
   return (
     <AppLayout
@@ -47,6 +57,8 @@ export default function Home() {
                 className="h-full" 
                 isQuizMode={showPreQuiz}
                 onDailyClick={handleStartDailyQuiz}
+                onTeamClick={handleStartTeamQuiz}
+                onChallengeClick={handleStartChallengeQuiz}
               />
             </div>
           </div>
