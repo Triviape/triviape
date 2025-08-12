@@ -1,14 +1,13 @@
-import { DifficultyLevel, Quiz } from '@/app/types/quiz';
+import { QuizDifficulty, Quiz } from '@/app/types/quiz';
 
 // Hard-coded daily quiz for development and testing
 export const mockDailyQuiz: Quiz = {
   id: 'daily-quiz-1',
   title: 'Today\'s Trivia Challenge',
   description: 'Test your knowledge with today\'s selection of trivia questions covering various topics!',
-  coverImage: '/images/daily-quiz-cover.jpg',
+  categoryId: 'general-knowledge',
+  difficulty: 'medium' as QuizDifficulty,
   timeLimit: 300, // 5 minutes
-  passingScore: 70,
-  shuffleQuestions: true,
   questionIds: [
     'question-1',
     'question-2',
@@ -16,17 +15,15 @@ export const mockDailyQuiz: Quiz = {
     'question-4',
     'question-5',
   ],
-  difficulty: DifficultyLevel.Medium,
-  categoryIds: ['general-knowledge', 'science', 'history'],
-  estimatedDuration: 5, // 5 minutes
-  baseXP: 150,
-  baseCoins: 75,
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
   isActive: true,
-  timesPlayed: 245,
-  averageScore: 78.5,
-  completionRate: 92.3
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  // Additional fields for daily quiz
+  isDailyQuiz: true,
+  dailyQuizDate: new Date().toISOString().split('T')[0],
+  tags: ['daily', 'trivia'],
+  estimatedDuration: 5, // 5 minutes
+  maxAttempts: 3
 };
 
 // Mock questions for the daily quiz
@@ -34,61 +31,51 @@ export const mockQuestions = [
   {
     id: 'question-1',
     text: 'What is the capital of France?',
-    type: 'multiple_choice',
-    difficulty: DifficultyLevel.Easy,
-    answers: [
-      { id: 'a1', text: 'Paris', isCorrect: true },
-      { id: 'a2', text: 'London', isCorrect: false },
-      { id: 'a3', text: 'Berlin', isCorrect: false },
-      { id: 'a4', text: 'Madrid', isCorrect: false }
-    ]
+    type: 'multiple-choice' as const,
+    options: ['Paris', 'London', 'Berlin', 'Madrid'],
+    correctAnswer: 'Paris',
+    explanation: 'Paris is the capital and largest city of France.',
+    points: 10,
+    timeLimit: 30
   },
   {
     id: 'question-2',
     text: 'Which planet is known as the Red Planet?',
-    type: 'multiple_choice',
-    difficulty: DifficultyLevel.Easy,
-    answers: [
-      { id: 'a1', text: 'Venus', isCorrect: false },
-      { id: 'a2', text: 'Mars', isCorrect: true },
-      { id: 'a3', text: 'Jupiter', isCorrect: false },
-      { id: 'a4', text: 'Saturn', isCorrect: false }
-    ]
+    type: 'multiple-choice' as const,
+    options: ['Venus', 'Mars', 'Jupiter', 'Saturn'],
+    correctAnswer: 'Mars',
+    explanation: 'Mars is called the Red Planet due to its reddish appearance.',
+    points: 10,
+    timeLimit: 30
   },
   {
     id: 'question-3',
     text: 'What is the largest mammal on Earth?',
-    type: 'multiple_choice',
-    difficulty: DifficultyLevel.Medium,
-    answers: [
-      { id: 'a1', text: 'African Elephant', isCorrect: false },
-      { id: 'a2', text: 'Blue Whale', isCorrect: true },
-      { id: 'a3', text: 'Giraffe', isCorrect: false },
-      { id: 'a4', text: 'Polar Bear', isCorrect: false }
-    ]
+    type: 'multiple-choice' as const,
+    options: ['African Elephant', 'Blue Whale', 'Giraffe', 'Polar Bear'],
+    correctAnswer: 'Blue Whale',
+    explanation: 'The Blue Whale is the largest mammal on Earth.',
+    points: 15,
+    timeLimit: 45
   },
   {
     id: 'question-4',
     text: 'In which year did World War II end?',
-    type: 'multiple_choice',
-    difficulty: DifficultyLevel.Medium,
-    answers: [
-      { id: 'a1', text: '1943', isCorrect: false },
-      { id: 'a2', text: '1944', isCorrect: false },
-      { id: 'a3', text: '1945', isCorrect: true },
-      { id: 'a4', text: '1946', isCorrect: false }
-    ]
+    type: 'multiple-choice' as const,
+    options: ['1943', '1944', '1945', '1946'],
+    correctAnswer: '1945',
+    explanation: 'World War II ended in 1945 with the surrender of Germany and Japan.',
+    points: 15,
+    timeLimit: 45
   },
   {
     id: 'question-5',
     text: 'Who painted the Mona Lisa?',
-    type: 'multiple_choice',
-    difficulty: DifficultyLevel.Easy,
-    answers: [
-      { id: 'a1', text: 'Vincent van Gogh', isCorrect: false },
-      { id: 'a2', text: 'Pablo Picasso', isCorrect: false },
-      { id: 'a3', text: 'Leonardo da Vinci', isCorrect: true },
-      { id: 'a4', text: 'Michelangelo', isCorrect: false }
-    ]
+    type: 'multiple-choice' as const,
+    options: ['Vincent van Gogh', 'Pablo Picasso', 'Leonardo da Vinci', 'Michelangelo'],
+    correctAnswer: 'Leonardo da Vinci',
+    explanation: 'Leonardo da Vinci painted the Mona Lisa between 1503 and 1519.',
+    points: 10,
+    timeLimit: 30
   }
 ]; 

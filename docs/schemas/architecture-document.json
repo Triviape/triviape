@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Architecture Document Schema",
+  "description": "Schema for architecture documentation in the Triviape application",
+  "type": "object",
+  "required": ["title", "description", "created", "updated", "author", "status", "content"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the architecture document"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the document's content"
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date of the document"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date of the document"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author or team responsible for the document"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "review", "approved", "deprecated"],
+      "description": "Current status of the document"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags for categorizing the document"
+    },
+    "related": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Related document paths"
+    },
+    "content": {
+      "type": "object",
+      "required": ["overview"],
+      "properties": {
+        "overview": {
+          "type": "string",
+          "description": "Overview of the architecture topic"
+        },
+        "principles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Key architectural principles"
+        },
+        "diagrams": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["mermaid", "image", "ascii"],
+                "description": "Type of diagram"
+              },
+              "content": {
+                "type": "string",
+                "description": "Diagram content or path"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the diagram"
+              }
+            }
+          },
+          "description": "Architecture diagrams"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Component name"
+              },
+              "description": {
+                "type": "string",
+                "description": "Component description"
+              },
+              "responsibilities": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Component responsibilities"
+              }
+            }
+          },
+          "description": "Key architectural components"
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string",
+                "description": "Description of the decision"
+              },
+              "rationale": {
+                "type": "string",
+                "description": "Rationale for the decision"
+              },
+              "alternatives": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Alternatives considered"
+              }
+            }
+          },
+          "description": "Key architectural decisions"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Resource title"
+              },
+              "url": {
+                "type": "string",
+                "description": "Resource URL or path"
+              }
+            }
+          },
+          "description": "Additional resources"
+        }
+      }
+    }
+  }
+} 

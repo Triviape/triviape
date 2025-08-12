@@ -11,6 +11,94 @@ import { UserProfile } from '@/app/types/user';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
+function StatChip({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center p-3 bg-muted rounded-md">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-lg font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function StatsPanel() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<any>(null);
+  const [recent, setRecent] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/user/stats', { cache: 'no-store' });
+        if (!res.ok) {
+          throw new Error(`Failed to load stats: ${res.status}`);
+        }
+        const data = await res.json();
+        if (!cancelled) {
+          setSummary(data.summary);
+          setRecent(data.recentAttempts ?? []);
+          setLoading(false);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setError(e.message || 'Failed to load stats');
+          setLoading(false);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="w-full p-4 border rounded-md">Loading stats...</div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="w-full p-4 border rounded-md bg-red-50 text-red-800 text-sm">{error}</div>
+    );
+  }
+  if (!summary) return null;
+
+  const xpProgress = Math.min(100, Math.round((summary.xp / Math.max(1, summary.xpToNextLevel)) * 100));
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatChip label="Level" value={summary.level} />
+        <StatChip label="XP" value={`${summary.xp} / ${summary.xpToNextLevel}`} />
+        <StatChip label="Coins" value={summary.coins} />
+        <StatChip label="Accuracy" value={`${summary.accuracy}%`} />
+      </div>
+
+      <div className="w-full bg-muted rounded-full h-2" aria-label="XP Progress">
+        <div className="bg-primary h-2 rounded-full" style={{ width: `${xpProgress}%` }} />
+      </div>
+
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Recent Activity</h3>
+        {recent.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No recent attempts</p>
+        ) : (
+          <div className="space-y-2">
+            {recent.map((a) => (
+              <div key={a.id} className="flex justify-between items-center p-3 border rounded-md text-sm">
+                <div>Quiz: <span className="font-medium">{a.quizId}</span></div>
+                <div>Score: <span className="font-medium">{a.score}%</span></div>
+                <div>Correct: {a.correctAnswers}/{a.totalQuestions}</div>
+                <div className="text-muted-foreground">{a.completedAt ? new Date(a.completedAt).toLocaleString() : ''}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { currentUser, profile, isLoading, updateProfile, signOut } = useAuth();
   const router = useRouter();
@@ -106,8 +194,10 @@ export default function ProfilePage() {
             </div>
           )}
           
-          {profile && (
+{profile && (
             <div className="space-y-6">
+              {/* Live Stats fetched from server */}
+              <StatsPanel />
               <div className="flex flex-col md:flex-row items-center gap-6">
                 <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-200">
                   {profile.photoURL ? (

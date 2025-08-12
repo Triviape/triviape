@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pattern Document Schema",
+  "description": "Schema for code pattern documentation in the Triviape application",
+  "type": "object",
+  "required": ["title", "description", "created", "updated", "author", "status", "content"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the pattern document"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the pattern"
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "Creation date of the document"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date of the document"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author or team responsible for the document"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "review", "approved", "deprecated"],
+      "description": "Current status of the pattern"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags for categorizing the pattern"
+    },
+    "related": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Related document paths"
+    },
+    "content": {
+      "type": "object",
+      "required": ["overview", "when_to_use", "examples"],
+      "properties": {
+        "overview": {
+          "type": "string",
+          "description": "Overview of the pattern"
+        },
+        "problem": {
+          "type": "string",
+          "description": "Problem the pattern solves"
+        },
+        "solution": {
+          "type": "string",
+          "description": "Description of the solution"
+        },
+        "when_to_use": {
+          "type": "object",
+          "properties": {
+            "use_cases": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Cases when the pattern should be used"
+            },
+            "avoid_cases": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Cases when the pattern should be avoided"
+            }
+          },
+          "description": "Guidelines for when to use the pattern"
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Example title"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the example"
+              },
+              "code": {
+                "type": "string",
+                "description": "Example code"
+              },
+              "language": {
+                "type": "string",
+                "description": "Programming language of the example"
+              }
+            }
+          },
+          "description": "Example implementations of the pattern"
+        },
+        "anti_patterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Anti-pattern title"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the anti-pattern"
+              },
+              "bad_example": {
+                "type": "string",
+                "description": "Example of the anti-pattern"
+              },
+              "good_example": {
+                "type": "string",
+                "description": "Corrected example"
+              }
+            }
+          },
+          "description": "Common anti-patterns to avoid"
+        },
+        "considerations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": ["performance", "accessibility", "security", "maintainability"],
+                "description": "Category of consideration"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the consideration"
+              }
+            }
+          },
+          "description": "Important considerations when using the pattern"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Resource title"
+              },
+              "url": {
+                "type": "string",
+                "description": "Resource URL or path"
+              }
+            }
+          },
+          "description": "Additional resources"
+        }
+      }
+    }
+  }
+} 

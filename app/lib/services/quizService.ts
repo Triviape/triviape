@@ -279,7 +279,7 @@ export class QuizService {
           text: questionData.text,
           type: questionData.type,
           difficulty: questionData.difficulty,
-          categoryIds: questionData.categoryId ? [questionData.categoryId] : [],
+          categoryId: questionData.categoryId || '',
           points: questionData.points || 10,
           isActive: questionData.isActive !== false
         });

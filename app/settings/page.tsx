@@ -54,7 +54,7 @@ export default function SettingsPage() {
   
   const handlePreferencesChange = (
     key: keyof UserPreferences,
-    value: any
+    value: string | number | boolean
   ) => {
     setPreferences((prev) => ({
       ...prev,
@@ -77,7 +77,7 @@ export default function SettingsPage() {
   
   const handlePrivacyChange = (
     key: keyof PrivacySettings,
-    value: any
+    value: string | boolean
   ) => {
     setPrivacySettings((prev) => ({
       ...prev,

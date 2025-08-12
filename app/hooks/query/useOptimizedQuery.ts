@@ -4,123 +4,87 @@
 
 'use client';
 
-import { useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import { usePerformanceMonitor } from '@/app/hooks/performance/usePerformanceMonitor';
-import { logError, ErrorCategory, ErrorSeverity } from '@/app/lib/errorHandler';
+import { useQuery, UseQueryOptions, QueryKey, QueryFunction } from '@tanstack/react-query';
+import { safeAsync, AppError } from '@/app/lib/errorHandling';
+import { shouldUseMockData } from '@/app/lib/environment';
 
 /**
- * Options for optimized query
+ * Extended query options for performance monitoring
  */
-export interface OptimizedQueryOptions<TData, TError> extends UseQueryOptions<TData, TError> {
-  /**
-   * Component name for performance monitoring
-   */
+interface OptimizedQueryOptions<TData, TError> extends Omit<UseQueryOptions<TData, TError, TData, QueryKey>, 'queryKey' | 'queryFn'> {
+  queryKey: QueryKey;
+  queryFn: QueryFunction<TData, QueryKey>;
   componentName?: string;
-  
-  /**
-   * Query name for performance monitoring and error logging
-   */
   queryName?: string;
-  
-  /**
-   * Whether to track performance
-   */
-  trackPerformance?: boolean;
-  
-  /**
-   * Whether to log errors
-   */
-  logErrors?: boolean;
-  
-  /**
-   * Error severity for logging
-   */
-  errorSeverity?: ErrorSeverity;
+  mockFn?: () => TData;
+  enableMockFallback?: boolean;
 }
 
 /**
- * Hook for optimizing React Query usage
- * @param options Query options
- * @returns Query result
+ * Enhanced version of useQuery with optimized defaults and error handling
  */
-export function useOptimizedQuery<TData = unknown, TError = Error>(
-  options: OptimizedQueryOptions<TData, TError>
-): UseQueryResult<TData, TError> {
-  const {
-    componentName = 'UnknownComponent',
-    queryName = options.queryKey ? String(options.queryKey) : 'UnknownQuery',
-    trackPerformance = true,
-    logErrors = true,
-    errorSeverity = ErrorSeverity.ERROR,
-    ...queryOptions
-  } = options;
-  
-  // Track component performance
-  if (trackPerformance) {
-    usePerformanceMonitor({
-      componentName: `${componentName}_${queryName}`,
-      trackRenders: true,
-      trackTimeOnScreen: true
-    });
-  }
-  
-  // Wrap the queryFn to track performance and handle errors
-  const originalQueryFn = queryOptions.queryFn;
-  
-  if (originalQueryFn) {
-    const typedQueryFn = originalQueryFn as (...args: any[]) => Promise<TData>;
-    
-    queryOptions.queryFn = async (...args: any[]) => {
-      let endTracking: (() => void) | undefined;
-      
-      if (trackPerformance) {
-        endTracking = trackInteraction(componentName, `query_${queryName}`);
+export function useOptimizedQuery<TData, TError = AppError>({
+  queryKey,
+  queryFn,
+  componentName,
+  queryName,
+  mockFn,
+  enableMockFallback = true,
+  ...options
+}: OptimizedQueryOptions<TData, TError>) {
+  // Create a wrapped query function with error handling
+  const wrappedQueryFn: QueryFunction<TData, QueryKey> = async (context) => {
+    try {
+      // Log query execution in development
+      if (process.env.NODE_ENV === 'development') {
+        const keyString = context.queryKey.map(k => 
+          typeof k === 'string' ? k : JSON.stringify(k)
+        ).join(', ');
+        
+        console.debug(
+          `[Query] ${componentName || 'Component'}::${queryName || keyString}`,
+          { queryKey: context.queryKey }
+        );
       }
       
-      try {
-        const result = await typedQueryFn(...args);
-        
-        if (endTracking) {
-          endTracking();
-        }
-        
-        return result;
-      } catch (error) {
-        if (endTracking) {
-          endTracking();
-        }
-        
-        if (logErrors) {
-          logError(error as Error, {
-            category: ErrorCategory.QUERY,
-            severity: errorSeverity,
-            context: {
-              action: queryName,
-              additionalData: {
-                componentName,
-                queryName,
-                queryKey: options.queryKey
-              }
-            }
-          });
-        }
-        
-        throw error;
+      // Execute the original query function
+      return await queryFn(context);
+    } catch (error) {
+      // If mock fallback is enabled and we should use mock data
+      if (enableMockFallback && shouldUseMockData() && mockFn) {
+        console.info(`Using mock data for ${componentName || 'Component'}::${queryName || 'query'}`);
+        return mockFn();
       }
-    };
-  }
+      
+      // Otherwise, propagate the error
+      throw error;
+    }
+  };
   
-  // Add default staleTime and cacheTime if not provided
-  if (queryOptions.staleTime === undefined) {
-    queryOptions.staleTime = 1000 * 60 * 5; // 5 minutes
-  }
+  // Set optimized defaults
+  const defaultOptions: Partial<UseQueryOptions<TData, TError, TData, QueryKey>> = {
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    retry: (failureCount, error) => {
+      // Don't retry on 4xx errors
+      if ((error as any)?.status >= 400 && (error as any)?.status < 500) {
+        return false;
+      }
+      
+      // Retry other errors up to 3 times
+      return failureCount < 3;
+    }
+  };
   
-  if (queryOptions.gcTime === undefined) {
-    queryOptions.gcTime = 1000 * 60 * 10; // 10 minutes
-  }
-  
-  // Use the query with optimized options
-  return useQuery<TData, TError>(queryOptions);
+  // Merge defaults with provided options
+  return useQuery<TData, TError, TData, QueryKey>({
+    queryKey,
+    queryFn: wrappedQueryFn,
+    ...defaultOptions,
+    ...options
+  });
 }
 
 /**

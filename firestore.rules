@@ -2,44 +2,20 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to read all documents
-    match /{document=**} {
-      allow read: if request.auth != null;
-    }
-    
-    // For development only - allow all operations
-    // Remove this rule in production
-    match /{document=**} {
-      allow read, write: if true;
-    }
-    
-    // Allow users to read and write their own data
+    // Allow authenticated users to read and write their own data
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Allow access to user stats
-    match /user_stats/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Allow users to read quizzes, questions, and categories
-    match /Quizzes/{quizId} {
+    // Allow authenticated users to read public quiz data
+    match /quizzes/{quizId} {
       allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    match /Questions/{questionId} {
-      allow read: if request.auth != null;
-    }
-    
-    match /Categories/{categoryId} {
-      allow read: if request.auth != null;
-    }
-    
-    // Allow users to create and read their own quiz attempts
-    match /QuizAttempts/{attemptId} {
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
-}
+} 

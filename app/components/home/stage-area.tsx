@@ -4,10 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { cn } from '@/app/lib/utils';
 import { CircleButtonGroup } from './circle-buttons';
 import { useRive, Layout, Fit, Alignment } from '@rive-app/react-canvas';
+import { useDailyQuiz } from '@/app/hooks/useQuizzes';
 
 interface StageAreaProps {
   className?: string;
-  isQuizMode?: boolean;
   onDailyClick?: () => void;
   onTeamClick?: () => void;
   onChallengeClick?: () => void;
@@ -15,7 +15,6 @@ interface StageAreaProps {
 
 export function StageArea({ 
   className,
-  isQuizMode = false,
   onDailyClick,
   onTeamClick,
   onChallengeClick
@@ -23,6 +22,7 @@ export function StageArea({
   const [isRiveLoaded, setIsRiveLoaded] = useState(false);
   const [riveError, setRiveError] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const { data: dailyQuiz } = useDailyQuiz();
 
   // Setup Rive for stage_base
   const { RiveComponent, rive } = useRive({
@@ -74,7 +74,7 @@ export function StageArea({
             onDailyClick={onDailyClick}
             onTeamClick={onTeamClick}
             onChallengeClick={onChallengeClick}
-            isLoading={isInitialLoad}
+            isLoading={false}
           />
         </div>
         

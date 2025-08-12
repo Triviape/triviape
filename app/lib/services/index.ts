@@ -1,37 +1,45 @@
 /**
  * Services index file
- * Re-exports all service functionality
+ * Centralized exports for all service functions
+ * Updated to include unified user services
  */
 
-// Export user service
+// Core services
+export { BaseServiceImplementation } from './core/baseService';
+export * from './core/errorHandler';
+export * from './core/performanceMonitor';
+
+// Unified User Services (Phase 3 - COMPLETED)
 export * from './user';
 
-// Export quiz service - import and re-export specific items to avoid conflicts
-import { 
-  getQuizById, 
-  getQuestionsByIds, 
-  getCategories,
-} from './quiz';
+// Unified Auth Services (Phase 2 - COMPLETED)
+export * from './auth';
 
-// Import types
-import type { 
-  QuizServiceErrorType,
-  PaginationResult,
-  QuizServiceError,
-  QuizAttempt
-} from './quiz';
+// Legacy exports for backward compatibility
+// These will be removed after all services are unified
+export { AuthService } from './authService';
+export { ProfileService } from './profileService';
+export { PreferencesService } from './preferencesService';
+export { ProgressionService } from './progressionService';
+export { UserService } from './userService';
 
-// Re-export quiz service functions
-export {
-  getQuizById, 
-  getQuestionsByIds, 
-  getCategories,
-};
+// Daily Quiz Services (Phase 4 - NEXT)
+export * from './dailyQuizService';
+export * from './userDailyQuizService';
+export * from './quizCompletionService';
 
-// Re-export quiz service types
-export type {
-  QuizServiceErrorType,
-  PaginationResult,
-  QuizServiceError,
-  QuizAttempt
-}; 
+// Question Services (Phase 4 - NEXT)
+export * from './questionService';
+
+// Leaderboard Services (Phase 5 - NEXT)
+export * from './leaderboardService';
+
+// Social Services (Phase 5 - NEXT)
+export * from './friendService';
+export * from './socialPerformanceMonitor';
+
+// Multiplayer Services (Phase 6 - NEXT)
+export * from './websocketService';
+
+// Quiz Services (Phase 4 - NEXT)
+export * from './quizService'; 

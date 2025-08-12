@@ -3,44 +3,6 @@ import { ServiceAccount } from 'firebase-admin';
 import { checkEmulatorAvailability, shouldUseEmulators } from './emulatorUtils';
 
 /**
- * Create a default service account for development purposes
- * This is only used when no credentials are provided
- */
-function createDefaultServiceAccount(): ServiceAccount {
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'default-project';
-  
-  // Generate a dummy private key for development (this won't work for real operations)
-  // but will allow the app to initialize in development
-  const privateKey = `-----BEGIN PRIVATE KEY-----
-MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC7VJTUt9Us8cKj
-MzEfYyjiWA4R4/M2bS1GB4t7NXp98C3SC6dVMvDuictGeurT8jNbvJZHtCSuYEvu
-NMoSfm76oqFvAp8Gy0iz5sxjZmSnXyCdPEovGhLa0VzMaQ8s+CLOyS56YyCFGeJZ
-AgMBAAECggEAFkqH17SqMvn7aaJu9Y1V+eFgKxLFGgRbxJqRUQKKyrs+RJOeC+fL
-zdPYhKmWksGWnIzud9xhEHC/7DgAn9N220NNfrYZqui8G0HP9cYKJlCDo0CKnOgA
-A0tRBOIbwtC19h8ps5JDmUGizwZdG5Qz+XEIUP2aRmv4JhB29B+rYXyJcuPgkTPB
-30FaEZ30cCEVWz4muOeQKmyDLFiKI6yMABbcFQs/7cVz/0L2pLXI9SElnS5MkQXd
-5SuIsjHJLUx8fRKwiITjcXKUg0mN9hn0+Sy4EOkGkH+NpnYmvP5TwnFvvCacnxTr
-V7DGO+LuCo0QxdXpWYaI0wKBgQDWlvG5wqP7mZ3zyxvXMH8aYKC/q/Nefwb+7P/T
-l9uX2kRWzkfKsKjxY2k98NvEQOUyd0OYPkcptcxBbJO3/RQKJvQfS5x0xaxZM1S7
-ffHAHObhu9AUKokGGFQ6v3hZ3ZtPfkV9iyY7pLtwyzlHmysWXlzUYn8DQXbtHqbz
-sehYQwKBgQDe5s1WZ3GRvUQOulOGMUqE6wITpTQC/2gXiuJ3jo0A5spAr8JRjZjl
-Bnb2Uxo5o1CotEu9IQh/6UGMSrRKUJc994uVh0HjxS5nEbs9fG8k88c3Mo87GAhX
-lwQWRHCc9Fu9t0TrvIFJ7iFj5QoYg4lC7UPsVGJoKhzI9H7KrKYMVwKBgBiw3jWF
-9pLo194K7DQ72zMM8Z0wYFKxSQGQgn84dCjdnKwu6QCkK30cKNRnbA8X3gzNjfiK
-OJcgQDmGE2L6kd/QUQ11fJXXys4koFrUhBQDEL5JkKhlUR4y4MnQEQKBgA/NXrXC
-vHJKnMJOWyigtVVQNc8iqAJaLJ8FkLTvH4ZgT8DZIBjidxSWYoQW0KeJ2V0Z+AYz
-3f1BtG1qQGxBM5aHYy3N06iA2hh7q5pPP5RvV1JJq2c6LdFMDTpias93HRRLc+Q5
-lS83/sCnPCZCjif/SgOSwWru6cZkJGShpSLcAYZX
------END PRIVATE KEY-----`;
-  
-  return {
-    projectId: projectId,
-    privateKey: privateKey,
-    clientEmail: `firebase-adminsdk-${Math.random().toString(36).substring(2, 10)}@${projectId}.iam.gserviceaccount.com`,
-  };
-}
-
-/**
  * Configure Firebase emulators if they should be used
  */
 function configureEmulators(): void {
@@ -60,9 +22,6 @@ function configureEmulators(): void {
   if (firestoreEmulatorHost) {
     console.log(`🔥 Connecting to Firestore emulator at: ${firestoreEmulatorHost}`);
     try {
-      const [host, portStr] = firestoreEmulatorHost.split(':');
-      const port = parseInt(portStr, 10);
-      
       admin.firestore().settings({
         host: firestoreEmulatorHost,
         ssl: false,
@@ -188,7 +147,7 @@ export class FirebaseAdminService {
    * Create a custom authentication token for a user
    * Useful for server-side authentication
    */
-  static async createCustomToken(uid: string, claims?: Record<string, any>): Promise<string> {
+  static async createCustomToken(uid: string, claims?: Record<string, unknown>): Promise<string> {
     return await firebaseAdmin.auth().createCustomToken(uid, claims);
   }
   
@@ -236,7 +195,7 @@ export class FirebaseAdminService {
   /**
    * Set custom user claims
    */
-  static async setCustomUserClaims(uid: string, claims: Record<string, any>): Promise<void> {
+  static async setCustomUserClaims(uid: string, claims: Record<string, unknown>): Promise<void> {
     return await firebaseAdmin.auth().setCustomUserClaims(uid, claims);
   }
   
@@ -264,4 +223,4 @@ export class FirebaseAdminService {
     const [url] = await firebaseAdmin.storage().bucket().file(filePath).getSignedUrl(options);
     return url;
   }
-} 
+}

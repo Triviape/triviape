@@ -11,7 +11,11 @@ import {
   Calendar, 
   Settings, 
   HelpCircle,
-  BarChart
+  BarChart,
+  TrendingUp,
+  UserPlus,
+  Gamepad2,
+  Activity
 } from 'lucide-react';
 
 interface SidebarItemProps {
@@ -58,6 +62,21 @@ export function DashboardSidebar() {
       label: 'Achievements'
     },
     {
+      href: '/leaderboard',
+      icon: <TrendingUp size={18} />,
+      label: 'Leaderboard'
+    },
+    {
+      href: '/social',
+      icon: <UserPlus size={18} />,
+      label: 'Social Hub'
+    },
+    {
+      href: '/multiplayer',
+      icon: <Gamepad2 size={18} />,
+      label: 'Multiplayer'
+    },
+    {
       href: '/team',
       icon: <Users size={18} />,
       label: 'Teams'
@@ -66,6 +85,11 @@ export function DashboardSidebar() {
       href: '/daily',
       icon: <Calendar size={18} />,
       label: 'Daily Challenges'
+    },
+    {
+      href: '/performance',
+      icon: <Activity size={18} />,
+      label: 'Performance'
     },
     {
       href: '/settings',

@@ -61,39 +61,6 @@ export default function AuthTestPage() {
     checkEmulators();
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError(null);
-    setLoginErrorCode(null);
-    
-    try {
-      // Direct call to the auth service instead of using the hook
-      await signInWithEmail(email, password);
-      console.log('Login successful');
-    } catch (error) {
-      console.error('Login error:', error);
-      
-      if (error instanceof FirebaseError) {
-        const errorMessage = getAuthErrorMessage(error);
-        setLoginError(errorMessage);
-        setLoginErrorCode(error.code);
-        
-        // Log specific diagnostic information for debugging
-        console.error(`Firebase Auth Error Code: ${error.code}`);
-        console.error(`Firebase Auth Error Message: ${error.message}`);
-        
-        // Log helpful information for specific error codes
-        if (error.code === 'auth/user-not-found') {
-          console.error('Hint: Make sure the user exists in the Auth emulator. Try running "npm run firebase:create-sample-users"');
-        } else if (error.code === 'auth/network-request-failed') {
-          console.error('Hint: Check if the Auth emulator is running at localhost:9099');
-        }
-      } else {
-        setLoginError(error instanceof Error ? error.message : 'An unknown error occurred');
-      }
-    }
-  };
-
   const handleLogout = async () => {
     try {
       // Direct call to the auth service instead of using the hook
@@ -170,7 +137,7 @@ export default function AuthTestPage() {
               <strong>Troubleshooting:</strong>
               <ul className="list-disc pl-5 mt-1">
                 <li>Check if emulators are running with <code>npm run emulators</code></li>
-                <li>Ensure the NEXT_PUBLIC_USE_FIREBASE_EMULATOR environment variable is set to 'true'</li>
+                <li>Ensure the NEXT_PUBLIC_USE_FIREBASE_EMULATOR environment variable is set to &apos;true&apos;</li>
                 <li>Restart your development server</li>
               </ul>
             </div>

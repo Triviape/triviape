@@ -68,7 +68,7 @@ export default async function QuizPage({
   
   // Find category names for this quiz
   const quizCategories = categories.filter(category => 
-    quiz.categoryIds.includes(category.id)
+    category.id === quiz.categoryId
   );
   
   // Format estimated duration from seconds to minutes
