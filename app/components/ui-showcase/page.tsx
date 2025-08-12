@@ -12,6 +12,9 @@ import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Spinner } from '@/app/components/ui/spinner';
 import { toast } from '@/app/components/ui/use-toast';
 import { Toaster } from '@/app/components/ui/toaster';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/app/components/ui/card';
+import { useSession } from 'next-auth/react';
+import { useEffect, useState, useCallback } from 'react';
 
 // Basic tailwind token references (adjust once design tokens formalized)
 const colorTokens = [
@@ -19,11 +22,51 @@ const colorTokens = [
 ];
 
 export default function UIShowcasePage() {
+  // Gate: Only show in non-production or if user has admin email (simple heuristic to start)
+  const { data: session } = useSession();
+  const userEmail = session?.user?.email || '';
+  const isAdmin = /admin|founder|dev/i.test(userEmail);
+  const isProduction = process.env.NEXT_PUBLIC_RUNTIME_ENV === 'production';
+  const allowed = !isProduction || isAdmin;
+
+  // Dark mode toggle using class on html element
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+    }
+    return 'light';
+  });
+
+  const applyTheme = useCallback((t: 'light' | 'dark') => {
+    if (typeof document !== 'undefined') {
+      const html = document.documentElement;
+      if (t === 'dark') html.classList.add('dark'); else html.classList.remove('dark');
+    }
+  }, []);
+
+  useEffect(() => {
+    applyTheme(theme);
+    if (typeof window !== 'undefined') localStorage.setItem('theme', theme);
+  }, [theme, applyTheme]);
+
+  if (!allowed) {
+    return (
+      <div className="p-10 text-center">
+        <p className="text-sm text-muted-foreground">UI Showcase is restricted in production.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <ResponsiveContainer maxWidth="xl" padding="lg" centerContent>
         <div className="w-full">
           <h1 className="text-4xl font-bold mb-8 text-center">Responsive UI Components</h1>
+          <div className="flex justify-end mb-6 gap-3">
+            <Button variant="outline" size="sm" onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}>
+              Toggle {theme === 'light' ? 'Dark' : 'Light'} Mode
+            </Button>
+          </div>
           
           <section className="mb-12">
             <h2 className="text-2xl font-semibold mb-4">Device Information</h2>
@@ -38,6 +81,19 @@ export default function UIShowcasePage() {
           <section className="mb-12">
             <h2 className="text-2xl font-semibold mb-4">Animation System</h2>
             <AnimationPlayground />
+          </section>
+
+          {/* Typography Scale */}
+          <section className="mb-12">
+            <h2 className="text-2xl font-semibold mb-4">Typography Scale</h2>
+            <div className="grid gap-4">
+              {['text-4xl font-bold tracking-tight','text-3xl font-semibold','text-2xl font-semibold','text-xl font-semibold','text-lg font-medium','text-base','text-sm','text-xs'].map(cls => (
+                <div key={cls} className="flex items-baseline gap-4">
+                  <span className={cls}>The quick brown fox jumps over the lazy dog</span>
+                  <code className="text-xs text-muted-foreground">{cls}</code>
+                </div>
+              ))}
+            </div>
           </section>
 
           {/* Avatar Showcase */}
@@ -125,6 +181,32 @@ export default function UIShowcasePage() {
               <a href="#" className="text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm px-1">Focusable Link</a>
             </div>
             <p className="text-sm text-muted-foreground">Use Tab to verify visible focus outlines. Ensures accessibility compliance.</p>
+          </section>
+          {/* Card Variants */}
+          <section className="mb-12">
+            <h2 className="text-2xl font-semibold mb-4">Cards</h2>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[
+                { variant: 'default', title: 'Default Card', desc: 'Base surface usage.' },
+                { variant: 'elevated', title: 'Elevated Card', desc: 'Uses shadow for emphasis.' },
+                { variant: 'outline', title: 'Outline Card', desc: 'Stronger border emphasis.' },
+                { variant: 'subtle', title: 'Subtle Card', desc: 'Muted background variant.' },
+              ].map(cfg => (
+                <Card key={cfg.variant} variant={cfg.variant as any} interactive>
+                  <CardHeader>
+                    <CardTitle>{cfg.title}</CardTitle>
+                    <CardDescription>{cfg.desc}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">Body content demonstrating spacing tokens and typography scale consistency.</p>
+                  </CardContent>
+                  <CardFooter>
+                    <Button size="sm" variant="outline">Action</Button>
+                    <Button size="sm">Primary</Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
           </section>
         </div>
       </ResponsiveContainer>
