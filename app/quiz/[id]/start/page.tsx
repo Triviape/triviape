@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getQuizById, getQuestionsByIds } from '@/app/lib/services/quiz/quizFetchService';
 import { Quiz, Question } from '@/app/types/quiz';
 import QuestionCard from '@/app/components/quiz/QuestionCard';
 import { useAuth } from '@/app/hooks/useAuth';
+import { QuizErrorBoundary } from '@/app/components/errors/QuizErrorBoundary';
+
 
 interface QuizSessionState {
   currentQuestionIndex: number;
@@ -30,7 +32,6 @@ interface PageProps {
 
 export default function QuizStartPage({ params }: PageProps) {
   const router = useRouter();
-  const { currentUser } = useAuth();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +119,13 @@ export default function QuizStartPage({ params }: PageProps) {
     return () => clearInterval(timer);
   }, [quiz, quizState.isComplete]);
   
+  // Auto-submit quiz when completed
+  useEffect(() => {
+    if (quizState.isComplete && quizState.answers.length > 0) {
+      handleFinish();
+    }
+  }, [quizState.isComplete, quizState.answers.length, handleFinish]);
+  
   // Handle answering a question
   const handleAnswer = (questionId: string, selectedAnswerIds: string[]) => {
     const currentQuestion = questions[quizState.currentQuestionIndex];
@@ -174,47 +182,88 @@ export default function QuizStartPage({ params }: PageProps) {
   };
   
   // Handle finishing the quiz
-  const handleFinish = () => {
-    // TODO: Save quiz results to Firestore
-    router.push(`/quiz/${params.id}/results`);
-  };
+  const handleFinish = useCallback(async () => {
+    if (!quiz || !questions.length || !quizState.isComplete) {
+      console.error('Cannot finish quiz: missing required data');
+      return;
+    }
+
+    try {
+      // Use the standardized completion handler
+      const { submitQuizCompletion } = await import('@/app/lib/services/quiz/quizCompletionHandler');
+      
+      // Format answers according to the expected schema
+      const formattedAnswers = quizState.answers.map(answer => ({
+        questionId: answer.questionId,
+        selectedAnswerIds: answer.selectedAnswerIds,
+        timeSpent: answer.timeSpent,
+        wasSkipped: false // Current implementation doesn't track skips in this flow
+      }));
+      
+      const completionData = {
+        quizId: params.id,
+        startTime: quizState.startTime,
+        endTime: quizState.endTime || Date.now(),
+        answers: formattedAnswers,
+        questionSequence: questions.map(q => q.id)
+      };
+      
+      // Submit using standardized flow
+      const result = await submitQuizCompletion(completionData);
+      
+      // Redirect to results page on success
+      router.push(`/quiz/${params.id}/results?score=${result.score}&totalQuestions=${result.totalQuestions}&correctAnswers=${result.correctAnswers}&xpEarned=${result.xpEarned}&coinsEarned=${result.coinsEarned}`);
+      
+    } catch (error) {
+      console.error('Error submitting quiz:', error);
+      // For now, still redirect to results page but maybe show an error state
+      // In production, you'd want to show a proper error message to the user
+      router.push(`/quiz/${params.id}/results?error=submission_failed`);
+    }
+  }, [quiz, questions, quizState.isComplete, quizState.startTime, quizState.endTime, quizState.answers, params.id, router]);
   
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-600">Loading quiz...</p>
+      <QuizErrorBoundary>
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-gray-600">Loading quiz...</p>
+          </div>
         </div>
-      </div>
+      </QuizErrorBoundary>
     );
   }
   
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Error!</strong>
-          <span className="block sm:inline"> {error.message}</span>
+      <QuizErrorBoundary>
+        <div className="container mx-auto px-4 py-8">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong className="font-bold">Error!</strong>
+            <span className="block sm:inline"> {error.message}</span>
+          </div>
         </div>
-      </div>
+      </QuizErrorBoundary>
     );
   }
   
   if (!quiz || questions.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Quiz Not Found</h2>
-          <p className="text-gray-600 mb-6">The quiz you're looking for doesn't exist or has no questions.</p>
-          <button
-            onClick={() => router.push('/quiz')}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
-          >
-            Back to Quizzes
-          </button>
+      <QuizErrorBoundary>
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Quiz Not Found</h2>
+            <p className="text-gray-600 mb-6">The quiz you&apos;re looking for doesn&apos;t exist or has no questions.</p>
+            <button
+              onClick={() => router.push('/quiz')}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+            >
+              Back to Quizzes
+            </button>
+          </div>
         </div>
-      </div>
+      </QuizErrorBoundary>
     );
   }
   
@@ -225,7 +274,8 @@ export default function QuizStartPage({ params }: PageProps) {
     const isPassing = quiz.passingScore ? scorePercentage >= quiz.passingScore : true;
     
     return (
-      <div className="container mx-auto px-4 py-8">
+      <QuizErrorBoundary>
+        <div className="container mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
           <h2 className="text-2xl font-bold text-center mb-6">Quiz Results</h2>
           
@@ -253,7 +303,7 @@ export default function QuizStartPage({ params }: PageProps) {
             <p className="text-center text-gray-600 mb-6">
               {isPassing 
                 ? 'You passed the quiz successfully.' 
-                : `You didn't reach the passing score of ${quiz.passingScore}%.`}
+                : `You didn&apos;t reach the passing score of ${quiz.passingScore}%.`}
             </p>
           </div>
           
@@ -282,7 +332,8 @@ export default function QuizStartPage({ params }: PageProps) {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      </QuizErrorBoundary>
     );
   }
   
@@ -292,7 +343,8 @@ export default function QuizStartPage({ params }: PageProps) {
   const isAnswered = !!currentAnswer;
   
   return (
-    <div className="container mx-auto px-4 py-8">
+    <QuizErrorBoundary>
+      <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold text-gray-900">{quiz.title}</h1>
@@ -341,6 +393,7 @@ export default function QuizStartPage({ params }: PageProps) {
           </button>
         )}
       </div>
-    </div>
+      </div>
+    </QuizErrorBoundary>
   );
 } 

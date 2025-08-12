@@ -9,6 +9,8 @@ interface ResponsiveContainerProps {
   padding?: "none" | "sm" | "md" | "lg";
   maxWidth?: "xs" | "sm" | "md" | "lg" | "xl" | "full";
   centerContent?: boolean;
+  containerQueries?: boolean;
+  aspectRatio?: "auto" | "square" | "video" | "portrait";
 }
 
 const PADDING_MAP = {
@@ -27,6 +29,13 @@ const MAX_WIDTH_MAP = {
   full: "max-w-full",
 };
 
+const ASPECT_RATIO_MAP = {
+  auto: "",
+  square: "aspect-square",
+  video: "aspect-video",
+  portrait: "aspect-[3/4]",
+};
+
 export function ResponsiveContainer({
   children,
   className,
@@ -34,6 +43,8 @@ export function ResponsiveContainer({
   padding = "md",
   maxWidth = "lg",
   centerContent = false,
+  containerQueries = false,
+  aspectRatio = "auto",
 }: ResponsiveContainerProps) {
   const { deviceInfo, uiScale } = useResponsiveUI();
 
@@ -56,14 +67,25 @@ export function ResponsiveContainer({
   // Apply different spacing for touch devices
   const touchSpacing = touchOptimized ? "gap-6" : "gap-4";
 
+  // Container queries classes
+  const containerQueryClasses = containerQueries ? [
+    "@container",
+    "@[320px]:px-2",
+    "@[480px]:px-4", 
+    "@[768px]:px-6",
+    "@[1024px]:px-8"
+  ].join(" ") : "";
+
   return (
     <Component
       className={cn(
         "w-full mx-auto",
         MAX_WIDTH_MAP[maxWidth],
         PADDING_MAP[adjustedPadding],
+        ASPECT_RATIO_MAP[aspectRatio],
         centerContent && "flex flex-col items-center",
         touchOptimized && "touch-manipulation",
+        containerQueryClasses,
         className
       )}
     >
@@ -71,5 +93,61 @@ export function ResponsiveContainer({
         {children}
       </div>
     </Component>
+  );
+}
+
+/**
+ * Container query wrapper for responsive components
+ */
+export function ContainerQuery({
+  children,
+  className,
+  breakpoints = {
+    sm: "320px",
+    md: "768px", 
+    lg: "1024px"
+  }
+}: {
+  children: React.ReactNode;
+  className?: string;
+  breakpoints?: Record<string, string>;
+}) {
+  return (
+    <div 
+      className={cn("@container", className)}
+      style={{
+        containerType: "inline-size"
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Responsive text component with container queries
+ */
+export function ResponsiveText({
+  children,
+  className,
+  sizes = {
+    sm: "text-sm",
+    md: "text-base", 
+    lg: "text-lg",
+    xl: "text-xl"
+  }
+}: {
+  children: React.ReactNode;
+  className?: string;
+  sizes?: Record<string, string>;
+}) {
+  const sizeClasses = Object.entries(sizes)
+    .map(([breakpoint, size]) => `@${breakpoint}:${size}`)
+    .join(" ");
+
+  return (
+    <span className={cn(sizeClasses, className)}>
+      {children}
+    </span>
   );
 } 

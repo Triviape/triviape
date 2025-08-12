@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 /**
  * Authentication middleware for API routes
@@ -53,7 +52,7 @@ export function authMiddleware(req: NextRequest) {
     
     // Continue with the request
     return;
-  } catch (error) {
+  } catch {
     // Handle verification errors
     return NextResponse.json(
       { success: false, error: 'Authentication failed' },
@@ -122,7 +121,7 @@ export async function middleware(req: NextRequest) {
     
     // Continue with the request
     return undefined;
-  } catch (error) {
+  } catch {
     // Handle verification errors
     // Create a new URL for the redirect
     const redirectUrl = new URL('/auth', req.url);
@@ -149,4 +148,5 @@ export const config = {
   ],
 };
 
-export default { authMiddleware, middleware };
+const middlewareExports = { authMiddleware, middleware };
+export default middlewareExports;

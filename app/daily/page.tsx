@@ -1,18 +1,87 @@
-import React from 'react';
-import { AppLayout } from '@/app/components/layouts/app-layout';
-import { Navbar } from '@/app/components/navigation/navbar';
-import { DailyQuizCard } from '@/app/components/daily/daily-quiz-card';
+'use client';
+
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { DailyQuizArea } from '@/app/components/daily/DailyQuizArea';
+import { updateDailyQuizCompletion } from '@/app/hooks/useDailyQuizStatus';
+
+export enum QuizState {
+  PRE_QUIZ = 'pre-quiz',
+  IN_PROGRESS = 'in-progress',
+  RESULTS = 'results'
+}
 
 export default function DailyQuizPage() {
+  const router = useRouter();
+  const [quizState, setQuizState] = useState<QuizState>(QuizState.PRE_QUIZ);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState<Record<string, string[]>>({});
+  const [quizResults, setQuizResults] = useState<{
+    score: number;
+    totalQuestions: number;
+    correctAnswers: number;
+    xpEarned: number;
+    coinsEarned: number;
+  } | null>(null);
+  
+  const handleBack = () => {
+    router.push('/');
+  };
+  
+  const handleStartQuiz = () => {
+    setQuizState(QuizState.IN_PROGRESS);
+    setCurrentQuestionIndex(0);
+    setUserAnswers({});
+  };
+  
+  const handleAnswerSubmit = (questionId: string, answerIds: string[]) => {
+    setUserAnswers(prev => ({
+      ...prev,
+      [questionId]: answerIds
+    }));
+  };
+  
+  const handleNextQuestion = () => {
+    setCurrentQuestionIndex(prev => prev + 1);
+  };
+  
+  const handlePreviousQuestion = () => {
+    setCurrentQuestionIndex(prev => Math.max(0, prev - 1));
+  };
+  
+  const handleQuizComplete = async (results: {
+    score: number;
+    totalQuestions: number;
+    correctAnswers: number;
+    xpEarned: number;
+    coinsEarned: number;
+  }) => {
+    setQuizResults(results);
+    setQuizState(QuizState.RESULTS);
+    
+    try {
+      // Record the completion with the API
+      await updateDailyQuizCompletion('daily-quiz', results.score);
+    } catch (error) {
+      console.error('Failed to record quiz completion:', error);
+      // Show error to user
+    }
+  };
+  
   return (
-    <AppLayout
-      header={<Navbar />}
-      className="bg-background"
-    >
-      <div className="py-8 flex flex-col gap-6">
-        <h1 className="text-3xl font-bold">Daily Quiz</h1>
-        <DailyQuizCard />
-      </div>
-    </AppLayout>
+    <main className="container mx-auto p-4 pt-8 min-h-[90vh] flex flex-col">
+      <DailyQuizArea
+        quizState={quizState}
+        onBack={handleBack}
+        onStartQuiz={handleStartQuiz}
+        onQuizComplete={handleQuizComplete}
+        currentQuestionIndex={currentQuestionIndex}
+        onAnswerSubmit={handleAnswerSubmit}
+        onNextQuestion={handleNextQuestion}
+        onPreviousQuestion={handlePreviousQuestion}
+        userAnswers={userAnswers}
+        quizResults={quizResults}
+      />
+    </main>
   );
 } 

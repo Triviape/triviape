@@ -1,19 +1,21 @@
 /**
- * User service index file
- * Re-exports all user service functionality
+ * User Services Index
+ * Exports all unified user services
  */
 
-// Export types
-export * from './types';
+// Core user services
+export { UserService } from './userService';
+export { ProfileService } from './profileService';
+export { PreferencesService } from './preferencesService';
+export { ProgressionService } from './progressionService';
+export { StatsService } from './statsService';
 
-// Export error handling utilities
+// Auth service (imported from auth directory)
+export { AuthService } from '../auth/authService';
+
+// Types and error handling
+export * from './types';
 export * from './errorHandler';
 
-// Export authentication functionality
-export * from './authService';
-
-// Export profile management functionality
-export * from './profileService';
-
-// Export stats management functionality
-export * from './statsService'; 
+// Re-export commonly used types for convenience
+export type { UserProfile, UserPreferences, PrivacySettings } from '@/app/types/user'; 

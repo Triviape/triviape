@@ -1,0 +1,363 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions for validation
+    function isValidUserData(data) {
+      return data.keys().hasAll(['displayName', 'email']) &&
+             data.displayName is string &&
+             data.displayName.size() > 0 &&
+             data.displayName.size() <= 50 &&
+             data.email is string &&
+             data.email.matches('^[^@]+@[^@]+\\.[^@]+$');
+    }
+    
+    function isValidQuizData(data) {
+      return data.keys().hasAll(['title', 'categoryId', 'difficulty']) &&
+             data.title is string &&
+             data.title.size() >= 3 &&
+             data.title.size() <= 100 &&
+             data.categoryId is string &&
+             data.categoryId.size() > 0 &&
+             data.difficulty in ['easy', 'medium', 'hard'];
+    }
+    
+    function isValidQuestionData(data) {
+      return data.keys().hasAll(['questionText', 'answerOptions', 'correctAnswer']) &&
+             data.questionText is string &&
+             data.questionText.size() >= 10 &&
+             data.questionText.size() <= 500 &&
+             data.answerOptions is list &&
+             data.answerOptions.size() >= 2 &&
+             data.answerOptions.size() <= 6 &&
+             data.correctAnswer is number &&
+             data.correctAnswer >= 0 &&
+             data.correctAnswer < data.answerOptions.size();
+    }
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+    
+    function isModerator() {
+      return isAuthenticated() && request.auth.token.moderator == true;
+    }
+    
+    function hasRole(role) {
+      return isAuthenticated() && request.auth.token[role] == true;
+    }
+    
+    function isValidTimestamp(timestamp) {
+      return timestamp is timestamp &&
+             timestamp <= request.time &&
+             timestamp > timestamp.date(2020, 1, 1);
+    }
+    
+    function isValidEmail(email) {
+      return email is string &&
+             email.matches('^[^@]+@[^@]+\\.[^@]+$') &&
+             email.size() <= 100;
+    }
+    
+    function isValidDisplayName(name) {
+      return name is string &&
+             name.size() >= 2 &&
+             name.size() <= 50 &&
+             name.matches('^[a-zA-Z0-9\\s\\-_]+$');
+    }
+    
+    function isValidScore(score) {
+      return score is number &&
+             score >= 0 &&
+             score <= 100;
+    }
+    
+    function isValidXP(xp) {
+      return xp is number &&
+             xp >= 0 &&
+             xp <= 1000000;
+    }
+    
+    function isValidLevel(level) {
+      return level is number &&
+             level >= 1 &&
+             level <= 100;
+    }
+    
+    function isValidCoins(coins) {
+      return coins is number &&
+             coins >= 0 &&
+             coins <= 1000000;
+    }
+    
+    // Rate limiting helper
+    function isRateLimited() {
+      return request.time.toMillis() - resource.data.lastRequest.toMillis() < 1000;
+    }
+
+    // User data - users can only read/write their own data with validation
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) && 
+        (request.method == 'get' || 
+         (request.method == 'create' && isValidUserData(request.resource.data)) ||
+         (request.method == 'update' && isValidUserData(request.resource.data)));
+    }
+    
+    // User profiles - users can only read/write their own profile with validation
+    match /user_profiles/{userId} {
+      allow read, write: if isOwner(userId) && 
+        (request.method == 'get' || 
+         (request.method == 'create' && isValidUserData(request.resource.data)) ||
+         (request.method == 'update' && isValidUserData(request.resource.data)));
+    }
+    
+    // User stats - users can only read/write their own stats with validation
+    match /user_stats/{userId} {
+      allow read, write: if isOwner(userId) && 
+        (request.method == 'get' || 
+         (request.method == 'create' && 
+          isValidXP(request.resource.data.xp) &&
+          isValidLevel(request.resource.data.level) &&
+          isValidCoins(request.resource.data.coins)) ||
+         (request.method == 'update' && 
+          isValidXP(request.resource.data.xp) &&
+          isValidLevel(request.resource.data.level) &&
+          isValidCoins(request.resource.data.coins)));
+    }
+    
+    // User daily quiz completions - users can only read/write their own completions
+    match /user_daily_quizzes/{completionId} {
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        isValidScore(request.resource.data.score) &&
+        isValidTimestamp(request.resource.data.completedAt);
+      allow read, update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Quizzes - authenticated users can read, creators can write with validation
+    match /quizzes/{quizId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        (resource == null || resource.data.createdBy == request.auth.uid) &&
+        (request.method == 'create' && isValidQuizData(request.resource.data)) ||
+        (request.method == 'update' && isValidQuizData(request.resource.data));
+    }
+    
+    // Questions - authenticated users can read, creators can write with validation
+    match /questions/{questionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        (resource == null || resource.data.createdBy == request.auth.uid) &&
+        (request.method == 'create' && isValidQuestionData(request.resource.data)) ||
+        (request.method == 'update' && isValidQuestionData(request.resource.data));
+    }
+    
+    // Categories - authenticated users can read, admins can write
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.data.keys().hasAll(['name', 'description']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 50;
+    }
+    
+    // Quiz attempts - users can only read/write their own attempts with validation
+    match /quiz_attempts/{attemptId} {
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        isValidScore(request.resource.data.score) &&
+        isValidTimestamp(request.resource.data.startedAt) &&
+        isValidTimestamp(request.resource.data.completedAt);
+      allow read, update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Daily quizzes - authenticated users can read, admins can write
+    match /daily_quizzes/{date} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.data.keys().hasAll(['quizId', 'date']) &&
+        request.resource.data.date is string &&
+        request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+    
+    // Leaderboards - authenticated users can read, users can write their own entries with validation
+    match /leaderboards/{entryId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        isValidScore(request.resource.data.score) &&
+        isValidTimestamp(request.resource.data.timestamp);
+      allow update, delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Leaderboard entries - authenticated users can read, users can write their own entries
+    match /leaderboard_entries/{entryId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        isValidScore(request.resource.data.score) &&
+        isValidTimestamp(request.resource.data.timestamp);
+      allow update, delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Achievements - authenticated users can read, admins can write
+    match /achievements/{achievementId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.data.keys().hasAll(['name', 'description', 'criteria']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 100;
+    }
+    
+    // User achievements - users can only read/write their own achievements
+    match /user_achievements/{achievementId} {
+      allow read, write: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Content - authenticated users can read, admins can write
+    match /content/{contentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.data.keys().hasAll(['title', 'content', 'type']) &&
+        request.resource.data.title is string &&
+        request.resource.data.title.size() > 0 &&
+        request.resource.data.title.size() <= 200;
+    }
+    
+    // Announcements - authenticated users can read, admins can write
+    match /announcements/{announcementId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.data.keys().hasAll(['title', 'message', 'priority']) &&
+        request.resource.data.title is string &&
+        request.resource.data.title.size() > 0 &&
+        request.resource.data.title.size() <= 200 &&
+        request.resource.data.priority in ['low', 'medium', 'high'];
+    }
+    
+    // Analytics - only admins can read/write
+    match /analytics/{analyticsId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // User activity - users can only read/write their own activity
+    match /user_activity/{activityId} {
+      allow read, write: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        isValidTimestamp(request.resource.data.timestamp);
+    }
+    
+    // System config - only admins can read/write
+    match /system_config/{configId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Maintenance - only admins can read/write
+    match /maintenance/{maintenanceId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Rate limiting collection - internal use only
+    match /rate_limits/{limitId} {
+      allow read, write: if false; // Only accessible by server-side functions
+    }
+    
+    // Audit logs - only admins can read
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only writable by server-side functions
+    }
+    
+    // User sessions - users can only read/write their own sessions
+    match /user_sessions/{sessionId} {
+      allow read, write: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        isValidTimestamp(request.resource.data.createdAt) &&
+        isValidTimestamp(request.resource.data.expiresAt);
+    }
+    
+    // User preferences - users can only read/write their own preferences
+    match /user_preferences/{userId} {
+      allow read, write: if isOwner(userId) &&
+        request.resource.data.keys().hasAll(['theme', 'language', 'notifications']) &&
+        request.resource.data.theme in ['light', 'dark', 'system'] &&
+        request.resource.data.language is string &&
+        request.resource.data.language.size() >= 2 &&
+        request.resource.data.language.size() <= 10;
+    }
+    
+    // User privacy settings - users can only read/write their own settings
+    match /user_privacy/{userId} {
+      allow read, write: if isOwner(userId) &&
+        request.resource.data.keys().hasAll(['profileVisibility', 'showOnlineStatus']) &&
+        request.resource.data.profileVisibility in ['public', 'friends', 'private'];
+    }
+    
+    // Quiz categories - authenticated users can read, admins can write
+    match /quiz_categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.data.keys().hasAll(['name', 'description', 'icon']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 50;
+    }
+    
+    // Quiz questions - authenticated users can read, creators can write
+    match /quiz_questions/{questionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        (resource == null || resource.data.createdBy == request.auth.uid) &&
+        isValidQuestionData(request.resource.data);
+    }
+    
+    // Quiz submissions - users can only read/write their own submissions
+    match /quiz_submissions/{submissionId} {
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        isValidScore(request.resource.data.score) &&
+        isValidTimestamp(request.resource.data.submittedAt);
+      allow read, update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // User feedback - authenticated users can create, admins can read
+    match /user_feedback/{feedbackId} {
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.message is string &&
+        request.resource.data.message.size() > 0 &&
+        request.resource.data.message.size() <= 1000 &&
+        request.resource.data.type in ['bug', 'feature', 'general'];
+      allow read: if isAdmin();
+    }
+    
+    // System notifications - users can read their own, admins can write
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      allow write: if isAdmin() &&
+        request.resource.data.keys().hasAll(['userId', 'title', 'message', 'type']) &&
+        isValidDisplayName(request.resource.data.title) &&
+        request.resource.data.message is string &&
+        request.resource.data.message.size() > 0 &&
+        request.resource.data.message.size() <= 500 &&
+        request.resource.data.type in ['info', 'warning', 'error', 'success'];
+    }
+  }
+}

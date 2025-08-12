@@ -154,7 +154,7 @@ export async function getQuizzes(options: GetQuizzesOptions = {}): Promise<Pagin
         id: doc.id,
         title: data.title,
         description: data.description,
-        categoryIds: [data.categoryId], // Convert to array for type compatibility
+        categoryId: data.categoryId,
         difficulty: data.difficulty,
         questionIds: data.questionIds || [],
         shuffleQuestions: data.shuffleQuestions || false,
@@ -203,7 +203,7 @@ export async function getQuizById(quizId: string): Promise<Quiz | null> {
       id: quizSnap.id,
       title: data.title,
       description: data.description,
-      categoryIds: [data.categoryId], // Convert to array for type compatibility
+      categoryId: data.categoryId,
       difficulty: data.difficulty,
       questionIds: data.questionIds || [],
       shuffleQuestions: data.shuffleQuestions || false,
@@ -264,7 +264,7 @@ export async function getQuestionsByIds(questionIds: string[]): Promise<Question
           text: data.text,
           type: data.type,
           difficulty: data.difficulty,
-          categoryIds: data.categoryIds || [data.categoryId], // Handle both formats
+          categoryId: data.categoryId || (data.categoryIds && data.categoryIds[0]) || '',
           answers: data.options ? data.options.map((option: string, index: number) => ({
             id: `option-${index}`,
             text: option,

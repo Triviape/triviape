@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
-import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 
@@ -20,6 +19,9 @@ const adminDb = FirebaseAdminService.getFirestore();
 
 // Get Auth instance
 const adminAuth = FirebaseAdminService.getAuth();
+
+// Import FieldValue directly from firebase-admin/firestore
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * Validate and get the current user ID from the session
@@ -40,7 +42,7 @@ async function getCurrentUserId(): Promise<string> {
   }
 }
 
-// Schema for submitting a quiz attempt
+// Schema for submitting a quiz attempt (kept internal to this server action file)
 const QuizAttemptSchema = z.object({
   quizId: z.string(),
   startedAt: z.number(),
@@ -139,12 +141,14 @@ export async function submitQuizAttempt(formData: FormData) {
     const attemptData = {
       userId,
       quizId: validatedData.quizId,
-      startedAt: validatedData.startedAt,
-      completedAt: validatedData.completedAt,
+      startedAt: new Date(validatedData.startedAt),
+      completedAt: new Date(validatedData.completedAt),
       questionSequence: validatedData.questionSequence,
       answers: scoredAnswers,
-      score,
+      score: Math.round((score / maxPossibleScore) * 100), // Percentage score
       maxPossibleScore,
+      totalQuestions: questionIds.length,
+      correctAnswers: scoredAnswers.filter(a => a.wasCorrect).length,
       xpEarned,
       coinsEarned,
       deviceInfo: {
@@ -159,73 +163,100 @@ export async function submitQuizAttempt(formData: FormData) {
     await adminDb.runTransaction(async transaction => {
       // Create attempt document
       const attemptRef = adminDb
-        .collection(COLLECTIONS.QUIZZES)
-        .doc(validatedData.quizId)
-        .collection('quiz_attempts')
+        .collection(COLLECTIONS.QUIZ_ATTEMPTS)
         .doc();
         
-      transaction.set(attemptRef, attemptData);
+      transaction.set(attemptRef, {
+        ...attemptData,
+        id: attemptRef.id,
+        createdAt: FieldValue.serverTimestamp(),
+      });
       
       // Update user profile (add XP and coins)
       const userRef = adminDb.collection('users').doc(userId);
-      transaction.update(userRef, {
-        xp: FieldValue.increment(xpEarned),
-        coins: FieldValue.increment(coinsEarned),
-        quizzesTaken: FieldValue.increment(1),
-        questionsAnswered: FieldValue.increment(validatedData.answers.length),
-        correctAnswers: FieldValue.increment(
-          scoredAnswers.filter(a => a.wasCorrect).length
-        ),
-      });
+      const userDoc = await transaction.get(userRef);
       
-      // Update user stats
-      const userStatsRef = adminDb
-        .collection('users')
-        .doc(userId)
-        .collection('user_stats')
-        .doc('quiz_stats');
-        
-      // First try to update, if document doesn't exist, set it
-      const userStatsDoc = await userStatsRef.get();
-      
-      if (userStatsDoc.exists) {
-        transaction.update(userStatsRef, {
-          // Update quiz stats
-          totalScore: FieldValue.increment(score),
+      if (userDoc.exists) {
+        transaction.update(userRef, {
+          xp: FieldValue.increment(xpEarned),
+          coins: FieldValue.increment(coinsEarned),
           quizzesTaken: FieldValue.increment(1),
-          totalPlayTime: FieldValue.increment(
-            (validatedData.completedAt - validatedData.startedAt) / 1000
+          questionsAnswered: FieldValue.increment(validatedData.answers.length),
+          correctAnswers: FieldValue.increment(
+            scoredAnswers.filter(a => a.wasCorrect).length
           ),
-          // Update or set highest score if this one is higher
-          highestScore: FieldValue.increment(0), // Will be updated conditionally after transaction
-        });
-      } else {
-        transaction.set(userStatsRef, {
-          totalScore: score,
-          quizzesTaken: 1,
-          highestScore: score,
-          totalPlayTime: (validatedData.completedAt - validatedData.startedAt) / 1000,
-          averageScore: score,
+          lastActive: FieldValue.serverTimestamp(),
         });
       }
       
-      // Update quiz document with play statistics
-      transaction.update(quizRef, {
-        timesPlayed: FieldValue.increment(1),
-        totalScore: FieldValue.increment(score),
-      });
+      // Update quiz completion status
+      const quizStatusRef = adminDb
+        .collection('users')
+        .doc(userId)
+        .collection('quiz_status')
+        .doc(validatedData.quizId);
+        
+      transaction.set(quizStatusRef, {
+        completed: true,
+        lastCompletedAt: FieldValue.serverTimestamp(),
+        score: Math.round((score / maxPossibleScore) * 100),
+        attempts: FieldValue.increment(1)
+      }, { merge: true });
+      
+      // Add to leaderboard - we'll create a weekly and all-time leaderboard
+      const weekStart = getStartOfWeek(new Date());
+      const weeklyLeaderboardRef = adminDb
+        .collection('leaderboards')
+        .doc(`weekly_${weekStart.toISOString().substring(0, 10)}`);
+        
+      // Add to user's weekly score
+      transaction.set(weeklyLeaderboardRef, {
+        [`users.${userId}`]: {
+          score: FieldValue.increment(score),
+          name: userDoc.exists ? userDoc.data().displayName || 'Anonymous' : 'Anonymous',
+          photoURL: userDoc.exists ? userDoc.data().photoURL || null : null,
+          quizCount: FieldValue.increment(1)
+        },
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+      
+      // Update all-time leaderboard
+      const allTimeLeaderboardRef = adminDb
+        .collection('leaderboards')
+        .doc('all_time');
+        
+      transaction.set(allTimeLeaderboardRef, {
+        [`users.${userId}`]: {
+          score: FieldValue.increment(score),
+          name: userDoc.exists ? userDoc.data().displayName || 'Anonymous' : 'Anonymous',
+          photoURL: userDoc.exists ? userDoc.data().photoURL || null : null,
+          quizCount: FieldValue.increment(1)
+        },
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
     });
     
-    // Update cache for these paths
-    revalidatePath(`/quizzes/${validatedData.quizId}`);
-    revalidatePath(`/profile/${userId}`);
-    
-    // Redirect to the results page
-    return { success: true, score, maxPossibleScore, xpEarned, coinsEarned };
+    // Return the results object
+    return {
+      id: validatedData.quizId,
+      score: Math.round((score / maxPossibleScore) * 100),
+      totalQuestions: questionIds.length,
+      correctAnswers: scoredAnswers.filter(a => a.wasCorrect).length,
+      xpEarned,
+      coinsEarned,
+    };
   } catch (error) {
     console.error('Error submitting quiz attempt:', error);
-    return { success: false, error: 'Failed to submit quiz' };
+    throw error;
   }
+}
+
+// Helper function to get the start of the week (Sunday)
+function getStartOfWeek(date: Date): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() - result.getDay()); // Go to the start of the week (Sunday)
+  result.setHours(0, 0, 0, 0); // Set to the start of the day
+  return result;
 }
 
 /**

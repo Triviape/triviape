@@ -1,16 +1,17 @@
 # Firebase Setup Guide
 
-This guide will help you set up Firebase for your Triviape application, including Firestore, Authentication, and Storage.
+This guide provides comprehensive instructions for setting up Firebase for the Triviape application, including Firestore, Authentication, Storage, and Emulators.
 
 ## Prerequisites
 
-- Node.js and npm installed
-- Firebase CLI installed (`npm install -g firebase-tools`)
+- Node.js 18.x or later
+- npm 8.x or later
+- Firebase CLI (`npm install -g firebase-tools`)
 - A Firebase project created in the [Firebase Console](https://console.firebase.google.com/)
 
-## Setup Steps
+## Quick Setup
 
-### 1. Install Firebase CLI and Login
+### 1. Install Dependencies
 
 ```bash
 # Install Firebase CLI globally
@@ -20,26 +21,31 @@ npm install -g firebase-tools
 firebase login
 ```
 
-### 2. Initialize Firebase in Your Project
+### 2. Initialize Firebase Project
 
 ```bash
 # Initialize Firebase in your project
 firebase init
 ```
 
-During initialization:
-- Select Firestore, Authentication, Storage, and Hosting
+**Select the following services:**
+- Firestore Database
+- Authentication  
+- Storage
+- Hosting (optional for local development)
+
+**Configuration options:**
 - Choose your Firebase project
-- Accept the default options for Firestore rules and indexes
-- Choose the default options for Authentication
-- Choose the default options for Storage rules
-- For Hosting, set the public directory to `out` (for Next.js static export)
+- Accept default Firestore rules and indexes
+- Accept default Authentication settings
+- Accept default Storage rules
+- For Hosting: set public directory to `out` (for Next.js static export)
 
-### 3. Configure Environment Variables
+### 3. Environment Configuration
 
-Create or update your `.env.local` file with your Firebase configuration:
+Create or update your `.env.local` file with the following configuration:
 
-```
+```bash
 # Firebase Configuration
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
@@ -49,31 +55,42 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
-# Firebase Admin (for server-side operations)
-FIREBASE_ADMIN_CREDENTIALS={"type":"service_account","project_id":"...","private_key_id":"...","private_key":"...","client_email":"...","client_id":"...","auth_uri":"...","token_uri":"...","auth_provider_x509_cert_url":"...","client_x509_cert_url":"..."}
-```
-
-You can get these values from your Firebase project settings in the Firebase Console.
-
-### 4. Set Up Firebase Emulators (for Development)
-
-Firebase emulators allow you to develop and test your application locally without affecting your production data.
-
-```bash
-# Start Firebase emulators
-firebase emulators:start
-```
-
-To use the emulators in your application, set the following environment variables:
-
-```
+# Firebase Emulators (for development)
 NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true
 USE_FIREBASE_EMULATOR=true
+
+# Emulator Hosts
+FIRESTORE_EMULATOR_HOST=localhost:8080
+FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+NEXT_PUBLIC_AUTH_EMULATOR_HOST=http://localhost:9099
+FIREBASE_STORAGE_EMULATOR_HOST=localhost:9199
+NEXT_PUBLIC_STORAGE_EMULATOR_HOST=http://localhost:9199
 ```
 
-### 5. Import Sample Data
+**Get configuration values from:**
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project
+3. Go to Project Settings > General
+4. Scroll down to "Your apps" section
+5. Copy the configuration values
 
-We've provided scripts to import sample quiz data into your Firestore database:
+### 4. Start Firebase Emulators
+
+```bash
+# Start all emulators
+firebase emulators:start
+
+# Or use the npm script
+npm run firebase:start-emulators
+```
+
+**Available emulator ports:**
+- Firestore: `localhost:8080`
+- Authentication: `localhost:9099`
+- Storage: `localhost:9199`
+- Emulator UI: `localhost:4000`
+
+### 5. Import Sample Data
 
 ```bash
 # Import basic sample data
@@ -81,74 +98,126 @@ npm run firebase:import-data
 
 # Import additional quiz data
 npm run firebase:import-additional-data
+
+# Verify collections exist
+npm run firebase:verify
 ```
 
-These scripts will add sample quizzes, questions, and categories to your Firestore database.
-
-You can also use our utility scripts to manage Firebase:
+### 6. Verify Setup
 
 ```bash
-# Verify Firestore collections exist
-npm run firebase:verify
-
 # Check if emulators are running
 npm run firebase:check-emulators
 
-# Start Firebase emulators
-npm run firebase:start-emulators
-
-# Deploy to Firebase
-npm run firebase:deploy
+# Test authentication
+npm run dev
+# Navigate to http://localhost:3000/test/auth
 ```
 
-### 6. Verify Firestore Collections
+## Project Structure
 
-After importing the sample data, verify that the following collections exist in your Firestore database:
+### Firebase Configuration Files
 
-- `Quizzes`: Contains quiz documents
-- `Questions`: Contains question documents
-- `Categories`: Contains category documents
-- `QuizAttempts`: Will store user quiz attempts
+- `src/config/firebase.ts` - Main Firebase configuration
+- `app/lib/firebase.ts` - Firebase services initialization
+- `app/providers/firebase-provider.tsx` - React context provider
+- `firebase.json` - Firebase project configuration
+- `firestore.rules` - Firestore security rules
+- `firestore.indexes.json` - Firestore indexes
 
-You can verify these collections in the Firebase Console or the Emulator UI.
+### Key Directories
 
-### 7. Set Up Authentication
+- `src/config/` - Firebase configuration and utilities
+- `app/lib/services/` - Firebase service implementations
+- `app/hooks/` - Firebase-related React hooks
+- `scripts/db/` - Database setup and sample data scripts
 
-In the Firebase Console, go to Authentication and enable the authentication methods you want to use (Email/Password, Google, etc.).
+## Data Structure
 
-### 8. Deploy to Production
+### Firestore Collections
 
-When you're ready to deploy your application to production:
-
-```bash
-# Build your Next.js application
-npm run build
-
-# Deploy to Firebase Hosting
-firebase deploy
+**Quizzes Collection:**
+```typescript
+{
+  id: string;
+  title: string;
+  description: string;
+  categoryIds: string[];
+  difficulty: 'easy' | 'medium' | 'hard';
+  questionIds: string[];
+  shuffleQuestions: boolean;
+  estimatedDuration: number;
+  baseXP: number;
+  baseCoins: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  isActive: boolean;
+  timesPlayed: number;
+  averageScore: number;
+  completionRate: number;
+  timeLimit?: number;
+  passingScore?: number;
+  coverImage?: string;
+}
 ```
 
-## Firestore Data Structure
+**Questions Collection:**
+```typescript
+{
+  id: string;
+  text: string;
+  type: 'multiple-choice' | 'true-false' | 'fill-blank';
+  difficulty: 'easy' | 'medium' | 'hard';
+  categoryIds: string[];
+  answers: Answer[];
+  points: number;
+  timeLimit?: number;
+  hint?: string;
+  timesAnswered: number;
+  timesAnsweredCorrectly: number;
+  averageAnswerTime: number;
+  skipRate: number;
+  tags: string[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  isActive: boolean;
+}
+```
 
-### Collections
+**Categories Collection:**
+```typescript
+{
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  parentCategoryId?: string;
+}
+```
 
-- **Quizzes**: Contains quiz documents
-  - Fields: id, title, description, categoryIds, difficulty, questionIds, shuffleQuestions, estimatedDuration, baseXP, baseCoins, createdAt, updatedAt, isActive, timesPlayed, averageScore, completionRate, timeLimit, passingScore, coverImage
-
-- **Questions**: Contains question documents
-  - Fields: id, text, type, difficulty, categoryIds, answers, points, timeLimit, hint, timesAnswered, timesAnsweredCorrectly, averageAnswerTime, skipRate, tags, createdAt, updatedAt, isActive
-
-- **Categories**: Contains category documents
-  - Fields: id, name, description, icon, parentCategoryId
-
-- **QuizAttempts**: Stores user quiz attempts
-  - Fields: id, userId, quizId, startedAt, completedAt, questionSequence, answers, score, maxPossibleScore, xpEarned, coinsEarned, deviceInfo
+**QuizAttempts Collection:**
+```typescript
+{
+  id: string;
+  userId: string;
+  quizId: string;
+  startedAt: Timestamp;
+  completedAt?: Timestamp;
+  questionSequence: string[];
+  answers: Answer[];
+  score: number;
+  maxPossibleScore: number;
+  xpEarned: number;
+  coinsEarned: number;
+  deviceInfo: DeviceInfo;
+}
+```
 
 ## Security Rules
 
-The following security rules are applied to your Firestore database:
+### Firestore Rules
 
-```
+```javascript
 rules_version = '2';
 
 service cloud.firestore {
@@ -185,37 +254,148 @@ service cloud.firestore {
 }
 ```
 
+### Storage Rules
+
+```javascript
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to read all files
+    match /{allPaths=**} {
+      allow read: if request.auth != null;
+    }
+    
+    // Allow users to upload files to their own directory
+    match /users/{userId}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+```
+
+## Authentication Setup
+
+### 1. Enable Authentication Methods
+
+In Firebase Console > Authentication > Sign-in method:
+
+1. **Email/Password**: Enable for basic authentication
+2. **Google**: Enable for social login (recommended)
+3. **Anonymous**: Enable for guest users (optional)
+
+### 2. Configure Authentication in Code
+
+The application uses the following authentication setup:
+
+```typescript
+// Authentication hooks
+import { useAuth } from '@/hooks/useAuth';
+
+// Authentication services
+import { authService } from '@/lib/services/user/authService';
+```
+
+### 3. Test Authentication
+
+Navigate to `http://localhost:3000/test/auth` to test:
+- Firebase connection status
+- Emulator status
+- Authentication flow
+- Sample user login
+
+## Development Workflow
+
+### Using Emulators
+
+1. **Start emulators:**
+   ```bash
+   firebase emulators:start
+   ```
+
+2. **Set environment variables:**
+   ```bash
+   export NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true
+   export USE_FIREBASE_EMULATOR=true
+   ```
+
+3. **Run development server:**
+   ```bash
+   npm run dev
+   ```
+
+### Available Scripts
+
+```bash
+# Firebase management
+npm run firebase:start-emulators    # Start emulators
+npm run firebase:check-emulators    # Check emulator status
+npm run firebase:verify             # Verify collections
+npm run firebase:import-data        # Import sample data
+npm run firebase:deploy             # Deploy to production
+
+# Development
+npm run dev                         # Start development server
+npm run build                       # Build for production
+npm run test                        # Run tests
+```
+
 ## Troubleshooting
 
-### Emulator Connection Issues
+### Common Issues
 
-If you're having trouble connecting to the emulators, make sure:
+**1. Emulator Connection Issues:**
+- Ensure emulators are running: `firebase emulators:start`
+- Check environment variables are set correctly
+- Verify ports are not in use
 
-1. The emulators are running
-2. The environment variables are set correctly
-3. Your application is configured to use the emulators
+**2. Authentication Issues:**
+- Check Firebase Console > Authentication settings
+- Verify environment variables
+- Check browser console for errors
 
-### Authentication Issues
+**3. Data Import Issues:**
+- Ensure emulators are running
+- Check data file format (JSON)
+- Verify script permissions
 
-If you're having trouble with authentication:
+**4. Build Issues:**
+- Clear Next.js cache: `rm -rf .next`
+- Reinstall dependencies: `npm install`
+- Check TypeScript errors: `npm run type-check`
 
-1. Check that the authentication method is enabled in the Firebase Console
-2. Verify that your Firebase configuration is correct
-3. Check the browser console for any errors
+### Debug Tools
 
-### Data Import Issues
+- **Emulator UI**: `http://localhost:4000`
+- **Firestore Emulator**: `http://localhost:8080`
+- **Auth Emulator**: `http://localhost:9099`
+- **Test Page**: `http://localhost:3000/test/auth`
 
-If you're having trouble importing data:
+## Production Deployment
 
-1. Make sure the emulators are running
-2. Check that the data file exists and is valid JSON
-3. Verify that the script has the correct permissions to access the file
+### 1. Build Application
+
+```bash
+npm run build
+```
+
+### 2. Deploy to Firebase Hosting
+
+```bash
+firebase deploy
+```
+
+### 3. Environment Variables
+
+Ensure production environment variables are set:
+- Remove emulator flags
+- Use production Firebase project
+- Set up proper security rules
 
 ## Additional Resources
 
 - [Firebase Documentation](https://firebase.google.com/docs)
 - [Firestore Documentation](https://firebase.google.com/docs/firestore)
 - [Authentication Documentation](https://firebase.google.com/docs/auth)
-- [Storage Documentation](https://firebase.google.com/docs/storage)
-- [Hosting Documentation](https://firebase.google.com/docs/hosting)
-- [Emulator Suite Documentation](https://firebase.google.com/docs/emulator-suite) 
+- [Emulator Suite Documentation](https://firebase.google.com/docs/emulator-suite)
+- [Next.js Firebase Integration](https://nextjs.org/docs/guides/firebase) 

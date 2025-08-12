@@ -69,9 +69,9 @@ export function useOptimizedMutation<
   options: OptimizedMutationOptions<TData, TError, TVariables, TContext>
 ): UseMutationResult<TData, TError, TVariables, TContext> {
   const {
-    componentName = 'UnknownComponent',
-    mutationName = 'UnknownMutation',
-    trackPerformance = true,
+    componentName = 'UnnamedComponent',
+    mutationName = 'unnamedMutation',
+    trackPerformance = false,
     logErrors = true,
     errorSeverity = ErrorSeverity.ERROR,
     retry = false,
@@ -80,14 +80,13 @@ export function useOptimizedMutation<
     ...mutationOptions
   } = options;
   
-  // Track component performance
-  if (trackPerformance) {
-    usePerformanceMonitor({
-      componentName: `${componentName}_${mutationName}`,
-      trackRenders: true,
-      trackTimeOnScreen: true
-    });
-  }
+  // Always call the hook, but control its behavior with the enabled parameter
+  usePerformanceMonitor({
+    componentName: `${componentName}_${mutationName}`,
+    trackRenders: trackPerformance,
+    trackTimeOnScreen: trackPerformance,
+    enabled: trackPerformance
+  });
   
   // Wrap the mutationFn to track performance and handle errors
   const originalMutationFn = mutationOptions.mutationFn;

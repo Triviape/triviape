@@ -1,0 +1,132 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'docs/**'
+      - '.github/workflows/documentation.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'docs/**'
+      - '.github/workflows/documentation.yml'
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install markdownlint
+        run: npm install -g markdownlint-cli
+      
+      - name: Create markdownlint config
+        run: |
+          cat > .markdownlint.json << EOL
+          {
+            "default": true,
+            "line-length": false,
+            "no-duplicate-heading": false,
+            "no-inline-html": {
+              "allowed_elements": ["br", "details", "summary", "div", "span"]
+            },
+            "no-bare-urls": false,
+            "fenced-code-language": true,
+            "first-line-heading": false,
+            "no-trailing-punctuation": false
+          }
+          EOL
+      
+      - name: Lint documentation
+        run: markdownlint 'docs/**/*.md'
+      
+      - name: Check links in markdown files
+        run: |
+          npm install -g markdown-link-check
+          find docs -name "*.md" -exec markdown-link-check {} \;
+      
+      - name: Validate documentation structure
+        run: |
+          # Check if required documentation files exist
+          missing_files=0
+          for file in docs/README.md docs/IMPLEMENTATION_STATUS.md docs/standards/documentation-standards.md; do
+            if [ ! -f "$file" ]; then
+              echo "Missing required file: $file"
+              missing_files=$((missing_files+1))
+            fi
+          done
+          
+          # Check if required directories exist
+          missing_dirs=0
+          for dir in docs/architecture docs/patterns docs/guides docs/reference; do
+            if [ ! -d "$dir" ]; then
+              echo "Missing required directory: $dir"
+              missing_dirs=$((missing_dirs+1))
+            fi
+          done
+          
+          # Exit with error if files or directories are missing
+          if [ $missing_files -gt 0 ] || [ $missing_dirs -gt 0 ]; then
+            echo "Documentation structure validation failed"
+            exit 1
+          else
+            echo "Documentation structure validation passed"
+          fi
+  
+  generate-reference:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate reference documentation
+        run: |
+          mkdir -p docs/reference/components
+          mkdir -p docs/reference/hooks
+          mkdir -p docs/reference/utilities
+          
+          # Generate all reference documentation
+          node scripts/generate-reference-docs.js --type component --source app/components --output docs/reference/components
+          node scripts/generate-reference-docs.js --type hook --source app/hooks --output docs/reference/hooks
+          node scripts/generate-reference-docs.js --type utility --source app/lib --output docs/reference/utilities
+      
+      - name: Commit generated documentation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          git add docs/reference
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: update reference documentation [skip ci]"
+            git push 

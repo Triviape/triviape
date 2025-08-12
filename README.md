@@ -325,6 +325,52 @@ The authentication testing plan includes the following categories:
 - `app/__tests__/integration/auth-flow.test.tsx` - Integration tests for authentication flows
 - `app/__tests__/api/auth-api.test.ts` - Tests for authentication API routes
 
+## Documentation System
+
+This project includes a comprehensive documentation system that covers architecture, patterns, guides, and reference materials. The documentation is designed to be maintainable, searchable, and machine-readable.
+
+### Documentation Structure
+
+The documentation is organized into several categories:
+
+```
+/docs
+├── architecture/          # System design and architectural decisions
+├── patterns/              # Code patterns and examples
+├── guides/                # Developer and operations guides
+├── reference/             # Technical reference materials
+├── decisions/             # Architecture Decision Records
+├── standards/             # Development standards
+├── schemas/               # JSON schemas for LLM parsing
+└── templates/             # Templates for new documentation
+```
+
+### Accessing Documentation
+
+You can browse the documentation directly in the codebase or use the documentation generation tools:
+
+```bash
+# Generate documentation from code
+node scripts/generate-docs.js --type pattern --source app/lib/componentUtils.ts --output docs/patterns/component-patterns/generated-example.md
+
+# Add documentation references to code
+node scripts/add-doc-refs.js --file app/components/ui/Button.tsx --doc docs/reference/components/ui-components.md --type component
+```
+
+### Documentation Standards
+
+All documentation follows the standards specified in [documentation-standards.md](./docs/standards/documentation-standards.md). This ensures consistency and maintainability across all documentation.
+
+### Machine-Readable Documentation
+
+The documentation includes machine-readable metadata that can be parsed by AI assistants and other tools. This enables advanced features like:
+
+- Automatic linking between code and documentation
+- AI-assisted documentation generation
+- Documentation validation and quality checks
+
+For more information, see the [Documentation README](./docs/README.md).
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

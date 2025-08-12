@@ -133,24 +133,23 @@ export function useOptimizedInfiniteQuery<TData = any, TError = Error>(
   options: OptimizedInfiniteQueryOptions<TData, TError>
 ): OptimizedInfiniteQueryResult<TData, TError> {
   const {
-    componentName = 'UnknownComponent',
-    queryName = options.queryKey ? String(options.queryKey) : 'UnknownQuery',
-    trackPerformance = true,
+    componentName = 'UnnamedComponent',
+    queryName = 'unnamedQuery',
+    trackPerformance = false,
     logErrors = true,
     errorSeverity = ErrorSeverity.ERROR,
     prefetchThreshold = 0.8,
     ...queryOptions
   } = options;
   
-  // Track component performance
-  if (trackPerformance) {
-    usePerformanceMonitor({
-      componentName: `${componentName}_${queryName}_infinite`,
-      trackRenders: true,
-      trackTimeOnScreen: true,
-      logWarningAfterRenders: 10
-    });
-  }
+  // Always call the hook, but control its behavior with the enabled parameter
+  usePerformanceMonitor({
+    componentName: `${componentName}_${queryName}_infinite`,
+    trackRenders: trackPerformance,
+    trackTimeOnScreen: trackPerformance,
+    logWarningAfterRenders: trackPerformance ? 10 : 0,
+    enabled: trackPerformance
+  });
   
   // Wrap the queryFn to track performance and handle errors
   const originalQueryFn = queryOptions.queryFn;

@@ -17,17 +17,31 @@ import {
   User,
   Settings,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Share2
 } from 'lucide-react';
+import { useBenchmark } from '@/app/hooks/performance/useBenchmark';
 
 interface NavbarProps {
   className?: string;
+  ariaLabel?: string;
 }
 
-export function Navbar({ className }: NavbarProps) {
+export function Navbar({ className, ariaLabel = "Main navigation" }: NavbarProps) {
   const { currentUser, profile, signOut } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  // Performance benchmarking
+  const metrics = useBenchmark({
+    name: 'Navbar',
+    enabled: process.env.NODE_ENV === 'development',
+    threshold: 32,
+    onThresholdExceeded: (metrics) => {
+      console.warn(`Navbar render time exceeded threshold: ${metrics.renderTimeMs}ms`);
+    }
+  });
   
   // Set isMounted to true on client-side hydration
   useEffect(() => {
@@ -71,25 +85,45 @@ export function Navbar({ className }: NavbarProps) {
   
   // User dropdown menu for authenticated users
   const UserMenu = () => (
-    <DropdownMenu>
+    <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="flex items-center gap-1">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="flex items-center gap-1"
+          aria-label={`User menu for ${displayName}`}
+          aria-expanded={isDropdownOpen}
+          aria-haspopup="true"
+        >
           <span>{displayName}</span>
-          <ChevronDown size={16} />
+          <ChevronDown size={16} aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48 z-[100]" sideOffset={8}>
+      <DropdownMenuContent 
+        align="end" 
+        className="w-48 z-[100]" 
+        sideOffset={8}
+        aria-label="User account menu"
+      >
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
-            <User size={16} />
+          <Link 
+            href="/profile" 
+            className="flex items-center gap-2 cursor-pointer"
+            aria-label="View profile"
+          >
+            <User size={16} aria-hidden="true" />
             <span>Profile</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
-            <Settings size={16} />
+          <Link 
+            href="/settings" 
+            className="flex items-center gap-2 cursor-pointer"
+            aria-label="Open settings"
+          >
+            <Settings size={16} aria-hidden="true" />
             <span>Settings</span>
           </Link>
         </DropdownMenuItem>
@@ -97,8 +131,9 @@ export function Navbar({ className }: NavbarProps) {
         <DropdownMenuItem 
           onClick={() => signOut.mutate()}
           className="flex items-center gap-2 cursor-pointer text-destructive"
+          aria-label="Sign out of account"
         >
-          <LogOut size={16} />
+          <LogOut size={16} aria-hidden="true" />
           <span>Sign Out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -106,10 +141,14 @@ export function Navbar({ className }: NavbarProps) {
   );
   
   return (
-    <nav className={cn(
-      "w-full py-3 flex items-center justify-between",
-      className
-    )}>
+    <nav 
+      className={cn(
+        "w-full py-3 flex items-center justify-between",
+        className
+      )}
+      aria-label={ariaLabel}
+      role="navigation"
+    >
       {/* Logo/Brand - Removed */}
       <div className="flex items-center">
         {/* Logo removed as requested */}
@@ -127,16 +166,28 @@ export function Navbar({ className }: NavbarProps) {
               onClick={handleShare}
               disabled={!!shareError}
               title={shareError || 'Share Triviape'}
+              aria-label={shareError || 'Share this page'}
+              aria-describedby={shareError ? 'share-error' : undefined}
             >
+              <Share2 size={16} className="mr-1" aria-hidden="true" />
               Share
             </Button>
+            {shareError && (
+              <span id="share-error" className="sr-only">
+                {shareError}
+              </span>
+            )}
             
             {/* Auth Buttons or User Menu */}
             {currentUser ? (
               <UserMenu />
             ) : (
               <Link href="/auth" prefetch>
-                <Button variant="default" size="sm">
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  aria-label="Sign in or create account"
+                >
                   Sign In/Up
                 </Button>
               </Link>
@@ -146,6 +197,7 @@ export function Navbar({ className }: NavbarProps) {
           <>
             {/* Static placeholders for server-side rendering */}
             <div className="h-9 px-3 rounded-md border border-input bg-transparent inline-flex items-center justify-center">
+              <Share2 size={16} className="mr-1" aria-hidden="true" />
               Share
             </div>
             <div className="h-9 px-3 rounded-md bg-primary text-primary-foreground inline-flex items-center justify-center">

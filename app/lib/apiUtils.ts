@@ -288,4 +288,162 @@ export function createApiClient(
   };
   
   return client;
+}
+
+/**
+ * Standard API response format
+ */
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: {
+    message: string;
+    code?: string;
+    details?: any;
+  };
+  timestamp: string;
+}
+
+/**
+ * API error codes enum
+ */
+export enum ApiErrorCode {
+  // Auth errors
+  UNAUTHORIZED = 'unauthorized',
+  FORBIDDEN = 'forbidden',
+  
+  // Validation errors
+  VALIDATION_ERROR = 'validation_error',
+  INVALID_REQUEST = 'invalid_request',
+  
+  // Resource errors
+  NOT_FOUND = 'not_found',
+  ALREADY_EXISTS = 'already_exists',
+  CONFLICT = 'conflict',
+  
+  // Server errors
+  INTERNAL_ERROR = 'internal_error',
+  SERVICE_UNAVAILABLE = 'service_unavailable',
+  
+  // Generic errors
+  BAD_REQUEST = 'bad_request',
+  UNKNOWN_ERROR = 'unknown_error',
+}
+
+/**
+ * Create a standardized success response
+ */
+export function createSuccessResponse<T>(data: T): ApiResponse<T> {
+  return {
+    success: true,
+    data,
+    timestamp: new Date().toISOString()
+  };
+}
+
+/**
+ * Create a standardized error response
+ */
+export function createErrorResponse(
+  message: string,
+  code: ApiErrorCode = ApiErrorCode.UNKNOWN_ERROR,
+  details?: any
+): ApiResponse {
+  return {
+    success: false,
+    error: {
+      message,
+      code,
+      details
+    },
+    timestamp: new Date().toISOString()
+  };
+}
+
+/**
+ * Standardized API route handler with error handling
+ */
+export async function withApiErrorHandling<T>(
+  request: Request,
+  handler: () => Promise<T>,
+  options?: {
+    logErrors?: boolean;
+    validateRequest?: (data: any) => { valid: boolean; errors?: any };
+  }
+): Promise<Response> {
+  try {
+    // Execute the handler
+    const result = await handler();
+    
+    // Return success response
+    return Response.json(createSuccessResponse(result));
+  } catch (error: any) {
+    // Log the error if enabled
+    if (options?.logErrors !== false) {
+      console.error('API error:', error);
+      
+      // Log to monitoring service if available
+      try {
+        if (typeof error === 'object' && error !== null) {
+          logError(error, {
+            category: ErrorCategory.API,
+            severity: ErrorSeverity.ERROR,
+            context: { request }
+          });
+        }
+      } catch (loggingError) {
+        console.error('Error logging failed:', loggingError);
+      }
+    }
+    
+    // Handle different error types
+    let statusCode = 500;
+    let errorCode = ApiErrorCode.INTERNAL_ERROR;
+    let message = 'An unexpected error occurred';
+    let details = undefined;
+    
+    // Firebase Auth errors
+    if (error.code && error.code.startsWith('auth/')) {
+      statusCode = 401;
+      errorCode = ApiErrorCode.UNAUTHORIZED;
+      message = getAuthErrorMessage(error);
+    }
+    // Not Found errors
+    else if (error.message?.includes('not found') || error.code === 'not-found') {
+      statusCode = 404;
+      errorCode = ApiErrorCode.NOT_FOUND;
+      message = error.message || 'Resource not found';
+    }
+    // Validation errors
+    else if (error.message?.includes('validation') || error.code === 'validation-failed') {
+      statusCode = 400;
+      errorCode = ApiErrorCode.VALIDATION_ERROR;
+      message = error.message || 'Validation failed';
+      details = error.details;
+    }
+    // Permission errors
+    else if (error.code === 'permission-denied') {
+      statusCode = 403;
+      errorCode = ApiErrorCode.FORBIDDEN;
+      message = error.message || 'Permission denied';
+    }
+    // Handle status code if available
+    else if (error.statusCode) {
+      statusCode = error.statusCode;
+      
+      if (statusCode >= 400 && statusCode < 500) {
+        errorCode = ApiErrorCode.BAD_REQUEST;
+      }
+    }
+    // Use error message if available
+    if (error.message) {
+      message = error.message;
+    }
+    
+    // Return standardized error response
+    return Response.json(
+      createErrorResponse(message, errorCode, details),
+      { status: statusCode }
+    );
+  }
 } 

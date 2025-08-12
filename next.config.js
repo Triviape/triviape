@@ -48,6 +48,7 @@ const nextConfig = {
   // Increase build performance
   poweredByHeader: false,
   compress: true,
+  // Temporarily disable ESLint during build
 };
 
 module.exports = withBundleAnalyzer(nextConfig); 

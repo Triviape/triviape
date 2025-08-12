@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { useRive, useStateMachineInput, Layout, Fit, Alignment } from '@rive-app/react-canvas';
+import Image from "next/image";
 import { useResponsiveUI } from "@/app/contexts/responsive-ui-context";
 import { useBenchmark } from "@/app/hooks/performance/useBenchmark";
 import { cn } from "@/app/lib/utils";
+import { memoWithPerf } from "@/app/lib/componentUtils";
 
 interface RiveAnimationProps {
   src: string;
@@ -13,6 +15,7 @@ interface RiveAnimationProps {
   className?: string;
   autoplay?: boolean;
   fallbackImageSrc?: string; // For low-end devices
+  fallbackImageAlt?: string; // Alt text for fallback image
   width?: number;
   height?: number;
   inputs?: {
@@ -24,13 +27,14 @@ interface RiveAnimationProps {
   benchmarkName?: string;
 }
 
-export function RiveAnimation({
+function RiveAnimationBase({
   src,
   stateMachine,
   artboard,
   className,
   autoplay = true,
   fallbackImageSrc,
+  fallbackImageAlt = "Animation fallback",
   width,
   height,
   inputs = {},
@@ -218,10 +222,13 @@ export function RiveAnimation({
           height: height ? `${height}px` : '100%'
         }}
       >
-        <img 
+        <Image 
           src={fallbackImageSrc} 
-          alt="Animation fallback" 
-          className="w-full h-full object-contain"
+          alt={fallbackImageAlt} 
+          fill
+          sizes={`${width || 300}px`}
+          className="object-contain"
+          priority
         />
       </div>
     );
@@ -235,6 +242,7 @@ export function RiveAnimation({
         className
       )}
       data-animation-id={benchmarkName || src}
+      data-testid="rive-component-container"
       style={{
         width: width ? `${width}px` : '100%',
         height: height ? `${height}px` : '100%'
@@ -251,4 +259,10 @@ export function RiveAnimation({
       )}
     </div>
   );
-} 
+}
+
+// Export memoized version
+export const RiveAnimation = memoWithPerf(RiveAnimationBase, {
+  name: 'RiveAnimation',
+  warnAfterRenders: 3
+}); 

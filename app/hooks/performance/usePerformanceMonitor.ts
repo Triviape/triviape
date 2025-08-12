@@ -20,6 +20,7 @@ interface UsePerformanceMonitorOptions {
   trackRenders?: boolean;
   trackTimeOnScreen?: boolean;
   logWarningAfterRenders?: number;
+  enabled?: boolean;
 }
 
 /**
@@ -29,51 +30,17 @@ export function usePerformanceMonitor({
   componentName,
   trackRenders = true,
   trackTimeOnScreen = true,
-  logWarningAfterRenders = 5
+  logWarningAfterRenders = 5,
+  enabled = true
 }: UsePerformanceMonitorOptions) {
   const renderCount = useRef(0);
   const mountTime = useRef(0);
   
-  useEffect(() => {
-    // Track component mount
-    mountTime.current = performance.now();
-    recordMetric({
-      type: MetricType.COMPONENT_MOUNT,
-      name: componentName,
-      value: 0,
-      metadata: { action: 'mount' }
-    });
-    
-    // Track component unmount and time on screen
-    return () => {
-      const unmountTime = performance.now();
-      const timeOnScreen = unmountTime - mountTime.current;
-      
-      recordMetric({
-        type: MetricType.COMPONENT_UNMOUNT,
-        name: componentName,
-        value: 0,
-        metadata: { action: 'unmount' }
-      });
-      
-      if (trackTimeOnScreen) {
-        recordMetric({
-          type: MetricType.COMPONENT,
-          name: `${componentName} time on screen`,
-          value: timeOnScreen,
-          metadata: { 
-            timeOnScreen,
-            renderCount: renderCount.current
-          }
-        });
-      }
-    };
-  }, [componentName, trackTimeOnScreen]);
+  // Always increment render count regardless of tracking
+  renderCount.current += 1;
   
-  // Track renders
-  if (trackRenders) {
-    renderCount.current += 1;
-    
+  // Track renders if enabled and trackRenders is true
+  if (enabled && trackRenders) {
     recordMetric({
       type: MetricType.COMPONENT_RENDER,
       name: componentName,
@@ -96,6 +63,47 @@ export function usePerformanceMonitor({
       });
     }
   }
+  
+  useEffect(() => {
+    // Skip monitoring if disabled
+    if (!enabled) return;
+    
+    // Track component mount
+    mountTime.current = performance.now();
+    recordMetric({
+      type: MetricType.COMPONENT_MOUNT,
+      name: componentName,
+      value: 0,
+      metadata: { action: 'mount' }
+    });
+    
+    // Track component unmount and time on screen
+    return () => {
+      if (!enabled) return;
+      
+      const unmountTime = performance.now();
+      const timeOnScreen = unmountTime - mountTime.current;
+      
+      recordMetric({
+        type: MetricType.COMPONENT_UNMOUNT,
+        name: componentName,
+        value: 0,
+        metadata: { action: 'unmount' }
+      });
+      
+      if (trackTimeOnScreen) {
+        recordMetric({
+          type: MetricType.COMPONENT,
+          name: `${componentName} time on screen`,
+          value: timeOnScreen,
+          metadata: { 
+            timeOnScreen,
+            renderCount: renderCount.current
+          }
+        });
+      }
+    };
+  }, [componentName, trackTimeOnScreen, enabled]);
   
   /**
    * Track user interaction with timing

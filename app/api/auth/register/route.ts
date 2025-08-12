@@ -1,69 +1,134 @@
-import { getAuthErrorMessage } from '@/app/lib/authErrorHandler';
-import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
 import { NextResponse } from 'next/server';
+import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
+import { withApiErrorHandling, ApiErrorCode } from '@/app/lib/apiUtils';
+import { withRateLimit, RateLimitConfigs } from '@/app/lib/rateLimiter';
+import { 
+  AuthInputSchemas, 
+  sanitizeAndValidate 
+} from '@/app/lib/validation/securitySchemas';
+import { 
+  ServiceError, 
+  ServiceErrorType, 
+  handleValidationError,
+  handleConflictError 
+} from '@/app/lib/services/errorHandler';
 
 /**
- * API route to handle user registration
- * This endpoint uses Firebase Admin to create users on the server side
+ * API route to handle user registration with enhanced security and rate limiting
  */
 export async function POST(request: Request) {
-  try {
-    // Get registration data from request
-    const { email, password, displayName } = await request.json();
-    
-    if (!email || !password) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Missing required fields (email or password)'
-      }, { status: 400 });
-    }
-    
-    try {
-      // Create a new user with Firebase Admin
-      const userRecord = await FirebaseAdminService.createUser({
-        email,
-        password,
-        displayName: displayName || '',
-      });
+  // Apply rate limiting to prevent abuse
+  const rateLimitedHandler = withRateLimit(async (req: Request) => {
+    return withApiErrorHandling(req, async () => {
+      // Parse and validate request body
+      const body = await request.json();
       
-      // Create a custom token for this user
-      const customToken = await FirebaseAdminService.createCustomToken(userRecord.uid);
+      // Validate input with security checks
+      const validationResult = sanitizeAndValidate(AuthInputSchemas.register, body);
       
-      // Return success response with token and user data
-      return NextResponse.json({
-        success: true,
-        token: customToken,
-        user: {
-          uid: userRecord.uid,
-          email: userRecord.email,
-          displayName: userRecord.displayName,
-        }
-      }, { status: 201 });
-    } catch (error: any) {
-      // If the email is already in use
-      if (error.code === 'auth/email-already-in-use' || 
-          (error.message && error.message.includes('already in use'))) {
-        return NextResponse.json({
-          success: false,
-          error: 'The email address is already in use by another account',
-          errorCode: 'auth/email-already-in-use',
-        }, { status: 400 });
+      if (!validationResult.success) {
+        throw {
+          code: ApiErrorCode.VALIDATION_ERROR,
+          message: 'Invalid registration data',
+          details: validationResult.errors,
+          statusCode: 400
+        };
       }
       
-      // If it's any other error, rethrow it
-      throw error;
-    }
-  } catch (error: any) {
-    console.error('Registration error:', error);
-    
-    const errorMessage = getAuthErrorMessage(error);
-    const errorCode = error.code ? error.code : 'unknown';
-    
-    return NextResponse.json({
-      success: false,
-      error: errorMessage,
-      errorCode: errorCode,
-      timestamp: new Date().toISOString()
-    }, { status: 500 });
-  }
+      const { email, password, displayName, acceptTerms } = validationResult.data!;
+      
+      // Check if user accepted terms
+      if (!acceptTerms) {
+        throw {
+          code: ApiErrorCode.VALIDATION_ERROR,
+          message: 'You must accept the terms and conditions',
+          statusCode: 400
+        };
+      }
+      
+      try {
+        // Check if user already exists
+        try {
+          const existingUser = await FirebaseAdminService.getUserByEmail(email);
+          if (existingUser) {
+            throw handleConflictError('User with this email already exists', { email });
+          }
+        } catch (error: any) {
+          // If user not found, that's what we want
+          if (error.code !== 'auth/user-not-found') {
+            throw error;
+          }
+        }
+        
+        // Create new user
+        const userRecord = await FirebaseAdminService.createUser({
+          email,
+          password,
+          displayName,
+          emailVerified: false
+        });
+        
+        // Send email verification
+        await FirebaseAdminService.sendEmailVerification(userRecord.uid);
+        
+        // Create custom token for immediate login
+        const customToken = await FirebaseAdminService.createCustomToken(userRecord.uid);
+        
+        // Return success response
+        return NextResponse.json({
+          success: true,
+          data: {
+            token: customToken,
+            user: {
+              uid: userRecord.uid,
+              email: userRecord.email,
+              displayName: userRecord.displayName,
+            },
+            message: 'Registration successful. Please check your email for verification.'
+          },
+          meta: {
+            timestamp: new Date().toISOString(),
+            requestId: generateRequestId()
+          }
+        });
+      } catch (error: any) {
+        // Handle specific Firebase errors
+        if (error.code === 'auth/email-already-exists') {
+          throw {
+            code: ApiErrorCode.CONFLICT,
+            message: 'An account with this email already exists',
+            statusCode: 409
+          };
+        }
+        
+        if (error.code === 'auth/weak-password') {
+          throw {
+            code: ApiErrorCode.VALIDATION_ERROR,
+            message: 'Password is too weak. Please use a stronger password.',
+            statusCode: 400
+          };
+        }
+        
+        if (error.code === 'auth/invalid-email') {
+          throw {
+            code: ApiErrorCode.VALIDATION_ERROR,
+            message: 'Invalid email address',
+            statusCode: 400
+          };
+        }
+        
+        // If it's any other error, rethrow it
+        throw error;
+      }
+    });
+  }, RateLimitConfigs.auth);
+
+  return rateLimitedHandler(request);
+}
+
+/**
+ * Generate a unique request ID for tracking
+ */
+function generateRequestId(): string {
+  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 } 

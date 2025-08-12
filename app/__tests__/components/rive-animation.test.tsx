@@ -3,6 +3,15 @@ import { render, screen, act } from '@testing-library/react';
 import { RiveAnimation } from '@/app/components/animation/rive-animation';
 import { ResponsiveUIProvider } from '@/app/contexts/responsive-ui-context';
 
+// Mock Next.js Image component
+jest.mock('next/image', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    // eslint-disable-next-line jsx-a11y/alt-text
+    return <img {...props} />;
+  },
+}));
+
 // Mock the Rive library
 jest.mock('@rive-app/react-canvas', () => {
   return {
@@ -57,6 +66,20 @@ jest.mock('@/app/hooks/performance/useBenchmark', () => ({
     isPerformant: true
   })
 }));
+
+// Mock component utils to verify memoization
+jest.mock('@/app/lib/componentUtils', () => {
+  const originalModule = jest.requireActual('@/app/lib/componentUtils');
+  
+  return {
+    ...originalModule,
+    // Track memoization calls
+    memoWithPerf: jest.fn((Component, options) => {
+      // Pass through the actual component but track the call
+      return Component;
+    }),
+  };
+});
 
 // Mock the responsive UI context
 jest.mock('@/app/contexts/responsive-ui-context', () => {
@@ -138,6 +161,7 @@ describe('RiveAnimation Component', () => {
         <RiveAnimation 
           src="/test-animation.riv"
           fallbackImageSrc="/fallback.png"
+          fallbackImageAlt="Custom fallback alt text"
           width={200}
           height={200}
         />
@@ -155,16 +179,18 @@ describe('RiveAnimation Component', () => {
         <RiveAnimation 
           src="/test-animation.riv"
           fallbackImageSrc="/fallback.png"
+          fallbackImageAlt="Custom fallback alt text"
           width={200}
           height={200}
         />
       </TestWrapper>
     );
     
-    // Check for the fallback image
-    const fallbackImg = screen.getByAltText('Animation fallback');
+    // Check for the fallback image with Next.js Image attributes
+    const fallbackImg = screen.getByAltText('Custom fallback alt text');
     expect(fallbackImg).toBeInTheDocument();
     expect(fallbackImg).toHaveAttribute('src', '/fallback.png');
+    expect(fallbackImg).toHaveAttribute('sizes', '200px');
   });
   
   test('applies correct dimensions based on props', () => {
@@ -178,8 +204,63 @@ describe('RiveAnimation Component', () => {
       </TestWrapper>
     );
     
-    const container = screen.getByTestId('rive-component').parentElement;
+    const container = screen.getByTestId('rive-component-container');
     expect(container).toHaveStyle('width: 300px');
     expect(container).toHaveStyle('height: 200px');
+  });
+  
+  test('uses default alt text when not provided', () => {
+    // Mock useRive to return null rive instance
+    const useRiveMock = require('@rive-app/react-canvas').useRive;
+    useRiveMock.mockReturnValueOnce({
+      rive: null,
+      RiveComponent: () => null,
+    });
+    
+    render(
+      <TestWrapper>
+        <RiveAnimation 
+          src="/test-animation.riv"
+          fallbackImageSrc="/fallback.png"
+          width={200}
+          height={200}
+        />
+      </TestWrapper>
+    );
+    
+    // Advance timers to trigger the error detection timeout
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
+    
+    // Force a re-render
+    render(
+      <TestWrapper>
+        <RiveAnimation 
+          src="/test-animation.riv"
+          fallbackImageSrc="/fallback.png"
+          width={200}
+          height={200}
+        />
+      </TestWrapper>
+    );
+    
+    // Check that the default alt text is used
+    const fallbackImg = screen.getByAltText('Animation fallback');
+    expect(fallbackImg).toBeInTheDocument();
+  });
+  
+  test('verifies that memoization is applied', () => {
+    // Get the mock function
+    const memoWithPerfMock = require('@/app/lib/componentUtils').memoWithPerf;
+    
+    // Check that the memoWithPerf function was called with the correct parameters
+    expect(memoWithPerfMock).toHaveBeenCalledWith(
+      expect.any(Function), // Component
+      expect.objectContaining({
+        name: 'RiveAnimation',
+        warnAfterRenders: 3
+      })
+    );
   });
 }); 
