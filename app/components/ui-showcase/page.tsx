@@ -60,7 +60,7 @@ export default function UIShowcasePage() {
   return (
     <div className="min-h-screen bg-background">
       <ResponsiveContainer maxWidth="xl" padding="lg" centerContent>
-        <div className="w-full">
+  <div className="w-full" data-test="ui-showcase-root">
           <h1 className="text-4xl font-bold mb-8 text-center">Responsive UI Components</h1>
           <div className="flex justify-end mb-6 gap-3">
             <Button variant="outline" size="sm" onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}>

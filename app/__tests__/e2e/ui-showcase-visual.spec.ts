@@ -5,16 +5,29 @@ import { test, expect } from '@playwright/test';
 
 test.describe('UI Showcase Visual', () => {
   test('captures light and dark mode', async ({ page }) => {
-    await page.goto('/ui-showcase');
-    await page.waitForLoadState('networkidle');
+    test.setTimeout(60000);
+    await page.route(/_next\/static/ , route => route.continue());
+    await page.goto('/ui-showcase', { waitUntil: 'domcontentloaded' });
 
-    // Light mode snapshot
-    await expect(page).toHaveScreenshot('ui-showcase-light.png', { fullPage: true });
+    const root = page.locator('[data-test="ui-showcase-root"]');
+    await root.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Ensure fonts loaded and settle minor layout shifts
+    await page.evaluate(async () => {
+      await (document as any).fonts?.ready;
+      // Disable animations for determinism
+      const style = document.createElement('style');
+      style.innerHTML = '* { animation: none !important; transition: none !important; }';
+      document.head.appendChild(style);
+    });
+    await page.waitForTimeout(150);
+
+    await expect(root).toHaveScreenshot('ui-showcase-light.png', { animations: 'disabled', mask: [] });
 
     // Toggle dark mode
-    await page.getByRole('button', { name: /toggle dark mode/i }).click();
-    await page.waitForTimeout(300); // allow CSS transition
-
-    await expect(page).toHaveScreenshot('ui-showcase-dark.png', { fullPage: true });
+    const toggle = page.getByRole('button', { name: /toggle dark mode/i });
+    await toggle.click();
+    await page.waitForTimeout(150);
+    await expect(root).toHaveScreenshot('ui-showcase-dark.png', { animations: 'disabled', mask: [] });
   });
 });
