@@ -1487,669 +1487,629 @@ Create and deploy indexes for:
 
 ---
 
+
 ## 4. Performance & Monitoring
 
 ### Overview
-The application has a multi-layered performance monitoring system with Web Vitals tracking, network monitoring, and component-level performance metrics. However, there are issues with complexity, overhead, and inconsistent enablement across the codebase.
+
+The application implements a **multi-layered performance monitoring system** with Web Vitals tracking, component lifecycle metrics, network monitoring, and social feature performance tracking. However, **critical gaps exist**: production metrics export is disabled (commented out), memory leaks in frame tracking, redundant monitoring systems, and incomplete React Query instrumentation. The system is suitable for development debugging but not production-ready.
 
 ### 4.1 Performance Monitoring Architecture
 
-**Current Stack:**
+**Core Components:**
 ```
-PerformanceProvider (Top-level)
-  ├─ NavigationMetricsTracker (Web Vitals + Navigation)
-  ├─ useNetworkMonitor (Fetch & Resource tracking)
-  ├─ PerformanceMonitor (Service singleton)
-  ├─ performanceAnalyzer (Metrics collection)
-  ├─ usePerformanceMonitor (Component hook)
-  └─ useMeasurePerformance (Operation measurement)
+Root Layout
+  ↓
+PerformanceProvider
+  ├─ NavigationMetricsTracker (Web Vitals, navigation events)
+  ├─ useNetworkMonitor (Fetch & resource tracking)
+  ├─ performanceAnalyzer (In-memory metrics storage, max 1000)
+  ├─ performanceMonitor (Service-level metrics)
+  ├─ socialPerformanceMonitor (Social feature-specific metrics)
+  ├─ usePerformanceMonitor (Component lifecycle tracking)
+  └─ useBenchmark (FPS/frame drop detection)
 ```
 
-**Initialization Flow:**
+**Files:**
+- `app/providers/PerformanceProvider.tsx` - Root provider
+- `app/lib/performanceAnalyzer.ts` - Core metrics collection
+- `app/hooks/performance/usePerformanceMonitor.ts` - Component tracking
+- `app/hooks/performance/useNetworkMonitor.ts` - Network interception
+- `app/hooks/performance/useBenchmark.ts` - FPS monitoring
+- `app/lib/firebase.ts:214-230, 258` - Firebase Performance integration
+- `app/lib/services/core/performanceMonitor.ts` - Service metrics
+- `app/lib/services/socialPerformanceMonitor.ts` - Social metrics
+- `app/components/performance/PerformanceDashboard.tsx` - Metrics UI (dev-only)
+- `app/components/performance/SocialPerformanceDashboard.tsx` - Social metrics UI (dev-only)
 
+**Initialization:**
 ```typescript
-// PerformanceProvider.tsx
-export default function PerformanceProvider({ children }: PerformanceProviderProps) {
-  const [isClient, setIsClient] = useState(false);
+// PerformanceProvider - Only enabled in development
+const showDashboard = process.env.NODE_ENV === 'development' && isClient;
 
-  useEffect(() => {
-    setIsClient(true);  // ← Hydration mismatch prevention
-  }, []);
-
-  const showDashboard = process.env.NODE_ENV === 'development' && isClient;
-
-  useNetworkMonitor({
-    trackFetch: showDashboard,
-    trackResources: showDashboard,
-    trackNavigation: showDashboard
-  });
-
-  return (
-    <>
-      {children}
-      {showDashboard && (
-        <>
-          <Suspense fallback={null}>
-            <NavigationMetricsTracker />
-          </Suspense>
-          <PerformanceDashboard />  {/* Dynamically imported */}
-        </>
-      )}
-    </>
-  );
-}
-```
-
-**Good:** Dynamic import of PerformanceDashboard to reduce bundle size in production.
-**Issue:** showDashboard depends on `isClient`, causing re-renders during hydration.
-
----
-
-### 4.2 Web Vitals Tracking
-
-**Tracked Metrics (NavigationMetricsTracker):**
-
-```typescript
-// Records on page navigation
-recordMetric({
-  type: MetricType.NAVIGATION,
-  name: pathname,
-  metadata: { pathname, searchParams }
+useNetworkMonitor({
+  trackFetch: showDashboard,
+  trackResources: showDashboard,
+  trackNavigation: showDashboard
 });
-
-// Tracks Core Web Vitals
-getCLS(({ value }) => recordMetric({  // Cumulative Layout Shift
-  type: MetricType.LAYOUT_SHIFT,
-  name: 'CLS',
-  value
-}));
-
-getFID(({ value }) => recordMetric({  // First Input Delay
-  type: MetricType.FIRST_INPUT,
-  name: 'FID',
-  value
-}));
-
-getLCP(({ value }) => recordMetric({  // Largest Contentful Paint
-  type: MetricType.PAINT,
-  name: 'LCP',
-  value
-}));
 ```
-
-**Issues:**
-
-1. **Lazy Loading web-vitals Library**
-   ```typescript
-   import('web-vitals').then(({ getCLS, getFID, getLCP }) => {
-     // Dynamic import on every navigation
-   }).catch(() => {
-     console.warn('web-vitals library not available');
-   });
-   ```
-   - Imported dynamically on every navigation
-   - Could cause delays on slow networks
-   - No error boundary
-
-2. **Timing Issues**
-   ```typescript
-   useEffect(() => {
-     if (!isClient) return;  // Wait for hydration
-
-     // Then trigger web-vitals imports
-     import('web-vitals').then(...)
-   }, [pathname, searchParams, isClient]);
-   ```
-   - Only works after hydration completes
-   - LCP might already have happened by the time tracking starts
-   - FID/CLS captured late
-
-3. **No FCP/TTFB Tracking**
-   - Missing First Contentful Paint (FCP)
-   - Missing Time to First Byte (TTFB)
-   - Important for SEO and user perception
 
 ---
 
-### 4.3 Network Monitoring
+### 4.2 Web Vitals & Navigation Tracking
 
-**Fetch Tracking (useNetworkMonitor):**
+**Tracked Metrics** (NavigationMetricsTracker component):
+- **CLS** (Cumulative Layout Shift) - Via getCLS()
+- **FID** (First Input Delay) - Via getFID()
+- **LCP** (Largest Contentful Paint) - Via getLCP()
+- **Navigation Events** - Records on route changes
+
+**🔴 Critical Issue #1: Production Metrics Export Disabled**
+
+**Location:** `app/lib/performanceAnalyzer.ts:72-74`
 
 ```typescript
-// Monkeypatches window.fetch
-const originalFetch = window.fetch;
+// 🚨 THIS CODE IS COMMENTED OUT:
+// if (process.env.NODE_ENV === 'production') {
+//   sendToAnalyticsService(fullMetric);
+// }
+```
 
+**Impact:**
+- ✅ Metrics collected in development
+- ❌ Metrics collected in production **BUT NOT SENT ANYWHERE**
+- ❌ Lost on page reload
+- ❌ Zero production performance visibility
+- ❌ Impossible to debug production issues
+
+**Status:** Incomplete implementation - function signature exists but disabled
+
+---
+
+**🟠 High Priority Issue #2: Incomplete Web Vitals Coverage**
+
+Only 3 of 5 modern Web Vitals tracked:
+- ✅ CLS (Cumulative Layout Shift)
+- ✅ FID (First Input Delay)
+- ✅ LCP (Largest Contentful Paint)
+- ❌ INP (Interaction to Next Paint) - **NOT TRACKED** (newly critical metric)
+- ❌ TTFB (Time to First Byte) - **NOT TRACKED**
+
+**Per Google (2024):** INP is now Core Web Vital, replaced FID
+
+---
+
+**🟡 Medium Priority Issue #3: Dynamic Import on Every Navigation**
+
+**Location:** `app/providers/PerformanceProvider.tsx:58`
+
+```typescript
+useEffect(() => {
+  import('web-vitals').then(({ getCLS, getFID, getLCP }) => {
+    // Dynamic import runs on EVERY route change
+  }).catch(() => {
+    console.warn('web-vitals library not available');
+  });
+}, [pathname, searchParams]);  // ← Triggers on navigation
+```
+
+**Problems:**
+1. web-vitals library imported on every navigation
+2. Previous observers not cleaned up
+3. Memory inefficiency with repeated imports
+
+---
+
+### 4.3 Network & Resource Monitoring
+
+**Fetch Request Interception** (`useNetworkMonitor.ts:44-94`):
+
+```typescript
+// 🚨 GLOBAL MONKEYPATCHING
+const originalFetch = window.fetch;
 window.fetch = async (input, init) => {
   const startTime = performance.now();
   const url = typeof input === 'string' ? input : input.url;
 
   try {
     const response = await originalFetch(input, init);
-    const duration = performance.now() - startTime;
-
+    const duration = endTime - startTime;
     recordMetric({
       type: MetricType.RESOURCE,
-      name: `Fetch: ${url}`,
-      value: duration,
-      metadata: {
-        url,
-        method: init?.method || 'GET',
-        status: response.status,
-        ok: response.ok
-      }
+      name: `Fetch: ${url}`,  // Full URL stored as metric name
+      metadata: { url, method, status }
     });
-
-    return response;
-  } catch (error) {
-    // Record failed fetch
   }
 };
 ```
 
-**Critical Issues:**
+**Issues:**
+1. **Global fetch replacement** - Could conflict with libraries
+2. **Full URL in metric name** - Creates unbounded unique metric entries for dynamic URLs
+3. **No response body deduplication** - Could interfere with streaming or large files
+4. **Every fetch tracked** - No batching or sampling in high-traffic scenarios
 
-1. **Monkeypatching fetch is Dangerous**
-   - Modifies global behavior
-   - Can break other libraries
-   - No cleanup in production
-   - Returns cleanup function but only in trackFetch effect
-
-2. **Cleanup Issue**
-   ```typescript
-   return () => {
-     window.fetch = originalFetch;
-   };
-   ```
-   - Only called on cleanup
-   - Never cleaned up in production (showDashboard = false)
-   - If tracking enabled/disabled, original fetch might be lost
-
-3. **Performance Overhead**
-   - EVERY fetch request wrapped
-   - Metrics recorded for every request
-   - Could cause slowdown with many requests
-   - Metrics stored in memory (max 1000)
-
-4. **Resource Loading Tracking**
-   ```typescript
-   const observer = new PerformanceObserver((list) => {
-     const entries = list.getEntries();
-     entries.forEach((entry) => {
-       if (entry.entryType === 'resource') {
-         recordMetric({
-           type: MetricType.RESOURCE,
-           name: `Resource: ${entry.name}`,
-           value: entry.duration
-         });
-       }
-     });
-   });
-   observer.observe({ entryTypes: ['resource'] });
-   ```
-   - Tracks images, scripts, stylesheets
-   - Double-counts fetch requests (fetch + resource observer)
-   - Could generate duplicate metrics
-
-5. **Navigation Timing Issues**
-   ```typescript
-   window.addEventListener('load', () => {
-     setTimeout(() => {  // ← 0ms timeout (schedules on next event loop)
-       const navigationTiming = performance.getEntriesByType('navigation')[0];
-       recordMetric({
-         type: MetricType.NAVIGATION,
-         name: 'Page Load Time',
-         value: navigationTiming.loadEventEnd - navigationTiming.startTime
-       });
-     }, 0);
-   });
-   ```
-   - Uses setTimeout(..., 0) which delays measurement
-   - Might not capture accurate timing
-   - Never cleaned up (memory leak)
+**Resource Loading Tracking:**
+- PerformanceObserver monitors resource entries (images, scripts, fonts)
+- Records: duration, transferSize, decodedBodySize, encodedBodySize
+- Good: Uses native browser API
 
 ---
 
-### 4.4 Component Performance Monitoring
+### 4.4 Component-Level Performance Tracking
 
-**usePerformanceMonitor Hook:**
+**usePerformanceMonitor Hook** (`app/hooks/performance/usePerformanceMonitor.ts:29-156`):
 
 ```typescript
 export function usePerformanceMonitor({
   componentName,
-  trackRenders = true,
-  trackTimeOnScreen = true,
-  logWarningAfterRenders = 5,
+  trackRenders = true,      // Track each render
+  trackTimeOnScreen = true, // Time from mount to unmount
+  logWarningAfterRenders = 5, // Warn if > 5 renders
   enabled = true
-}: UsePerformanceMonitorOptions) {
-  const renderCount = useRef(0);
-  const mountTime = useRef(0);
-
-  // Always increment render count (even if disabled!)
-  renderCount.current += 1;
-
-  // Track renders if enabled
-  if (enabled && trackRenders) {
-    recordMetric({
-      type: MetricType.COMPONENT_RENDER,
-      name: componentName,
-      value: 0,
-      metadata: {
-        renderCount: renderCount.current,
-        timestamp: performance.now()
-      }
-    });
-
-    // Warn about excessive renders (> 5)
-    if (renderCount.current > logWarningAfterRenders) {
-      recordMetric({
-        type: MetricType.COMPONENT,
-        name: `${componentName} excessive renders`,
-        value: renderCount.current
-      });
-    }
-  }
-
-  useEffect(() => {
-    if (!enabled) return;
-
-    mountTime.current = performance.now();
-    // ... track mount/unmount
-  }, [componentName, trackTimeOnScreen, enabled]);
-}
+})
 ```
 
-**Issues:**
+**🟡 Medium Priority Issue #4: Component Metrics Have Zero Value**
 
-1. **Unconditional Render Tracking**
-   - `renderCount.current += 1` runs every render, even if disabled
-   - Defeats the purpose of `enabled` flag
-   - Wastes CPU cycles
+**Location:** Multiple lines (48, 76, 88)
 
-2. **Zero-Value Metrics**
-   ```typescript
-   recordMetric({
-     type: MetricType.COMPONENT_RENDER,
-     name: componentName,
-     value: 0,  // ← Always 0! No actual duration measured
-     metadata: { renderCount: renderCount.current }
-   });
-   ```
-   - Records render count but not render duration
-   - Can't actually measure component performance
-   - Just logs the event
+```typescript
+recordMetric({
+  type: MetricType.COMPONENT_MOUNT,
+  name: componentName,
+  value: 0,  // 🚨 Always zero!
+  metadata: { mountDuration: 0 }
+});
 
-3. **Excessive Render Warning**
-   - Hard-coded at 5 renders
-   - Could be normal for many components
-   - No way to customize per component
-   - Logs for every render after 5
+recordMetric({
+  type: MetricType.COMPONENT_UPDATE,
+  name: componentName,
+  value: 0,  // 🚨 Always zero!
+});
 
-4. **Time on Screen Not Accurate**
-   ```typescript
-   return () => {
-     const unmountTime = performance.now();
-     const timeOnScreen = unmountTime - mountTime.current;
+recordMetric({
+  type: MetricType.COMPONENT_UNMOUNT,
+  name: componentName,
+  value: 0,  // 🚨 Always zero!
+});
+```
 
-     recordMetric({
-       type: MetricType.COMPONENT,
-       name: `${componentName} time on screen`,
-       value: timeOnScreen
-     });
-   };
-   ```
-   - Measures from mount to unmount
-   - Doesn't account for visibility (component might be off-screen)
-   - Doesn't measure actual interaction time
+**Problems:**
+1. These are **events, not durations** - value should not be 0 (or should be events without value)
+2. Misleading metrics - looks like zero-time operations
+3. No actual render duration measured
+4. Useless for identifying slow components
+
+**Excessive Render Warnings:**
+- Tracks render count correctly
+- Warns if > 5 renders (hard-coded threshold)
+- Uses `logWarningAfterRenders` parameter but same default everywhere
+
+**Memory Reference Issues:**
+- `enabled` parameter checked in cleanup but state may not match
 
 ---
 
-### 4.5 Query and Mutation Tracking
+**useBenchmark Hook** (`app/hooks/performance/useBenchmark.ts`):
 
-**useOptimizedQuery Wrapper:**
-
-```typescript
-export function useOptimizedQuery<TData, TError = AppError>({
-  queryKey,
-  queryFn,
-  componentName,
-  queryName,
-  mockFn,
-  enableMockFallback = true,  // ← Mock data enabled by default!
-  ...options
-}: OptimizedQueryOptions<TData, TError>) {
-
-  const wrappedQueryFn: QueryFunction<TData, QueryKey> = async (context) => {
-    // Development logging
-    if (process.env.NODE_ENV === 'development') {
-      console.debug(`[Query] ${componentName}::${queryName}`);
-    }
-
-    try {
-      return await queryFn(context);
-    } catch (error) {
-      // Falls back to mock data if enabled!
-      if (enableMockFallback && shouldUseMockData() && mockFn) {
-        console.info(`Using mock data for ${componentName}`);
-        return mockFn();
-      }
-      throw error;
-    }
-  };
-
-  // Optimized defaults
-  const defaultOptions = {
-    staleTime: 1000 * 60 * 5,      // 5 min
-    gcTime: 1000 * 60 * 30,        // 30 min
-    refetchOnWindowFocus: false,
-    refetchOnMount: true,
-    retry: (failureCount, error) => {
-      if ((error as any)?.status >= 400 && (error as any)?.status < 500) {
-        return false;
-      }
-      return failureCount < 3;
-    }
-  };
-
-  return useQuery<TData, TError, TData, QueryKey>({
-    queryKey,
-    queryFn: wrappedQueryFn,
-    ...defaultOptions,
-    ...options
-  });
-}
-```
-
-**Issues:**
-
-1. **Mock Data Fallback Enabled by Default**
-   - `enableMockFallback = true` by default
-   - Silently uses mock data when API fails
-   - Hard to debug if you don't know mocks are active
-   - Production might be using cached mock data
-
-2. **Inconsistent Performance Tracking**
-   - Wraps query function but doesn't track execution time
-   - No metrics recorded for query duration
-   - Only logs in development
-
-3. **Optimized Mutation Overhead**
-   ```typescript
-   export function useOptimizedMutation<TData, TError, TVariables, TContext>({
-     componentName = 'UnnamedComponent',
-     mutationName = 'unnamedMutation',
-     trackPerformance = false,  // ← Disabled by default
-     ...options
-   }) {
-     // Always calls usePerformanceMonitor
-     usePerformanceMonitor({
-       componentName: `${componentName}_${mutationName}`,
-       trackRenders: trackPerformance,
-       trackTimeOnScreen: trackPerformance,
-       enabled: trackPerformance
-     });
-
-     // Wraps mutation function with performance tracking (but disabled)
-     if (originalMutationFn) {
-       mutationOptions.mutationFn = async (variables: TVariables) => {
-         let endTracking: (() => void) | undefined;
-
-         if (trackPerformance) {  // Only if enabled
-           endTracking = trackInteraction(componentName, `mutation_${mutationName}`);
-         }
-
-         // ... rest of logic
-       };
-     }
-   }
-   ```
-
-   **Problems:**
-   - Calls usePerformanceMonitor even if `trackPerformance = false`
-   - Hook overhead paid even when tracking disabled
-   - Large wrapper function just to add logging
-
----
-
-### 4.6 Performance Analyzer Service
-
-**PerformanceMonitor Singleton:**
+**🔴 Critical Issue #5: Memory Leak in Frame Tracking**
 
 ```typescript
-export class PerformanceMonitor {
-  private static instance: PerformanceMonitor;
-  private metrics: PerformanceMetric[] = [];
-  private maxMetrics = 1000;  // Store last 1000 metrics
-
-  recordMetric(name: string, value: number, category: string, metadata?: any) {
-    const metric: PerformanceMetric = {
-      name, value, timestamp: Date.now(), category, metadata
-    };
-
-    this.metrics.push(metric);
-
-    // Keep only last 1000 metrics
-    if (this.metrics.length > this.maxMetrics) {
-      this.metrics = this.metrics.slice(-this.maxMetrics);
-    }
-
-    // Check thresholds
-    this.checkThresholds(metric);
-
-    // Log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Performance] ${category}:${name} - ${value}ms`, metadata);
-    }
+const frameCallback = () => {
+  const frameDuration = now - lastFrameTime;
+  if (frameDuration > 16.7) {
+    frameDrops += Math.floor(frameDuration / 16.7) - 1;
   }
+  framesRef.current.push(frameDuration);  // 🚨 NEVER CLEARED!
+};
 
-  generateReport(timeRangeMs = 300000): PerformanceReport {
-    // Calculate statistics
-    // Check for threshold violations
-    // Generate recommendations
-  }
-}
-```
-
-**Issues:**
-
-1. **Fixed Metric Limit**
-   - Only stores last 1000 metrics
-   - Older metrics silently dropped
-   - No notification when buffer fills
-   - Could lose important data over time
-
-2. **Threshold Checking on Every Metric**
-   ```typescript
-   this.checkThresholds(metric);  // Runs every recordMetric call
-   ```
-   - Repeated string matching for thresholds
-   - No caching of threshold rules
-   - Performance cost for every metric
-
-3. **In-Memory Storage Only**
-   - Metrics lost on page reload
-   - No persistence
-   - No export to analytics service
-   - Only commented suggestion to send to service
-
-4. **Console Logging Performance**
-   ```typescript
-   if (process.env.NODE_ENV === 'development') {
-     console.log(`[Performance] ${category}:${name} - ${value}ms`, metadata);
-   }
-   ```
-   - Logs for EVERY metric recorded
-   - With many requests, console becomes slow
-   - Could block main thread
-
-5. **Generic Category System**
-   - Categories: leaderboard, friends, multiplayer, social, auth, quiz, user, general
-   - Hard-coded thresholds per category
-   - No flexibility for custom categories
-
----
-
-### 4.7 Rendering Efficiency Issues
-
-**Provider Nesting & Hydration:**
-
-```typescript
-// From earlier analysis - 3 separate isClient checks:
-
-// 1. PerformanceProvider.tsx
-const [isClient, setIsClient] = useState(false);
-useEffect(() => { setIsClient(true); }, []);
-
-// 2. NavigationMetricsTracker.tsx
-const [isClient, setIsClient] = useState(false);
-useEffect(() => { setIsClient(true); }, []);
-
-// 3. ResponsiveUIProvider.tsx
-const [isClient, setIsClient] = useState(false);
-useEffect(() => {
-  setIsClient(true);
-  setUIScale(getDefaultUIScale());
-  setAnimationLevel(getDefaultAnimationLevel());
-}, []);
+requestAnimationFrame(frameCallback);
 ```
 
 **Impact:**
-- 3 separate state updates = 3 re-renders
-- Each provider waits for hydration
-- Children re-render 3 times before content stable
-- Could be consolidated to 1 check
+- Frame data array grows unbounded for component lifetime
+- At 60fps: 60 entries/second added to array
+- Component visible for 5 minutes = 18,000 array entries
+- Multiple components with useBenchmark = 3x+ memory overhead
+
+**Affected Components:**
+- Button (UI)
+- Navbar (navigation)
+- QuizCard (quiz)
+- RiveAnimation (animation)
+- DailyQuizCard (daily quiz)
+
+**Each component continuously:**
+- Calls requestAnimationFrame (60+ times/sec)
+- Performs Chrome-specific performance.memory polling
+- Accumulates frame timing data
+
+**No cleanup in effect return.**
 
 ---
 
-### 4.8 Bundle Size & Optimization
+**Components Using useBenchmark** - All with frame tracking enabled:
+1. Button - UI component
+2. Navbar - Navigation
+3. QuizCard - Quiz display
+4. RiveAnimation - Animation component
+5. DailyQuizCard - Daily quiz widget
 
-**Positive:**
+---
+
+### 4.5 React Query Performance Tracking
+
+**Current State:** Infrastructure exists but NO data collection
+
+**Evidence:**
+- MetricType.QUERY and MetricType.MUTATION defined
+- `getPerformanceSummary()` calculates query/mutation averages (lines 189-199)
+- **But metrics never populated in actual code**
+
+**Problems:**
+1. ❌ No React Query middleware to intercept operations
+2. ❌ No automatic query/mutation timing
+3. ❌ No cache hit/miss tracking
+4. ❌ Major data operations completely invisible to performance monitoring
+5. ❌ React Query calls exist everywhere but untracked
+
+**Impact:**
+- Data fetching operations (biggest perf bottleneck) completely unmonitored
+- Cache behavior unknown
+- Query efficiency unknown
+- Mutations untimed
+
+---
+
+### 4.6 Monitoring System Architecture Issues
+
+**🟡 Medium Priority Issue #6: Redundant Monitoring Systems**
+
+**Three separate metric collection systems:**
+
+1. **performanceAnalyzer** (`app/lib/performanceAnalyzer.ts`)
+   - Generic metrics collection
+   - Max 1000 metrics
+   - FIFO trimming
+
+2. **performanceMonitor** (`app/lib/services/core/performanceMonitor.ts`)
+   - Service-level metrics
+   - Identical structure to #1
+   - Max 1000 metrics separate
+
+3. **socialPerformanceMonitor** (`app/lib/services/socialPerformanceMonitor.ts`)
+   - Social feature-specific metrics
+   - Identical structure to #1
+   - Max 1000 metrics separate
+
+**Impact:**
+- 3x memory overhead (3000 metrics max in memory)
+- Inconsistent metrics between systems
+- Maintenance burden (changes needed in 3 places)
+- Confusing which system to use where
+
+---
+
+**Social Features Metrics** (`app/lib/services/socialPerformanceMonitor.ts`):
+
 ```typescript
-// PerformanceProvider.tsx
-const PerformanceDashboard = dynamic(
-  () => import('@/app/components/performance/PerformanceDashboard'),
-  {
-    ssr: false,
-    loading: () => <div className="hidden">Loading...</div>
-  }
-);
+category: 'leaderboard' | 'friends' | 'multiplayer' | 'social' | 'general'
 ```
-- Dynamic import keeps dashboard out of production bundle
-- SSR disabled (dev-only tool)
 
-**next.config.ts:**
+**Thresholds (ms):**
+- leaderboardLoad: 500ms
+- friendRequestResponse: 300ms
+- multiplayerLatency: 100ms
+- socialActionResponse: 400ms
+- realtimeUpdate: 50ms
+
+**🟡 Medium Priority Issue #7: No Error Differentiation**
+
+**Location:** `app/lib/services/leaderboardService.ts:125-133`
+
 ```typescript
-experimental: {
-  optimizeCss: true,
-  turbo: {
-    rules: {
-      '**/*': ['static']
-    }
+async addToDailyLeaderboard(userId: string, params: LeaderboardEntryParams) {
+  const endMeasurement = socialPerformanceMonitor.startMeasurement('add-daily-leaderboard');
+
+  try {
+    // ... logic ...
+    endMeasurement();  // Success path
+    return result;
+  } catch (error) {
+    endMeasurement();  // Error path - IDENTICAL!
+    throw error;
   }
 }
 ```
-- CSS optimization enabled
-- Turbo bundler configured
 
-**Bundle Content:**
-- React 18.2.0
-- Next.js 15.2.1
-- React Query @5.67.1
-- Firebase 11.4.0
-- Radix UI components (10+ packages)
-- TailwindCSS
-- web-vitals
-- socket.io-client
-
-**Potential Issues:**
-- web-vitals imported on every navigation (duplicate in bundle + runtime import)
-- Firebase bundle large (11MB minified)
-- 10+ Radix UI packages could be optimized
-- socket.io-client for real-time (full WebSocket library)
+**Problem:** Error and success paths call endMeasurement identically
+- Errors not flagged in metrics
+- Slow errors look like slow operations without distinction
+- No way to separate error response times from normal latency
 
 ---
 
-### 4.9 Performance Monitoring Issues Summary
+### 4.7 Performance Analyzer Service
 
-🚨 **CRITICAL ISSUES**
+**Storage Model:**
 
-1. **Network Monitoring Uses Unsafe Monkeypatching**
-   - Modifies global fetch
-   - Could break other libraries
-   - Cleanup only in dev
-   - Risk of fetch being overwritten multiple times
+```typescript
+// In-memory only, max 1000 metrics per system
+const metrics: PerformanceMetric[] = [];
+const MAX_METRICS = 1000;
 
-2. **Mock Data Silently Enabled in Production**
-   - enableMockFallback = true by default
-   - Catches all errors and returns mock data
-   - Can't disable without code changes
-   - Users might see outdated mock data
+if (metrics.length > MAX_METRICS) {
+  metrics.splice(0, metrics.length - MAX_METRICS);  // FIFO trimming
+}
+```
 
-3. **Web Vitals Loaded Too Late**
-   - Imported dynamically on navigation
-   - LCP might have already occurred
-   - FCP/TTFB not tracked
-   - Measurements incomplete
+**Data Structure:**
+```typescript
+interface PerformanceMetric {
+  type: MetricType;
+  name: string;
+  value: number;
+  timestamp: number;
+  metadata?: Record<string, any>;
+}
+```
 
-🟠 **HIGH PRIORITY**
+**Export Capability:**
 
-4. **Performance Overhead Not Justified**
-   - Large wrapper functions (250+ lines)
-   - Overhead even when tracking disabled
-   - useOptimizedQuery always logs in dev
-   - useOptimizedMutation always calls usePerformanceMonitor
+```typescript
+export function getPerformanceSummary(): Record<string, any> {
+  return {
+    totalMetrics,
+    byType: {...},
+    slowestComponents: [...],
+    averageQueryTime,
+    p95QueryTime,
+    averageMutationTime,
+    p95MutationTime
+  };
+}
+```
 
-5. **Component Render Tracking Ineffective**
-   - Tracks count but not duration
-   - "time on screen" not accurate
-   - Zero-value metrics recorded
-   - Hard-coded thresholds
-
-6. **Multiple Hydration Mismatch Checks**
-   - 3 separate isClient state variables
-   - 3 re-renders during hydration
-   - Should be consolidated to 1
-
-🟡 **MEDIUM PRIORITY**
-
-7. **Memory Leak in Navigation Tracking**
-   - Event listener never removed
-   - Accumulates with each navigation
-   - 0ms timeout on every page load
-
-8. **Inconsistent Performance Tracking Configuration**
-   - Different hooks track different things
-   - No centralized performance config
-   - Hard to understand what's being tracked
-
-9. **Metrics Not Persisted**
-   - Lost on page reload
-   - No backend analytics integration
-   - Only 1000 metrics stored in memory
-   - Difficult to analyze production issues
+**Problems:**
+1. Summary includes query/mutation stats but data never collected
+2. Only accessible via code, not API
+3. No persistence to disk or backend
+4. Lost on page reload
 
 ---
 
-### 4.10 Performance Monitoring Recommendations
+### 4.8 Performance Dashboards (Dev-Only)
 
-**Phase 1: Fix Critical Issues**
-1. Remove monkeypatching, use fetch interceptor library or Web APIs
-2. Disable mock fallback in production or require explicit opt-in
-3. Load web-vitals synchronously at app start
+**PerformanceDashboard** (`app/components/performance/PerformanceDashboard.tsx`):
+- Generic metrics viewer
+- Real-time chart display
+- Only shown in development: `process.env.NODE_ENV === 'development' && isClient`
 
-**Phase 2: Consolidate Hydration Handling**
-1. Single isClient state in a shared context
-2. Reduce hydration re-renders from 3 to 1
+**SocialPerformanceDashboard** (`app/components/performance/SocialPerformanceDashboard.tsx`):
+- Time range selector (1m, 5m, 15m, 1h)
+- Performance grading (A+ to D)
+- Real-time JSON export
+- Metrics clearing
+- Threshold management UI
 
-**Phase 3: Optimize Performance Hooks**
-1. Remove performance monitoring overhead when disabled
-2. Track actual component render time, not just count
-3. Add production metrics export (to Vercel, DataDog, etc.)
+**Grade Calculation:**
+```typescript
+if (violationRatio === 0 && avgTime < 200) → A+
+else if (violationRatio < 0.1 && avgTime < 400) → A
+else if (violationRatio < 0.2 && avgTime < 600) → B
+else if (violationRatio < 0.3 && avgTime < 800) → C
+else → D
+```
 
-**Phase 4: Integrate Proper Observability**
-1. Use Firebase Performance Monitoring fully
-2. Send metrics to analytics backend
-3. Create performance dashboards
-4. Set up alerts for performance regressions
+**Issue:** Development-only dashboard - no production visibility
+
+---
+
+### 4.9 Performance Overhead & Efficiency
+
+**Bundle Size Impact:**
+- web-vitals library: ~1.3KB gzipped
+- Dynamic import reduces bundle for production
+- Performance Provider: ~2KB
+- Hooks: ~3KB total
+- **Total:** ~6.3KB overhead (acceptable)
+
+**Runtime Overhead (Development):**
+
+| Operation | Frequency | Cost | Cumulative |
+|-----------|-----------|------|-----------|
+| Navigation effect | Per route | Import + observers | High over session |
+| Fetch interception | Per request | Timing + recording | Linear with requests |
+| PerformanceObserver | Per resource | Processing | Proportional to assets |
+| useBenchmark RAF | 60/sec per component | Calculations | Heavy with multiple |
+| Metric trimming | When > 1000 | Array splice | Periodic |
+
+**Heavy Operations:**
+1. requestAnimationFrame in useBenchmark: 60 calls/second per component
+2. Chrome memory.performance API polling: Non-standard, expensive
+3. Fetch interception: Wraps every network request
+4. Web-vitals library: Imported fresh each navigation
+
+---
+
+**🟡 Medium Priority Issue #8: No Metrics Sampling or Rate Limiting**
+
+All operations recorded - no sampling for high-traffic:
+- Every fetch recorded → Could DOS metrics storage in production
+- Every resource tracked → Proportional to asset count
+- Every component render tracked → Unlimited with many components
+- All metrics stored → 1000 limit reached in seconds under load
+
+---
+
+### 4.10 Configuration & Enablement
+
+**Development vs Production:**
+```typescript
+// PerformanceProvider.tsx
+const showDashboard = process.env.NODE_ENV === 'development' && isClient;
+
+// performanceAnalyzer.ts
+useNetworkMonitor({
+  trackFetch: showDashboard,    // Only in dev
+  trackResources: showDashboard, // Only in dev
+  trackNavigation: showDashboard // Only in dev
+});
+```
+
+**Firebase Performance:**
+```typescript
+// app/lib/firebase.ts:214-230
+const performance = initializePerformance(app);
+// Disabled in emulator: line 219
+// Not called during app init: line 258 returns null
+
+// Must be manually invoked
+const perf = getPerformanceInstance();  // Optional, not mandatory
+```
+
+**No Environment Variables for:**
+- Metric collection sampling rate
+- Maximum metrics buffer size (hardcoded 1000)
+- Threshold tuning
+- Feature toggles for specific monitors
+- Production metrics endpoint
+
+---
+
+### 4.11 Disabled & Incomplete Features
+
+**Commented Out - Production Analytics:**
+```typescript
+// if (process.env.NODE_ENV === 'production') {
+//   sendToAnalyticsService(fullMetric);
+// }
+```
+
+**Incomplete Implementation - React Query Monitoring:**
+- Types defined but never used
+- Summary calculations but no data collection
+- Infrastructure ready but no integration
+
+**Semi-Implemented - Firebase Performance:**
+- Initialized but optional
+- Not called during app startup
+- Traces created but incomplete tracing
+
+---
+
+### 4.12 Performance & Monitoring - Issues Summary
+
+| Issue | Severity | File | Lines | Status |
+|-------|----------|------|-------|--------|
+| Production metrics export disabled | 🔴 CRITICAL | performanceAnalyzer.ts | 72-74 | Commented out |
+| Memory leak: frame array unbounded | 🔴 CRITICAL | useBenchmark.ts | 74 | Active code |
+| React Query metrics not tracked | 🟠 HIGH | Multiple hooks | N/A | Incomplete |
+| Web Vitals missing INP, TTFB | 🟠 HIGH | PerformanceProvider.tsx | 58-84 | Missing |
+| Fetch monkeypatching global | 🟡 MEDIUM | useNetworkMonitor.ts | 46 | Active |
+| Component metrics all zero value | 🟡 MEDIUM | usePerformanceMonitor.ts | 48,76,88 | Active |
+| Dynamic import every navigation | 🟡 MEDIUM | PerformanceProvider.tsx | 58 | Active |
+| Redundant monitoring systems (3x) | 🟡 MEDIUM | Multiple | N/A | Architecture |
+| No error differentiation in metrics | 🟡 MEDIUM | leaderboardService.ts | 129-133 | Active |
+| No metrics sampling in production | 🟡 MEDIUM | All monitoring | N/A | Missing |
+
+**Total Issues: 10 major + 2 architectural**
+
+---
+
+### 4.13 Performance & Monitoring Recommendations
+
+**Priority 1: Critical Fixes (Immediate)**
+
+1. **Enable Production Metrics Export**
+   - Uncomment and implement `sendToAnalyticsService()`
+   - Choose backend: Firebase Analytics, Vercel Web Analytics, DataDog, custom
+   - Add error handling for send failures
+   - **Time:** 2-3 hours
+   - **Impact:** Enables production visibility
+
+2. **Fix useBenchmark Memory Leak**
+   - Clear `framesRef.current` in cleanup function
+   - Store only recent frames (e.g., last 60)
+   - **Code:**
+     ```typescript
+     return () => {
+       cancelAnimationFrame(rafId);
+       framesRef.current = [];  // Add this
+     };
+     ```
+   - **Time:** 30 minutes
+   - **Impact:** Prevents memory growth in long-lived components
+
+3. **Consolidate Monitoring Systems**
+   - Merge performanceMonitor and socialPerformanceMonitor into performanceAnalyzer
+   - Use single 1000-metric buffer with categorization
+   - **Time:** 4-5 hours
+   - **Impact:** 66% memory reduction, unified metrics
+
+**Priority 2: High Priority (Week 1)**
+
+4. **Implement React Query Monitoring**
+   - Add QueryClient middleware to track lifecycle
+   - Record: query start, success/error, duration
+   - Track cache hits vs misses
+   - **Time:** 3-4 hours
+   - **Impact:** Visibility into major data operations
+
+5. **Add Missing Web Vitals**
+   - Integrate INP tracking (now critical)
+   - Add TTFB tracking
+   - **Time:** 2 hours
+   - **Impact:** Standards compliance
+
+6. **Fix Component Metrics**
+   - Distinguish events (render count) from durations
+   - Use Performance.measure() for actual durations
+   - Separate "value: 0" events from timing metrics
+   - **Time:** 2-3 hours
+   - **Impact:** Meaningful metrics data
+
+**Priority 3: Medium Priority (Week 2)**
+
+7. **Optimize Fetch Monitoring**
+   - Use Request/Response interceptor library instead of monkeypatching
+   - Avoid full URL in metric name (causes unbounded metrics)
+   - Support streaming responses
+   - **Time:** 3-4 hours
+   - **Impact:** Fewer conflicts, better compatibility
+
+8. **Implement Metrics Sampling**
+   - Add configurable sampling rate for production
+   - Batch metric uploads
+   - Add rate limiting per component
+   - **Time:** 4-5 hours
+   - **Impact:** Prevents DOS from metrics collection
+
+9. **Cache Web-Vitals Import**
+   - Load web-vitals once at app startup
+   - Reuse observers across navigations
+   - **Time:** 1-2 hours
+   - **Impact:** Reduced import overhead
+
+**Priority 4: Lower Priority (Sprint)**
+
+10. **Add Error Differentiation**
+    - Flag error metrics separately from success
+    - Track error rate and latency separately
+    - **Time:** 1-2 hours
+
+11. **Production Dashboard**
+    - Read-only metrics viewer for production
+    - Connect to analytics backend
+    - Simple UI, no editing
+    - **Time:** 6-8 hours
+
+12. **Performance Testing**
+    - Add performance regression tests
+    - Benchmark monitoring overhead itself
+    - **Time:** 8-10 hours
+
 
 ---
 
