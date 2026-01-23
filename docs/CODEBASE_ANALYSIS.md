@@ -1,6 +1,6 @@
 # Comprehensive Codebase Analysis
 
-**Last Updated:** 2026-01-19
+**Last Updated:** 2026-01-23
 **Status:** In Progress - Incrementally Adding Findings
 
 ---
@@ -10,11 +10,12 @@
 1. [API Routes & HTTP Handling](#1-api-routes--http-handling)
 2. [Component State Management](#2-component-state-management)
 3. [Database Schema & Queries](#3-database-schema--queries) *(Complete)*
-4. [Performance & Monitoring](#4-performance--monitoring) *(Pending)*
-5. [Testing & Quality](#5-testing--quality) *(Pending)*
-6. [Security](#6-security) *(Pending)*
-7. [Build & Deployment](#7-build--deployment) *(Pending)*
+4. [Performance & Monitoring](#4-performance--monitoring) *(Complete)*
+5. [Testing & Quality](#5-testing--quality) *(Complete)*
+6. [Security](#6-security) *(Complete)*
+7. [Build & Deployment](#7-build--deployment) *(Complete)*
 8. [Summary & Recommendations](#summary--recommendations)
+9. [Issue Index & Remediation Tracker](#9-issue-index--remediation-tracker)
 
 ---
 
@@ -1492,7 +1493,7 @@ Create and deploy indexes for:
 
 ### Overview
 
-The application implements a **multi-layered performance monitoring system** with Web Vitals tracking, component lifecycle metrics, network monitoring, and social feature performance tracking. However, **critical gaps exist**: production metrics export is disabled (commented out), memory leaks in frame tracking, redundant monitoring systems, and incomplete React Query instrumentation. The system is suitable for development debugging but not production-ready.
+The application implements a **multi-layered performance monitoring system** with Web Vitals tracking, component lifecycle metrics, network monitoring, and social feature performance tracking. However, **critical gaps exist**: production metrics export is disabled (commented out), frame tracking grows unbounded, monitoring systems are redundant, and React Query instrumentation is incomplete. Most of the monitoring (Web Vitals + network/resource tracking) is gated to development-only UI, leaving production with very limited coverage.
 
 ### 4.1 Performance Monitoring Architecture
 
@@ -1556,11 +1557,11 @@ useNetworkMonitor({
 ```
 
 **Impact:**
-- ✅ Metrics collected in development
-- ❌ Metrics collected in production **BUT NOT SENT ANYWHERE**
+- ✅ Metrics collected when `recordMetric()` is invoked (mostly dev-only)
+- ❌ Web Vitals + network/resource tracking are gated behind `showDashboard` (development-only)
+- ❌ Production metrics remain in-memory and are never exported
 - ❌ Lost on page reload
-- ❌ Zero production performance visibility
-- ❌ Impossible to debug production issues
+- ❌ Limited production visibility (only components that call `recordMetric()` directly)
 
 **Status:** Incomplete implementation - function signature exists but disabled
 
@@ -1597,6 +1598,7 @@ useEffect(() => {
 1. web-vitals library imported on every navigation
 2. Previous observers not cleaned up
 3. Memory inefficiency with repeated imports
+4. Only runs when `showDashboard` is true (development-only)
 
 ---
 
@@ -1626,8 +1628,9 @@ window.fetch = async (input, init) => {
 **Issues:**
 1. **Global fetch replacement** - Could conflict with libraries
 2. **Full URL in metric name** - Creates unbounded unique metric entries for dynamic URLs
-3. **No response body deduplication** - Could interfere with streaming or large files
-4. **Every fetch tracked** - No batching or sampling in high-traffic scenarios
+3. **Every fetch tracked** - No batching or sampling (when enabled)
+
+**Note:** `useNetworkMonitor` is only enabled when `showDashboard` is true (development-only) via `PerformanceProvider`.
 
 **Resource Loading Tracking:**
 - PerformanceObserver monitors resource entries (images, scripts, fonts)
@@ -1676,18 +1679,14 @@ recordMetric({
 ```
 
 **Problems:**
-1. These are **events, not durations** - value should not be 0 (or should be events without value)
-2. Misleading metrics - looks like zero-time operations
-3. No actual render duration measured
-4. Useless for identifying slow components
+1. Render/mount/unmount events always record `value: 0` (no duration)
+2. Time-on-screen is recorded under `MetricType.COMPONENT`, mixing event and duration semantics
+3. Actual render duration is never captured, so “slowest components” is misleading
 
 **Excessive Render Warnings:**
 - Tracks render count correctly
 - Warns if > 5 renders (hard-coded threshold)
 - Uses `logWarningAfterRenders` parameter but same default everywhere
-
-**Memory Reference Issues:**
-- `enabled` parameter checked in cleanup but state may not match
 
 ---
 
@@ -1713,28 +1712,19 @@ requestAnimationFrame(frameCallback);
 - Component visible for 5 minutes = 18,000 array entries
 - Multiple components with useBenchmark = 3x+ memory overhead
 
-**Affected Components:**
-- Button (UI)
-- Navbar (navigation)
-- QuizCard (quiz)
-- RiveAnimation (animation)
-- DailyQuizCard (daily quiz)
+**Affected Components (dev-only unless noted):**
+- Button (UI, enabled only in development)
+- Navbar (navigation, enabled only in development)
+- QuizCard (quiz, enabled only in development)
+- RiveAnimation (animation, enabled in production by default)
+- DailyQuizCard (daily quiz, enabled only in development)
 
-**Each component continuously:**
+**Each enabled component continuously:**
 - Calls requestAnimationFrame (60+ times/sec)
-- Performs Chrome-specific performance.memory polling
 - Accumulates frame timing data
+ - Reads Chrome-specific `performance.memory` on cleanup (when available)
 
-**No cleanup in effect return.**
-
----
-
-**Components Using useBenchmark** - All with frame tracking enabled:
-1. Button - UI component
-2. Navbar - Navigation
-3. QuizCard - Quiz display
-4. RiveAnimation - Animation component
-5. DailyQuizCard - Daily quiz widget
+**Cleanup cancels RAF, but `framesRef` is never cleared.**
 
 ---
 
@@ -1746,6 +1736,7 @@ requestAnimationFrame(frameCallback);
 - MetricType.QUERY and MetricType.MUTATION defined
 - `getPerformanceSummary()` calculates query/mutation averages (lines 189-199)
 - **But metrics never populated in actual code**
+ - React Query hooks only emit `MetricType.CUSTOM` via `trackInteraction` when `trackPerformance` is true
 
 **Problems:**
 1. ❌ No React Query middleware to intercept operations
@@ -1892,6 +1883,7 @@ export function getPerformanceSummary(): Record<string, any> {
 - Real-time JSON export
 - Metrics clearing
 - Threshold management UI
+ - **Not mounted anywhere by default** (no references in layout/providers)
 
 **Grade Calculation:**
 ```typescript
@@ -1999,22 +1991,169 @@ const perf = getPerformanceInstance();  // Optional, not mandatory
 
 ---
 
+### 4.11.1 Additional Findings (2026-01-23)
+
+**🔴 Critical: useBenchmark Runs in Production for RiveAnimation**
+
+**Location:** `app/components/animation/rive-animation.tsx:55-66`, `app/hooks/performance/useBenchmark.ts:34-36`
+
+```typescript
+// RiveAnimation uses useBenchmark with no "enabled" flag
+const metrics = useBenchmark({
+  name: benchmarkName || `RiveAnimation-${src.split('/').pop()?.split('.')[0] || 'unknown'}`,
+  threshold: 32,
+  onThresholdExceeded: ...
+});
+```
+
+**Impact:**
+- useBenchmark defaults to `enabled = true`
+- Rive animations run this in **production**, not just dev
+- Combined with the frame array growth (Issue #5), this makes the leak a **prod risk**
+
+---
+
+**🟠 High: Monitoring Split + Unused Core Monitor**
+
+**Locations:** `app/lib/services/core/performanceMonitor.ts`, `app/lib/services/socialPerformanceMonitor.ts`, `app/lib/services/leaderboardService.ts`
+
+**Problem:**
+- `performanceMonitor` (core) exists and is exported, but services still use `socialPerformanceMonitor`
+- Metrics remain fragmented and never consolidated
+- `core/performanceMonitor` appears unused in runtime code
+
+**Impact:** Duplicate systems, no unified reporting, inconsistent thresholds
+
+---
+
+**🟠 High: startMeasurement Invoked Without Category**
+
+**Location:** `app/lib/services/leaderboardService.ts:95-132`, `app/lib/services/socialPerformanceMonitor.ts:94-100`
+
+```typescript
+const endMeasurement = socialPerformanceMonitor.startMeasurement('add-daily-leaderboard');
+// ...
+endMeasurement(); // category not provided
+```
+
+**Impact:**
+- `startMeasurement` expects `(category, metadata)`
+- Calling it with no args records metrics with **missing category**
+- Category-based reporting and summaries become unreliable
+
+---
+
+**🟡 Medium: PerformanceDashboard Uses Fake Data + Runtime Bug**
+
+**Location:** `app/components/performance/PerformanceDashboard.tsx:68-77, 235-238`
+
+```typescript
+// Simulated metrics - not wired to real data
+const newMetrics = { fps: Math.random() * 30 + 30, ... };
+
+// Runtime error
+onClick={() => setShowDetails(!showDetails)} // setShowDetails is undefined
+```
+
+**Impact:**
+- Dashboard does not reflect real metrics
+- Clicking "Details" throws in dev
+
+---
+
+**🟡 Medium: Web Vitals Re-Registered + Deprecated FID**
+
+**Location:** `app/providers/PerformanceProvider.tsx:41-88`
+
+**Issues:**
+- Web-vitals listeners re-register on every navigation
+- No cleanup for previous observers
+- Uses **FID**, which is deprecated (INP should replace it)
+
+---
+
+**🟡 Medium: Misleading “Slowest Components” Summary**
+
+**Location:** `app/lib/performanceAnalyzer.ts:167-185`, `app/hooks/performance/usePerformanceMonitor.ts:94-103`
+
+**Problem:**
+- `getPerformanceSummary()` uses `MetricType.COMPONENT` to compute "slowest components"
+- `MetricType.COMPONENT` is used for **time-on-screen** and **excessive renders**, not render duration
+- Actual render events use `MetricType.COMPONENT_RENDER` and record **value: 0**
+
+**Impact:** Summary report is misleading; can’t identify slow renders
+
+---
+
+**🟡 Medium: Network Monitor Adds Non-Removed Load Listener**
+
+**Location:** `app/hooks/performance/useNetworkMonitor.ts:131-157`
+
+**Impact:** Re-mounts can stack `window.addEventListener('load')` handlers
+
+---
+
+**🟡 Medium: Performance Dashboard Mounted Twice in Dev**
+
+**Locations:** `app/providers/PerformanceProvider.tsx:113-122`, `app/layout.tsx:109-110`
+
+**Impact:** Duplicate UI + duplicate polling in development
+
+---
+
+**🟡 Medium: useMeasurePerformance autoLog Unused**
+
+**Location:** `app/hooks/performance/useMeasurePerformance.ts:32-58`
+
+**Impact:** `autoLog` flag doesn’t disable logging, making API misleading
+
+---
+
+### 4.11.2 Additional Findings (2026-01-23)
+
+**🟠 High: Monitoring is Dev-Only Due to showDashboard Gating**
+
+**Location:** `app/providers/PerformanceProvider.tsx:105-122`
+
+**Impact:**
+- `NavigationMetricsTracker` and `useNetworkMonitor` only run when `showDashboard` is true
+- Web Vitals and network/resource metrics are effectively disabled in production
+
+---
+
+**🟡 Medium: usePerformanceMonitor Runs in Production for memoWithPerf Components**
+
+**Location:** `app/lib/componentUtils.tsx:65-70`, `app/components/animation/rive-animation.tsx:265`
+
+**Impact:**
+- `usePerformanceMonitor` is enabled by default in `memoWithPerf`
+- RiveAnimation records metrics in production while other monitoring is dev-only, creating partial and inconsistent coverage
+
+---
+
 ### 4.12 Performance & Monitoring - Issues Summary
 
 | Issue | Severity | File | Lines | Status |
 |-------|----------|------|-------|--------|
-| Production metrics export disabled | 🔴 CRITICAL | performanceAnalyzer.ts | 72-74 | Commented out |
-| Memory leak: frame array unbounded | 🔴 CRITICAL | useBenchmark.ts | 74 | Active code |
-| React Query metrics not tracked | 🟠 HIGH | Multiple hooks | N/A | Incomplete |
+| Production metrics export disabled | 🔴 CRITICAL | performanceAnalyzer.ts | 71-74 | Commented out |
+| Memory growth: frame array unbounded | 🔴 CRITICAL | useBenchmark.ts | 74 | Active code |
+| useBenchmark runs in production for RiveAnimation | 🔴 CRITICAL | rive-animation.tsx | 55-68 | Active code |
+| Monitoring gated to dev-only `showDashboard` | 🟠 HIGH | PerformanceProvider.tsx | 105-122 | Active code |
+| React Query metrics not tracked | 🟠 HIGH | performanceAnalyzer.ts | 189-199 | Missing |
 | Web Vitals missing INP, TTFB | 🟠 HIGH | PerformanceProvider.tsx | 58-84 | Missing |
-| Fetch monkeypatching global | 🟡 MEDIUM | useNetworkMonitor.ts | 46 | Active |
-| Component metrics all zero value | 🟡 MEDIUM | usePerformanceMonitor.ts | 48,76,88 | Active |
-| Dynamic import every navigation | 🟡 MEDIUM | PerformanceProvider.tsx | 58 | Active |
+| startMeasurement called without category | 🟠 HIGH | leaderboardService.ts | 95-132 | Active code |
+| Fetch monkeypatching global (dev-only) | 🟡 MEDIUM | useNetworkMonitor.ts | 44-47 | Active |
+| Component render/mount/unmount metrics record `value: 0` | 🟡 MEDIUM | usePerformanceMonitor.ts | 45-47,73-76,87-90 | Active |
+| Web-vitals re-registered on navigation (dev-only) | 🟡 MEDIUM | PerformanceProvider.tsx | 41-89 | Active |
 | Redundant monitoring systems (3x) | 🟡 MEDIUM | Multiple | N/A | Architecture |
-| No error differentiation in metrics | 🟡 MEDIUM | leaderboardService.ts | 129-133 | Active |
-| No metrics sampling in production | 🟡 MEDIUM | All monitoring | N/A | Missing |
+| No error differentiation in leaderboardService startMeasurement | 🟡 MEDIUM | leaderboardService.ts | 129-133 | Active |
+| PerformanceDashboard uses fake data + runtime bug | 🟡 MEDIUM | PerformanceDashboard.tsx | 68-77,235-238 | Active |
+| Misleading “slowest components” summary | 🟡 MEDIUM | performanceAnalyzer.ts | 168-185 | Active |
+| Network monitor load listener not removed (dev-only) | 🟡 MEDIUM | useNetworkMonitor.ts | 131-157 | Active |
+| Performance dashboard mounted twice in dev | 🟡 MEDIUM | PerformanceProvider.tsx / layout.tsx | 116-122 / 109-110 | Active |
+| useMeasurePerformance autoLog unused | 🟡 MEDIUM | useMeasurePerformance.ts | 32-58 | Active |
 
-**Total Issues: 10 major + 2 architectural**
+**Total Issues: 17 major (includes architectural issues)**
 
 ---
 
@@ -2121,15 +2260,18 @@ The application has a comprehensive testing infrastructure with Jest unit tests,
 ### 4.1 Test Structure and Organization
 
 **Test Files Summary:**
-- **Total test files:** 31
-- **Component tests:** 13 (buttons, cards, inputs, layouts, navigation)
+- **Jest test files (`*.test.*`):** 31
+- **Playwright specs (`*.spec.*`):** 2
+- **Component tests:** 15 (buttons, cards, inputs, layouts, navigation, home)
 - **Hook tests:** 2 (useAuth, useQuizzes)
-- **API tests:** 2 (auth-api, auth-actions)
+- **API route tests:** 1 (auth-api)
+- **Action tests:** 1 (authActions)
 - **Integration tests:** 1 (auth-flow)
 - **Security tests:** 2 (api-protection, token-validation)
 - **Service tests:** 2 (userService, quizFetchService)
-- **Library/Utils tests:** 7
-- **E2E tests:** 2 (Playwright)
+- **Library tests:** 4 (apiUtils, authErrorHandler, componentUtils, firebase)
+- **Utils tests:** 1 (firebase-test-utils)
+- **Page/feature tests:** 2 (auth page, daily-quiz)
 
 **Test Directory Structure:**
 ```
@@ -2188,10 +2330,10 @@ const config: Config = {
    - Should be testing API endpoints but coverage not reported
    - Makes it hard to measure API test coverage
 
-2. **No Branch Coverage**
-   - Only counts line coverage
-   - Doesn't report branch coverage percentage
-   - Hard to find untested branches
+2. **No Coverage Thresholds**
+   - Coverage is only reported when running `jest --coverage`
+   - No line/branch/function thresholds enforced in config
+   - Gaps can grow without failing CI
 
 3. **30s Test Timeout**
    - Necessary for emulator tests
@@ -2275,8 +2417,8 @@ jest.mock('firebase/firestore', () => ({
 
 4. **Conditional Emulator Setup**
    - Only starts if `TEST_TYPE === 'integration'`
-   - But tests don't set this variable clearly
-   - Could lead to tests running without emulator
+   - `scripts/test-with-emulators.js` sets `TEST_TYPE`, but plain `npm test` does not
+   - Integration tests can run without emulators unless run via the emulator script
 
 ---
 
@@ -2640,7 +2782,6 @@ export default defineConfig({
 - Only 2 E2E test files
 - Tests require manual UI navigation
 - Brittle selectors (string matching)
-- No parallel testing setup
 
 **Example E2E Test:**
 
@@ -2716,6 +2857,100 @@ collectCoverageFrom: [
 
 ---
 
+### 4.10.1 Additional Findings (2026-01-23)
+
+**🔴 Critical: Emulator Tests Never Hit Real Firebase**
+
+**Locations:** `jest.setup.ts`, `app/__tests__/utils/firebase-test-utils.ts`
+
+**Evidence:**
+- Global mocks in `jest.setup.ts` stub all `firebase/*` modules
+- `createTestUser()` and `signInTestUser()` return mock users whenever `NODE_ENV === 'test'`
+
+**Impact:**
+- “Integration” and “security” tests are **mock-only**
+- Emulators may be running, but code never touches them
+- High risk of false positives in auth and security paths
+
+---
+
+**🟠 High: Emulator Availability Checks Broken by Global fetch Mock**
+
+**Locations:** `jest.setup.ts`, `app/lib/emulatorUtils.ts`, `app/__tests__/utils/test-setup.ts`
+
+**Problem:**
+- `jest.setup.ts` sets `global.fetch = jest.fn()`
+- Emulator checks use `fetch()` to probe ports
+
+**Impact:**
+- Emulator detection can fail even when emulators are running
+- Tests may incorrectly skip or try to start emulators
+- Flaky behavior depending on test order
+
+---
+
+**🟠 High: Security/API Tests Don’t Exercise Real Code Paths**
+
+**Locations:** `app/__tests__/api/auth-api.test.ts`, `app/__tests__/security/api-protection.test.ts`
+
+**Problems:**
+- `NextRequest`/`NextResponse` are fully mocked; tests read `response.data` which doesn’t exist on real `NextResponse`
+- Security tests define **mock middleware** inside the test instead of importing the real middleware
+
+**Impact:**
+- Tests validate mock behavior, not Next.js runtime behavior
+- Security regressions can ship undetected
+
+---
+
+**🟡 Medium: E2E Password Reset Flow May Be Flaky**
+
+**Location:** `app/__tests__/e2e/auth-flow.spec.ts`
+
+**Problem:**
+- Password reset uses a timestamped email that may never be registered
+- Firebase can return “user not found” for unregistered emails
+
+**Impact:** Test may pass locally but fail against real Firebase settings
+
+---
+
+**🟡 Medium: E2E Parallelization Is Already Enabled**
+
+**Location:** `playwright.config.ts`
+
+**Note:** `fullyParallel: true` is set. The earlier “no parallel setup” note is outdated.
+
+---
+
+**🟡 Low: Duplicate Jest-DOM Import**
+
+**Location:** `jest.setup.ts`
+
+**Impact:** Harmless, but redundant initialization.
+
+---
+
+### 4.10.2 Additional Findings (2026-01-23)
+
+**🟠 High: Emulator Skip Logic Based on CI, Not Emulator Availability**
+
+**Location:** `app/__tests__/api/auth-api.test.ts:75`, `app/__tests__/security/api-protection.test.ts:61`
+
+**Impact:**
+- Tests are skipped in CI regardless of emulator availability
+- Locally, tests still run even if emulators are down
+
+---
+
+**🟡 Medium: Emulator Setup Failures Don’t Skip Tests**
+
+**Location:** `app/__tests__/api/auth-api.test.ts:91-105`, `app/__tests__/security/api-protection.test.ts:65-75`
+
+**Impact:** Emulator startup failures are logged but tests continue, reducing reliability
+
+---
+
 ### 4.11 Testing Issues Summary
 
 🚨 **CRITICAL ISSUES**
@@ -2732,49 +2967,68 @@ collectCoverageFrom: [
    - No coverage reporting for critical code
 
 3. **Tests Skipped in CI**
-   - Many tests conditional on emulator running
-   - Integration tests don't run in CI
-   - False sense of test coverage in CI
+   - `itIfEmulatorsRunning` skips based on `process.env.CI`, not emulator availability
+   - Integration tests don't run in CI by default
+   - Emulator startup failures are logged but tests continue
+
+4. **Emulator Tests Never Touch Real Firebase**
+   - Global Firebase mocks in `jest.setup.ts`
+   - `createTestUser()` and `signInTestUser()` return mock users in test env
+   - Emulator runs but code never uses it
 
 🟠 **HIGH PRIORITY**
 
-4. **API Tests Mock Firebase Admin**
+5. **API Tests Mock Firebase Admin**
    - Even with emulator running
    - Tests don't test actual Firebase behavior
    - Mocking both the test and the mock
 
-5. **Test Data Not Isolated**
+6. **Emulator Detection Broken by fetch Mock**
+   - Emulator availability checks use `fetch()`
+   - Global `fetch` mock returns undefined
+   - Tests may skip or try to start emulators incorrectly
+
+7. **Security/API Tests Mock NextRequest/NextResponse**
+   - Tests read `response.data`, not `await response.json()`
+   - Security middleware mocked inside tests
+   - Real Next.js behavior not validated
+
+8. **Test Data Not Isolated**
    - testResources is module-scoped
    - Could interfere between tests
    - Manual cleanup required
 
-6. **No Proper Test Cleanup**
+9. **No Proper Test Cleanup**
    - beforeEach/afterEach inconsistent
    - Global state not reset
    - Tests could be order-dependent
 
 🟡 **MEDIUM PRIORITY**
 
-7. **E2E Tests Are Brittle**
+10. **E2E Tests Are Brittle**
    - String/CSS selectors
    - Break with UI changes
    - Only 2 E2E tests total
    - No mobile testing
 
-8. **No Branch Coverage Reporting**
-   - Only line coverage tracked
-   - Can't see untested branches
-   - Hard to find coverage gaps
+11. **No Coverage Thresholds Enforced**
+   - Coverage is only reported when running `jest --coverage`
+   - No branch/line/function thresholds configured
+   - Gaps can grow without failing CI
 
-9. **Limited Error Testing**
+12. **Limited Error Testing**
    - Most tests check happy path
    - Few error scenarios tested
    - No timeout/network error tests
 
-10. **Performance Tests Missing**
-    - Performance hooks not tested
-    - No assertions on performance
-    - Could degrade without notice
+13. **Performance Tests Missing**
+   - Performance hooks not tested
+   - No assertions on performance
+   - Could degrade without notice
+
+14. **E2E Password Reset May Be Flaky**
+   - Uses unregistered email by default
+   - Firebase may return “user not found”
 
 ---
 
@@ -2807,7 +3061,7 @@ collectCoverageFrom: [
 ## 6. Security
 
 ### Overview
-The application implements several security layers including middleware authentication, session fingerprinting, and input validation. However, there are critical issues with test endpoints and credentials exposed in production code.
+The codebase includes multiple security layers (CSRF utilities, security middleware, session fingerprinting, and input validation), but several are not wired into the active middleware path. Critical issues remain around exposed test endpoints and hard-coded credentials in production code.
 
 ### 4.1 Authentication Implementation
 
@@ -2898,10 +3152,9 @@ export const authConfig: NextAuthConfig = {
 **Issues:**
 
 1. **Logging Sensitive Information**
-   - User email logged during sign-in
+   - User email logged during sign-in and session callbacks
    - Stack traces logged on auth errors
-   - Debug mode enabled in development (could leak to staging)
-   - Password attempted/failed logged
+   - Debug mode enabled when NODE_ENV=development (ensure staging is not set to development)
 
 2. **Email Enumeration**
    - Different error messages for "user not found" vs "wrong password"
@@ -2989,22 +3242,23 @@ if (isAuthenticated && session?.user) {
   }
 
   // Force re-auth if high risk
-  if (fingerprintComparison.riskLevel === 'high' && fingerprintComparison.score < 30) {
-    // Redirect to login with security check
-    const url = new URL('/auth', request.url);
-    url.searchParams.set('redirect', pathname);
-    url.searchParams.set('security_check', 'true');
-    return NextResponse.redirect(url);
-  }
+if (fingerprintComparison.riskLevel === 'high' && fingerprintComparison.score < 30) {
+  // Redirect to login with security check
+  const url = new URL('/auth', request.url);
+  url.searchParams.set('redirect', pathname);
+  url.searchParams.set('security_check', 'true');
+  return NextResponse.redirect(url);
+}
 }
 ```
+
+**Status:** This middleware is defined in `app/lib/auth/middleware.ts` and a second version exists in `app/lib/middleware/securityMiddleware.ts`, but neither is wired into Next.js middleware. The active `middleware.ts` only wraps NextAuth, so these headers/validations/fingerprinting checks are not applied in production. (See Additional Findings.)
 
 **Good Aspects:**
 - Security headers set comprehensively
 - Prototype pollution check
 - Request size validation
 - Session fingerprinting for suspicious activity
-- Prototype pollution check
 
 **Issues:**
 
@@ -3013,10 +3267,10 @@ if (isAuthenticated && session?.user) {
    - Allows any inline script execution
    - Vulnerable to XSS if user input ends up in HTML
 
-2. **Forwarded Headers Check is Wrong**
+2. **Forwarded Headers Check is Risky if Enabled**
    - Rejects `x-forwarded-*` headers as suspicious
-   - But these are necessary in production behind load balancer/proxy
-   - Breaks behind reverse proxy/CloudFlare/CDN
+   - These are required behind load balancers/proxies/CDNs
+   - Would break deployments if this middleware is wired
 
 3. **Session Fingerprinting Not Applied Universally**
    - Only for authenticated routes
@@ -3030,13 +3284,13 @@ if (isAuthenticated && session?.user) {
 
 ### 4.3 Test Endpoints Exposed in Production
 
-**CRITICAL: Multiple test endpoints with no environment check:**
+**CRITICAL: Multiple test endpoints with weak/no environment checks:**
 
 ```
 /api/auth/test-login         - Creates/tests users
 /api/auth/test-signin        - Tests sign in flow
 /api/auth/test-signup        - Tests registration
-/api/auth/create-test-account - Creates permanent test accounts
+/api/auth/create-test-account - Creates permanent test accounts (blocked only when NODE_ENV === 'production')
 /api/auth/diagnostics        - Exposes server info and Firebase admin status
 ```
 
@@ -3045,6 +3299,8 @@ if (isAuthenticated && session?.user) {
 /test/firebase-debug
 /test/firebase-diagnostics
 /test/firebase-network-test
+/test/firebase
+/test/auth
 ```
 
 **Test Login Endpoint Example:**
@@ -3090,10 +3346,10 @@ export async function POST(request: Request) {
 
 **Issues:**
 
-1. **No Environment Check**
-   - Not restricted to development
-   - No NODE_ENV check to prevent production access
-   - Could be called in production if deployed
+1. **Missing/Insufficient Environment Guards**
+   - `test-login`, `test-signin`, `test-signup`, and `diagnostics` have no NODE_ENV checks
+   - `create-test-account` blocks only when NODE_ENV === 'production' (still open in staging/dev)
+   - These endpoints can be reachable in non-prod or misconfigured prod deployments
 
 2. **No Rate Limiting**
    - Could abuse to create/delete many accounts
@@ -3263,7 +3519,7 @@ const displayNameValidation = sanitizeAndValidate(UserInputSchemas.displayName, 
 
 3. **No Validation on Some Endpoints**
    - `/api/user/profile` doesn't validate Bearer token format
-   - `/api/daily-quiz/status` takes userId without validation
+   - `/api/daily-quiz/status` only checks `quizId`; `score` is accepted without type/range validation
 
 ---
 
@@ -3317,6 +3573,8 @@ if (process.env.FIREBASE_ADMIN_CREDENTIALS) {
 /test/firebase-debug          - Debug page
 /test/firebase-diagnostics    - Diagnostics page
 /test/firebase-network-test   - Network testing
+/test/firebase                - Firebase test landing
+/test/auth                    - Auth test page
 ```
 
 **Issues:**
@@ -3347,6 +3605,8 @@ if (process.env.FIREBASE_ADMIN_CREDENTIALS) {
  frame-ancestors 'none';"
 ```
 
+**Status:** These directives are currently injected via `<meta httpEquiv>` in `app/components/security/CSRFMetaTag.tsx` and included in the root layout. There is no active middleware or `next.config` header configuration applying CSP (or other security headers) to all responses, especially API routes. (See Additional Findings.)
+
 **Issues:**
 
 1. **`unsafe-inline` and `unsafe-eval`**
@@ -3376,75 +3636,17 @@ if (process.env.FIREBASE_ADMIN_CREDENTIALS) {
 
 ### 4.11 Security Issues Summary
 
-🚨 **CRITICAL ISSUES**
-
-1. **Test Endpoints Exposed in Production**
-   - /api/auth/test-login, test-signin, test-signup
-   - /api/auth/create-test-account
-   - /api/auth/diagnostics
-   - No NODE_ENV check
-   - No authentication required
-   - Could be abused for account enumeration/creation
-
-2. **Hard-Coded Test Bearer Token**
-   - 'Bearer expired-token' in /api/user/profile
-   - Allows testing auth bypass
-   - Shows test-specific behavior in production
-
-3. **Test/Debug Pages Accessible**
-   - /test/firebase-debug, /test/firebase-diagnostics
-   - No environment protection
-   - Could expose configuration
-
-4. **Logging Sensitive Information**
-   - User emails logged in NextAuth
-   - Stack traces logged on errors
-   - Debug mode enabled in development
-
-🟠 **HIGH PRIORITY**
-
-5. **Email Enumeration Possible**
-   - Different errors for "user not found" vs "wrong password"
-   - Allows attacker to enumerate valid accounts
-   - Should return generic "Invalid credentials" error
-
-6. **CSP Too Permissive**
-   - `script-src 'unsafe-inline' 'unsafe-eval'` defeats CSP
-   - Vulnerable to XSS attacks
-   - Should remove unsafe directives
-
-7. **Forwarded Headers Check Breaks Proxies**
-   - Rejects x-forwarded-* headers as suspicious
-   - Necessary behind reverse proxy/CDN
-   - Breaks production deployments
-
-8. **No Rate Limiting on Test Endpoints**
-   - Account enumeration possible
-   - Account creation abuse possible
-   - Could hammer authentication
-
-9. **Public API Endpoints Unprotected**
-   - /api/daily-quiz and /api/quizzes are public
-   - No authentication required
-   - No rate limiting
-   - Data scraping risk
-
-🟡 **MEDIUM PRIORITY**
-
-10. **No Explicit CSRF Protection**
-    - Relies on SameSite cookie attribute
-    - POST endpoints don't validate CSRF tokens
-    - Vulnerable if SameSite bypassed
-
-11. **Session Fingerprinting Not Universal**
-    - Only for authenticated users
-    - Doesn't catch hijacking on first request
-    - Could be bypassed
-
-12. **Firebase Credentials as Env Var**
-    - Service account JSON in environment variable
-    - Could be logged or exposed
-    - Should use file-based credentials
+| Issue | Severity | Impact | Evidence |
+|-------|----------|--------|----------|
+| Test/diagnostic auth endpoints exposed (test-login/test-signin/test-signup/diagnostics). `create-test-account` blocks only in production. | 🚨 Critical | Public callers can create/delete users, probe auth behavior, and pull server diagnostics. | `app/api/auth/test-login/route.ts:9`, `app/api/auth/test-signin/route.ts:9`, `app/api/auth/test-signup/route.ts:9`, `app/api/auth/diagnostics/route.ts:8`, `app/api/auth/create-test-account/route.ts:11` |
+| Hard-coded bearer token handling + mock profile responses in `/api/user/profile` (GET/PUT). | 🚨 Critical | Auth bypass; endpoint returns fixed test data unrelated to the caller. | `app/api/user/profile/route.ts:7`, `app/api/user/profile/route.ts:54` |
+| Debug/test UI routes under `/test/*` are unguarded. | 🟠 High | Exposes debug tooling, test credentials, and Firebase connectivity checks. | `app/test/firebase-debug/page.tsx:10`, `app/test/firebase-diagnostics/page.tsx:24`, `app/test/firebase-network-test/page.tsx:24`, `app/test/auth/page.tsx:13` |
+| NextAuth logs user emails and stack traces. | 🟠 High | Sensitive data can leak into logs and monitoring systems. | `app/api/auth/[...nextauth]/route.ts:58`, `app/api/auth/[...nextauth]/route.ts:83`, `app/api/auth/[...nextauth]/route.ts:115` |
+| NextAuth returns distinct auth errors (email enumeration risk). | 🟠 High | Attackers can determine which emails exist. | `app/api/auth/[...nextauth]/route.ts:90` |
+| Security middleware not wired (headers/CSRF/rate-limit/fingerprint not enforced). | 🟠 High | Intended protections are defined but inactive; API routes fall back to minimal middleware. | `middleware.ts:5`, `app/lib/auth/middleware.ts:119`, `app/lib/middleware/securityMiddleware.ts:1` |
+| CSP allows `unsafe-inline`/`unsafe-eval` and is injected via meta tags only. | 🟠 High | Weakens XSS defenses and does not cover API responses. | `app/components/security/CSRFMetaTag.tsx:38`, `app/layout.tsx:80` |
+| Public quiz endpoints are unauthenticated. | 🟡 Medium | Data scraping and abuse risk (no auth gate). | `app/api/daily-quiz/route.ts:8`, `app/api/quizzes/route.ts:12` |
+| Firebase Admin credentials loaded from env var with ADC fallback. | 🟡 Medium | Credentials can be exposed via env/logs; ADC fallback may mask misconfigurations. | `app/lib/firebaseAdmin.ts:67` |
 
 ---
 
@@ -3472,6 +3674,31 @@ if (process.env.FIREBASE_ADMIN_CREDENTIALS) {
 2. Consider authentication requirement for quizzes
 3. Implement scraping detection
 4. Add request throttling for data endpoints
+
+---
+
+### 6.13 Additional Findings (2026-01-23)
+
+1. **Inactive security middleware wiring**
+   - The active `middleware.ts` only wraps NextAuth and does not apply the richer security middleware in `app/lib/auth/middleware.ts` or `app/lib/middleware/securityMiddleware.ts`.
+   - Impact: security headers, CSRF checks, rate limiting, and session fingerprinting defined there are not enforced.  
+   - Evidence: `middleware.ts:5`, `app/lib/auth/middleware.ts:119`, `app/lib/middleware/securityMiddleware.ts:1`
+
+2. **CSP applied via meta tags only**
+   - CSP is injected via `<meta httpEquiv>` in the root layout, not via response headers, and still permits `unsafe-inline`/`unsafe-eval`.
+   - Evidence: `app/components/security/CSRFMetaTag.tsx:38`, `app/layout.tsx:80`
+
+3. **Correction: create-test-account has a production guard**
+   - `/api/auth/create-test-account` blocks only when `NODE_ENV === 'production'`; other test endpoints remain unguarded.
+   - Evidence: `app/api/auth/create-test-account/route.ts:11`, `app/api/auth/test-login/route.ts:9`
+
+4. **Correction: daily-quiz/status uses session auth**
+   - `/api/daily-quiz/status` uses `auth()` and does not accept `userId` from the request; the remaining validation gap is unbounded `score`.
+   - Evidence: `app/api/daily-quiz/status/route.ts:18`, `app/api/daily-quiz/status/route.ts:149`
+
+5. **Additional unguarded test pages**
+   - `/test/auth` and `/test/firebase` are present alongside other `/test/*` routes with no environment checks.
+   - Evidence: `app/test/auth/page.tsx:13`, `app/test/firebase/page.tsx:8`
 
 ---
 
@@ -3570,6 +3797,7 @@ module.exports = withBundleAnalyzer(nextConfig);
    - Both files exist
    - TypeScript version is simpler, JavaScript version has more options
    - Unclear which one Next.js loads (usually JS takes precedence)
+   - **Config drift already present:** `next.config.js` adds `typescript.ignoreBuildErrors`, `compiler.removeConsole`, `optimizePackageImports`, and `memoryBasedWorkersCount` that do not exist in `next.config.ts`
    - Could cause configuration mismatch
    - Should consolidate to one file
 
@@ -3635,18 +3863,18 @@ module.exports = withBundleAnalyzer(nextConfig);
    - Developers might use wrong variant
    - No guidance on which to use when
 
-2. **Type Check Bypass**
+2. **`build:no-types` Is Misleading**
    ```bash
    "build:no-types": "SKIP_TYPE_CHECK=true next build"
    ```
-   - Allows skipping type checking entirely
-   - Could mask type errors
-   - Combined with `ignoreBuildErrors: true`, types never checked
+   - `SKIP_TYPE_CHECK` is only set in the script; there is no config that reads it
+   - With `ignoreBuildErrors: true`, `build` and `build:no-types` behave the same
+   - Encourages a false sense of control over type checking
 
-3. **Environment Variable Controls**
-   - Type checking can be disabled via env var
-   - Not obvious this is possible
-   - Could be accidental in CI
+3. **Type Check Script Not Wired into Build/CI**
+   - `type-check` exists but is not part of any build script
+   - CI workflows do not invoke it
+   - Type checking becomes an optional manual step
 
 4. **No Pre-build Validation**
    - No linting check before build
@@ -3747,9 +3975,10 @@ module.exports = withBundleAnalyzer(nextConfig);
    - Developers don't know what's enforced
    - No linting in CI to prevent merges
 
-3. **No Integration with Build**
-   - `npm run lint` exists but not in build pipeline
-   - Could merge code that fails linting
+3. **No Integration with Build/CI**
+   - `npm run lint` exists but is not wired into CI workflows
+   - `next.config.js` comments imply lint is disabled, but no `eslint.ignoreDuringBuilds` is configured
+   - Linting is effectively optional and behavior is unclear during builds
 
 ---
 
@@ -3812,13 +4041,15 @@ jobs:
 
 2. **No Build Step Visible**
    - `npm ci` installs dependencies
-   - But where is `npm run build`?
-   - Firebase action might run build, but not obvious
+   - There is no `npm run build` or `next build` in workflows
+   - Root `firebase.json` has no `predeploy` hooks, so deploy won't build automatically
+   - Combined with `hosting.public: "build"` this risks deploying empty or stale output
 
 3. **No Node Version Specified**
    - Uses default Node version
    - Could change between CI runs
    - Should pin to specific version (e.g., node-version: '18')
+   - Functions declare Node 22, so a mismatch would surface if functions are ever built/deployed in CI
 
 4. **Limited Error Handling**
    - No notifications on failure
@@ -3902,13 +4133,36 @@ generate-reference:
 }
 ```
 
+**Secondary config (`firebase/firebase.json`):**
+
+```json
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default"
+    }
+  ],
+  "hosting": {
+    "public": "public",
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
+```
+
 **Issues:**
 
-1. **Hosting Public Directory: "build"**
-   - Next.js outputs to `.next/`
-   - But Firebasehosting points to `build/`
-   - Build directory might not exist
-   - Could fail to deploy static files
+1. **Hosting Output/Config Drift**
+   - Root `firebase.json` serves `public: "build"` but Next.js outputs to `.next/` and no `distDir`/`output` maps to `build`
+   - `build/` is not generated by any CI workflow
+   - A second config at `firebase/firebase.json` uses `public: "public"` and includes functions/dataconnect that root config omits
+   - `firebase:deploy` and CI use the root config, so nested config (functions predeploy, dataconnect) is ignored
+   - `firebase/apphosting.yaml` exists but no workflow uses App Hosting, creating ambiguity about the intended deploy target
 
 2. **SPA Rewrite to /index.html**
    ```json
@@ -3992,7 +4246,7 @@ service cloud.firestore {
 1. **Type Errors Ignored in Production Build**
    - `ignoreBuildErrors: true` in next.config.js
    - TypeScript errors don't prevent deployment
-   - Combined with `SKIP_TYPE_CHECK`, types never checked
+   - `build:no-types` does not change behavior; type checking is already skipped
    - Could ship broken code
 
 2. **No Pre-Deploy Tests**
@@ -4010,7 +4264,8 @@ service cloud.firestore {
 4. **Missing Build Step in CI**
    - Merge workflow just does `npm ci`
    - No visible `npm run build` call
-   - Unclear if build is validated
+   - Root `firebase.json` has no `predeploy` hooks to trigger a build
+   - `hosting.public: "build"` is never generated in CI
 
 🟠 **HIGH PRIORITY**
 
@@ -4024,10 +4279,10 @@ service cloud.firestore {
    - Vulnerable to SSRF/CSRF attacks
    - Should whitelist specific domains
 
-7. **Firestore Hosting Config Mismatch**
-   - Points to `public: "build"`
-   - Next.js outputs to `.next/`
-   - Static export might not work correctly
+7. **Firebase Hosting Config Drift**
+   - Root `firebase.json` points to `public: "build"` while `firebase/firebase.json` points to `public: "public"`
+   - Root config omits functions/dataconnect settings that exist in the nested config
+   - `firebase/apphosting.yaml` exists but no workflow uses App Hosting
 
 8. **No Pre-Deployment Validation**
    - No checks that build succeeds
@@ -4062,10 +4317,10 @@ service cloud.firestore {
 
 **Phase 1: Fix Critical Issues**
 1. Remove `ignoreBuildErrors: true` from next.config
-2. Add type check (`tsc`) to build step and CI
+2. Add type check (`tsc`) to build step and CI (or remove the misleading `build:no-types` script)
 3. Consolidate build configs (choose ts or js)
 4. Add tests to CI pipeline before deployment
-5. Fix Firebase hosting config
+5. Fix Firebase hosting config (align output directory, consolidate `firebase.json`, decide on Hosting vs App Hosting)
 
 **Phase 2: Strengthen CI/CD**
 1. Pin Node version
@@ -4147,18 +4402,19 @@ This comprehensive codebase analysis covers all major systems and areas:
 
 | Area | Status | Issues Found |
 |------|--------|--------------|
-| 1. API Routes & HTTP Handling | ✅ Complete | 10 major issues |
-| 2. Component State Management | ✅ Complete | 12 major issues |
-| 3. Performance & Monitoring | ✅ Complete | 9 major issues |
-| 4. Testing & Quality | ✅ Complete | 10 major issues |
-| 5. Security | ✅ Complete | 12 major issues |
-| 6. Build & Deployment | ✅ Complete | 12 major issues |
+| 1. API Routes & HTTP Handling | ✅ Complete | 9 major issues |
+| 2. Component State Management | ✅ Complete | 11 major issues |
+| 3. Database Schema & Queries | ✅ Complete | 10 major issues |
+| 4. Performance & Monitoring | ✅ Complete | 17 major issues |
+| 5. Testing & Quality | ✅ Complete | 14 major issues |
+| 6. Security | ✅ Complete | 9 major issues |
+| 7. Build & Deployment | ✅ Complete | 12 major issues |
 
-**Total Issues Identified:** 65 across all areas
+**Total Issues Identified:** 82 across all areas
 
 ### Issue Distribution by Severity
 
-🚨 **Critical Issues:** 17
+🚨 **Critical Issues:** 25
 - Hard-coded test values in production
 - Test endpoints exposed in production
 - Type errors ignored in build
@@ -4167,7 +4423,7 @@ This comprehensive codebase analysis covers all major systems and areas:
 - Mock data silently enabled
 - API responses inconsistent
 
-🟠 **High Priority Issues:** 24
+🟠 **High Priority Issues:** 25
 - Over-mocking in tests
 - Email enumeration vulnerability
 - CSP too permissive
@@ -4176,7 +4432,7 @@ This comprehensive codebase analysis covers all major systems and areas:
 - No rate limiting on public endpoints
 - Session hijacking risk
 
-🟡 **Medium Priority Issues:** 24
+🟡 **Medium Priority Issues:** 25
 - Excessive hydration checks
 - Performance monitoring overhead
 - Test data not isolated
@@ -4184,6 +4440,10 @@ This comprehensive codebase analysis covers all major systems and areas:
 - Bundle size unmonitored
 - Documentation auto-commits
 - No rollback capability
+
+⚪ **Unclassified (not severity-tiered in sections 1–2):** 7
+- API documentation/tracing/type safety gaps
+- State management decision-tree ambiguity
 
 ### Architecture Assessment
 
@@ -4287,7 +4547,7 @@ The application has a well-intentioned architecture but suffers from:
 | Bundle size | Unknown | <500KB | Week 5 |
 | Build time | Unknown | <3 min | Week 3 |
 | Lighthouse score | Unknown | 90+ | Week 6 |
-| Security issues | 12 critical | 0 critical | Week 2 |
+| Security issues | 9 total (2 critical) | 0 critical | Week 2 |
 
 ### Next Steps
 
@@ -4320,8 +4580,43 @@ When addressing issues from this analysis:
 
 ---
 
-**Analysis completed:** 2026-01-19
+**Analysis completed:** 2026-01-23
 **Total lines analyzed:** 15,000+
 **Files reviewed:** 100+
-**Test files examined:** 31
+**Test files examined:** 33 (31 Jest, 2 Playwright)
 **Configuration files reviewed:** 15
+
+---
+
+## 9. Issue Index & Remediation Tracker
+
+### Issue Index (Cross-Section)
+
+| Section | Issue ID / Title | Severity | Status | Notes |
+|---------|------------------|----------|--------|-------|
+| 1.2 | API Auth fragmentation (NextAuth + Firebase) | 🟠 **HIGH** | Open | Consolidate to one auth system |
+| 1.2 | Hard-coded Bearer token in `/api/user/profile` | 🚨 **CRITICAL** | Open | Production test code present |
+| 1.6 | Missing rate limiting on public/user endpoints | 🟠 **HIGH** | Open | DoS/scraping exposure |
+| 2.x | Provider nesting / hydration inconsistencies | 🟡 **MEDIUM** | Open | Affects reliability on first load |
+| 5.x | Over-mocked tests, low E2E coverage | 🟡 **MEDIUM** | Open | Limits regression protection |
+| 7.x | `ignoreBuildErrors: true` in build config | 🚨 **CRITICAL** | Open | Type errors can ship |
+| 6.x | Test endpoints exposed (`/api/auth/test-*`) | 🟠 **HIGH** | Open | Should be removed or gated |
+
+### Remediation Tracker (Execution View)
+
+| Issue ID / Title | Owner | Status | Target Date | Notes |
+|------------------|-------|--------|-------------|-------|
+| Hard-coded Bearer token in `/api/user/profile` | TBD | Not Started | TBD | Remove test token check |
+| `ignoreBuildErrors: true` in build config | TBD | Not Started | TBD | Enforce type check in CI |
+| Test endpoints exposed (`/api/auth/test-*`) | TBD | Not Started | TBD | Remove or gate to dev |
+| Auth system consolidation (NextAuth vs Firebase) | TBD | Not Started | TBD | Decision required |
+| Missing rate limiting on public endpoints | TBD | Not Started | TBD | Add shared rate limit middleware |
+| State provider / hydration inconsistencies | TBD | Not Started | TBD | Align app layout + providers |
+| Testing gaps (E2E + integration) | TBD | Not Started | TBD | Add CI gating |
+
+### Open Questions / Follow-ups
+
+- Who owns cross-cutting remediation items (auth, CI, rate limiting)?
+- Which auth system is the long-term standard (NextAuth or Firebase)?
+- What is the target cadence for updating this tracker (per sprint vs per release)?
+- Are there existing issue IDs in a ticketing system to map into this table?
