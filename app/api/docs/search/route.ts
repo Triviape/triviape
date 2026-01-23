@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withApiErrorHandling } from '@/app/lib/apiUtils';
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
@@ -13,15 +14,17 @@ interface SearchResult {
 }
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get('query') || '';
+  return withApiErrorHandling(request, async () => {
+    const searchParams = request.nextUrl.searchParams;
+    const query = searchParams.get('query') || '';
 
-  if (!query) {
-    return NextResponse.json({ results: [] });
-  }
+    if (!query) {
+      return { results: [] };
+    }
 
-  const docs = await searchDocumentation(query);
-  return NextResponse.json({ results: docs });
+    const docs = await searchDocumentation(query);
+    return { results: docs };
+  });
 }
 
 async function searchDocumentation(query: string): Promise<SearchResult[]> {

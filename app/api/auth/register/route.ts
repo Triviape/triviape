@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
 import { withApiErrorHandling, ApiErrorCode } from '@/app/lib/apiUtils';
 import { withRateLimit, RateLimitConfigs } from '@/app/lib/rateLimiter';
@@ -7,9 +6,6 @@ import {
   sanitizeAndValidate 
 } from '@/app/lib/validation/securitySchemas';
 import { 
-  ServiceError, 
-  ServiceErrorType, 
-  handleValidationError,
   handleConflictError 
 } from '@/app/lib/services/errorHandler';
 
@@ -74,23 +70,16 @@ export async function POST(request: Request) {
         // Create custom token for immediate login
         const customToken = await FirebaseAdminService.createCustomToken(userRecord.uid);
         
-        // Return success response
-        return NextResponse.json({
-          success: true,
-          data: {
-            token: customToken,
-            user: {
-              uid: userRecord.uid,
-              email: userRecord.email,
-              displayName: userRecord.displayName,
-            },
-            message: 'Registration successful. Please check your email for verification.'
+        // Return success data (withApiErrorHandling wraps it automatically)
+        return {
+          token: customToken,
+          user: {
+            uid: userRecord.uid,
+            email: userRecord.email,
+            displayName: userRecord.displayName,
           },
-          meta: {
-            timestamp: new Date().toISOString(),
-            requestId: generateRequestId()
-          }
-        });
+          message: 'Registration successful. Please check your email for verification.'
+        };
       } catch (error: any) {
         // Handle specific Firebase errors
         if (error.code === 'auth/email-already-exists') {
@@ -124,11 +113,4 @@ export async function POST(request: Request) {
   }, RateLimitConfigs.auth);
 
   return rateLimitedHandler(request);
-}
-
-/**
- * Generate a unique request ID for tracking
- */
-function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 } 

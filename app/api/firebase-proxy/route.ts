@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withApiErrorHandling, ApiErrorCode } from '@/app/lib/apiUtils';
+import { NextRequest } from 'next/server';
+import { withApiErrorHandling } from '@/app/lib/apiUtils';
 import { z } from 'zod';
 
 // Define proxy request schema for validation
@@ -73,6 +73,8 @@ export async function POST(request: NextRequest) {
   });
 }
 
-export async function GET() {
-  return NextResponse.json({ status: 'Firebase proxy is running' });
+export async function GET(request: NextRequest) {
+  return withApiErrorHandling(request, async () => {
+    return { status: 'Firebase proxy is running' };
+  });
 } 

@@ -1,20 +1,17 @@
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { withApiErrorHandling } from '@/app/lib/apiUtils';
 
 /**
  * API route to handle user logout
  * This endpoint clears the session cookie
  */
 export async function POST(request: Request) {
-  try {
-    // Create a response with success message
-    const response = NextResponse.json({
-      success: true,
-      message: 'Logged out successfully'
-    }, { status: 200 });
-    
+  return withApiErrorHandling(request, async () => {
     // Determine if we're in a secure context
     const isSecure = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_URL?.includes('https');
+    
+    // Create response (withApiErrorHandling wraps it automatically)
+    const response = NextResponse.json({});
     
     // Clear the session cookie with the same settings as when it was created
     response.cookies.set('session', '', {
@@ -26,14 +23,19 @@ export async function POST(request: Request) {
       ...(isSecure && { partitioned: true })
     });
     
-    return response;
-  } catch (error: any) {
-    console.error('Logout error:', error);
-    
-    return NextResponse.json({
-      success: false,
-      error: 'An error occurred during logout',
-      timestamp: new Date().toISOString()
-    }, { status: 500 });
-  }
+    return { message: 'Logged out successfully' };
+  }, {
+    responseHandler: (response) => {
+      // Clear the session cookie on the response
+      const isSecure = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_URL?.includes('https');
+      response.cookies.set('session', '', {
+        path: '/',
+        maxAge: 0,
+        httpOnly: true,
+        sameSite: isSecure ? 'none' : 'lax',
+        secure: isSecure,
+        ...(isSecure && { partitioned: true })
+      });
+    }
+  });
 } 
