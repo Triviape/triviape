@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/app/hooks/useAuth';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { signInWithEmail, logoutUser } from '@/app/lib/services/user/authService';
+import { ConsolidatedAuthService } from '@/app/lib/services/auth/consolidatedAuthService';
 import { getAuthErrorMessage } from '@/app/lib/authErrorHandler';
 import { FirebaseError } from 'firebase/app';
 import { Alert, AlertTitle, AlertDescription } from '@/app/components/ui/alert';
@@ -63,8 +63,7 @@ export default function AuthTestPage() {
 
   const handleLogout = async () => {
     try {
-      // Direct call to the auth service instead of using the hook
-      await logoutUser();
+      await ConsolidatedAuthService.signOut();
       console.log('Logout successful');
     } catch (error) {
       console.error('Logout error:', error);
@@ -84,8 +83,7 @@ export default function AuthTestPage() {
     setPassword('password123');
     
     try {
-      // Direct call to the auth service instead of using the hook
-      await signInWithEmail(sampleEmail, 'password123');
+      await ConsolidatedAuthService.signInWithEmail(sampleEmail, 'password123');
       console.log('Sample user login successful');
       setLoginError(null);
       setLoginErrorCode(null);

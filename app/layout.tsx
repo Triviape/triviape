@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ReactQueryProvider } from "./providers/query-provider";
-import { ResponsiveUIProvider } from "./contexts/responsive-ui-context";
-import PerformanceProvider from "./providers/PerformanceProvider";
-import FirebaseProvider from "./providers/firebase-provider";
+import { AppProviders } from "./providers/app-providers";
 import { Toaster } from "./components/ui/toaster";
-import { SessionProvider } from "next-auth/react";
 import { ErrorBoundary } from "./lib/componentUtils";
-import { PerformanceDashboard } from "./components/performance/PerformanceDashboard";
 import { SecurityMetaTags } from "./components/security/CSRFMetaTag";
 
 const geistSans = Geist({
@@ -99,21 +94,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
       >
         <ErrorBoundary>
-          <SessionProvider>
-            <ReactQueryProvider>
-              <ResponsiveUIProvider>
-                <FirebaseProvider>
-                  <PerformanceProvider>
-                    {children}
-                    <Toaster />
-                    {process.env.NODE_ENV === 'development' && (
-                      <PerformanceDashboard />
-                    )}
-                  </PerformanceProvider>
-                </FirebaseProvider>
-              </ResponsiveUIProvider>
-            </ReactQueryProvider>
-          </SessionProvider>
+          <AppProviders>
+            {children}
+            <Toaster />
+          </AppProviders>
         </ErrorBoundary>
         
         {/* Service Worker Registration */}

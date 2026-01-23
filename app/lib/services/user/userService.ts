@@ -21,7 +21,7 @@ import {
 } from '../../validation/securitySchemas';
 
 // Import the focused services
-import { AuthService } from '../auth/authService';
+import { ConsolidatedAuthService as AuthService } from '../auth/consolidatedAuthService';
 import { ProfileService } from './profileService';
 import { PreferencesService } from './preferencesService';
 import { ProgressionService } from './progressionService';
