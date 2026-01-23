@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, QueryKey, UseQueryOptions } from '@tanstack/r
 import { getLeaderboardEntries } from '@/app/lib/services/leaderboardService';
 import { DailyQuizLeaderboardEntry } from '@/app/types/leaderboard';
 import { getTodayDateString } from '@/app/lib/services/dailyQuizService';
+import { QUERY_CONFIGS } from '@/app/lib/query-config';
 
 /**
  * Generates a consistent query key for leaderboard caching
@@ -26,9 +27,7 @@ export function useLeaderboard<TData = DailyQuizLeaderboardEntry[]>(
   return useQuery({
     queryKey,
     queryFn: () => getLeaderboardEntries(quizId, dateString),
-    staleTime: 60 * 1000, // Keep fresh for 1 minute
-    gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
-    retry: 2, // Retry up to 2 times
+    ...QUERY_CONFIGS.REALTIME, // Use centralized realtime config for leaderboards
     ...options,
   });
 }

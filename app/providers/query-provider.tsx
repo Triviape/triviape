@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode, useState } from 'react';
+import { QUERY_CONFIGS, smartRetry } from '@/app/lib/query-config';
 
 /**
  * Provides React Query functionality to the application
@@ -11,19 +12,17 @@ export function ReactQueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        // Default staleTime to 5 minutes for most queries
-        staleTime: 5 * 60 * 1000,
-        // Retry failed queries 3 times
-        retry: 3,
-        // Use more conservative caching in production
+        // Use STANDARD config as default
+        ...QUERY_CONFIGS.STANDARD,
+        // Override with smart retry logic
+        retry: smartRetry,
+        // Environment-specific overrides
         ...(process.env.NODE_ENV === 'production' && {
-          refetchOnWindowFocus: true,
           refetchOnReconnect: true,
         }),
-        // Better error handling in development
-        ...(process.env.NODE_ENV === 'development' && {
-          refetchOnWindowFocus: false,
-        }),
+      },
+      mutations: {
+        retry: 1,
       },
     },
   }));

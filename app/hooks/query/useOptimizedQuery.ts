@@ -7,6 +7,7 @@
 import { useQuery, UseQueryOptions, QueryKey, QueryFunction } from '@tanstack/react-query';
 import { safeAsync, AppError } from '@/app/lib/errorHandling';
 import { shouldUseMockData } from '@/app/lib/environment';
+import { QUERY_CONFIGS, smartRetry } from '@/app/lib/query-config';
 
 /**
  * Extended query options for performance monitoring
@@ -61,21 +62,10 @@ export function useOptimizedQuery<TData, TError = AppError>({
     }
   };
   
-  // Set optimized defaults
-  const defaultOptions: Partial<UseQueryOptions<TData, TError, TData, QueryKey>> = {
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30, // 30 minutes
-    refetchOnWindowFocus: false,
-    refetchOnMount: true,
-    retry: (failureCount, error) => {
-      // Don't retry on 4xx errors
-      if ((error as any)?.status >= 400 && (error as any)?.status < 500) {
-        return false;
-      }
-      
-      // Retry other errors up to 3 times
-      return failureCount < 3;
-    }
+  // Use centralized config - default to STANDARD
+  const defaultOptions = {
+    ...QUERY_CONFIGS.STANDARD,
+    retry: smartRetry,
   };
   
   // Merge defaults with provided options

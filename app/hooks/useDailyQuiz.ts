@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, QueryKey, UseQueryOptions } from '@tanstack/r
 import { getDailyQuiz, getTodayDateString } from '@/app/lib/services/dailyQuizService';
 import { Quiz } from '@/app/types/quiz';
 import { useEffect } from 'react';
+import { QUERY_CONFIGS } from '@/app/lib/query-config';
 
 /**
  * Generates consistent query key for daily quiz caching
@@ -37,11 +38,7 @@ export function useDailyQuiz<TData = Quiz | null>(
   return useQuery({
     queryKey: getDailyQuizQueryKey(today),
     queryFn: () => getDailyQuiz(),
-    staleTime: 60 * 60 * 1000, // Keep cached for 1 hour (daily quiz refreshes maximum once per hour)
-    gcTime: 24 * 60 * 60 * 1000, // Keep in cache for 24 hours (useful for offline support)
-    refetchOnMount: false, // Only refetch on mount if the date changed or cache is empty
-    refetchOnWindowFocus: false, // Don't refetch on window focus to reduce Firestore reads
-    retry: 3, // Retry up to 3 times
+    ...QUERY_CONFIGS.DAILY, // Use centralized daily config
     ...options,
   });
 }
@@ -59,8 +56,7 @@ export async function prefetchDailyQuiz(
     await queryClient.prefetchQuery({
       queryKey: getDailyQuizQueryKey(today),
       queryFn: () => getDailyQuiz(),
-      staleTime: 60 * 60 * 1000, // 1 hour
-      gcTime: 24 * 60 * 60 * 1000, // 24 hours
+      ...QUERY_CONFIGS.DAILY,
     });
     
     if (process.env.NODE_ENV !== 'production') {
