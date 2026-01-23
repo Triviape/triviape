@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useInfiniteQuery, useQueryClient, QueryKey } from '@tanstack/react-query';
-import { enhancedLeaderboardService } from '@/app/lib/services/enhancedLeaderboardService';
+import { leaderboardService } from '@/app/lib/services/leaderboardService';
 import { 
   EnhancedLeaderboardEntry, 
   LeaderboardPeriod, 
@@ -46,7 +46,7 @@ export function useEnhancedLeaderboard(
   // Main leaderboard query
   const leaderboardQuery = useQuery({
     queryKey: QUERY_KEYS.leaderboard(type, period, filters),
-    queryFn: () => enhancedLeaderboardService.getLeaderboard(type, period, filters),
+    queryFn: () => leaderboardService.getLeaderboard(type, period, filters),
     enabled,
     staleTime: realtime ? 0 : 30000, // 30 seconds if not real-time
     refetchInterval: realtime ? false : refetchInterval,
@@ -57,7 +57,7 @@ export function useEnhancedLeaderboard(
   const infiniteQuery = useInfiniteQuery({
     queryKey: [...QUERY_KEYS.leaderboard(type, period, filters), 'infinite'],
     queryFn: ({ pageParam }) => 
-      enhancedLeaderboardService.getLeaderboard(type, period, filters, 25, pageParam),
+      leaderboardService.getLeaderboard(type, period, filters, 25, pageParam),
     getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextCursor : undefined,
     initialPageParam: undefined as string | undefined,
     enabled,
@@ -78,7 +78,7 @@ export function useEnhancedLeaderboard(
       updateCacheOptimistically(update);
     };
 
-    subscriptionRef.current = enhancedLeaderboardService.subscribeToLeaderboard(
+    subscriptionRef.current = leaderboardService.subscribeToLeaderboard(
       type, 
       period, 
       filters, 
@@ -213,7 +213,7 @@ export function useLeaderboardStats(
 
   return useQuery({
     queryKey: QUERY_KEYS.stats(period),
-    queryFn: () => enhancedLeaderboardService.getGlobalStats(period),
+    queryFn: () => leaderboardService.getGlobalStats(period),
     enabled,
     staleTime: 300000, // 5 minutes
     refetchInterval: 300000, // Refetch every 5 minutes
@@ -233,7 +233,7 @@ export function useAddToLeaderboard() {
     period: LeaderboardPeriod = 'daily'
   ) => {
     try {
-      const result = await enhancedLeaderboardService.addToLeaderboard(userId, params, period);
+      const result = await leaderboardService.addToLeaderboard(userId, params, period);
       
       // Invalidate all leaderboard queries
       queryClient.invalidateQueries({
@@ -282,7 +282,7 @@ export function useLeaderboardCache() {
   ) => {
     await queryClient.prefetchQuery({
       queryKey: QUERY_KEYS.leaderboard(type, period, filters),
-      queryFn: () => enhancedLeaderboardService.getLeaderboard(type, period, filters),
+      queryFn: () => leaderboardService.getLeaderboard(type, period, filters),
       staleTime: 30000,
     });
   }, [queryClient]);

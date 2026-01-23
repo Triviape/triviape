@@ -67,18 +67,11 @@ export async function POST(request: Request) {
         // Send email verification
         await FirebaseAdminService.sendEmailVerification(userRecord.uid);
         
-        // Create custom token for immediate login
-        const customToken = await FirebaseAdminService.createCustomToken(userRecord.uid);
-        
-        // Return success data (withApiErrorHandling wraps it automatically)
+        // Return success - user should sign in via NextAuth
         return {
-          token: customToken,
-          user: {
-            uid: userRecord.uid,
-            email: userRecord.email,
-            displayName: userRecord.displayName,
-          },
-          message: 'Registration successful. Please check your email for verification.'
+          success: true,
+          userId: userRecord.uid,
+          message: 'Registration successful. Please sign in with your new account.'
         };
       } catch (error: any) {
         // Handle specific Firebase errors

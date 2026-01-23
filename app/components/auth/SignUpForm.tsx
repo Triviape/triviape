@@ -1,19 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '@/app/lib/firebase';
-import { User } from '@/app/types';
+import { useRouter } from 'next/navigation';
 
 interface SignUpFormProps {
   onSuccess?: () => void;
   onError?: (error: Error) => void;
+  callbackUrl?: string;
 }
 
-export default function SignUpForm({ onSuccess, onError }: SignUpFormProps) {
+export default function SignUpForm({ onSuccess, onError, callbackUrl = '/auth?tab=signin' }: SignUpFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,59 +27,37 @@ export default function SignUpForm({ onSuccess, onError }: SignUpFormProps) {
     try {
       console.log('Creating new user with email:', email);
       
-      // Create the user in Firebase Auth
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      console.log('User created successfully:', user.uid);
-
-      // Update the user's display name
-      await updateProfile(user, { displayName });
-      console.log('Display name updated:', displayName);
-
-      // Create the user document in Firestore
-      const userDoc: Partial<User> = {
-        uid: user.uid,
-        email: user.email!,
-        displayName,
-        createdAt: serverTimestamp() as any,
-        lastLoginAt: serverTimestamp() as any,
-        isAnonymous: false,
-        emailVerified: user.emailVerified,
-        role: 'user',
-        preferences: {
-          darkMode: false,
-          emailNotifications: true,
-          pushNotifications: true,
-        }
-      };
-
-      console.log('Creating user document in Firestore...');
-      await setDoc(doc(db, 'users', user.uid), userDoc);
-      console.log('User document created successfully');
-
-      // Initialize user stats
-      console.log('Initializing user stats...');
-      await setDoc(doc(db, 'user_stats', user.uid), {
-        userId: user.uid,
-        totalQuizzesTaken: 0,
-        totalQuestionsAnswered: 0,
-        correctAnswers: 0,
-        totalPoints: 0,
-        quizzesCreated: 0,
-        lastActive: serverTimestamp(),
-        streak: {
-          current: 0,
-          longest: 0,
-          lastQuizDate: serverTimestamp()
+      // Call the registration API endpoint
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        categories: {}
+        body: JSON.stringify({
+          email,
+          password,
+          displayName,
+        }),
       });
-      console.log('User stats initialized successfully');
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      console.log('User created successfully:', data.userId);
+
+      // Notify success
       onSuccess?.();
+      
+      // Redirect to sign-in page
+      router.push(callbackUrl);
     } catch (err: any) {
       console.error('Sign up error:', err);
-      setError(err.message || 'An error occurred during sign up');
-      onError?.(err);
+      const errorMessage = err.message || 'An error occurred during sign up';
+      setError(errorMessage);
+      onError?.(err instanceof Error ? err : new Error(errorMessage));
     } finally {
       setIsLoading(false);
     }

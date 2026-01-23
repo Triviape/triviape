@@ -1,57 +1,101 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
-import { FirebaseError } from 'firebase/app';
-import { auth } from '@/app/lib/firebase';
+import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
+import { useState, useEffect } from 'react';
 
 /**
- * Interface for auth state
+ * User profile data from database
  */
-export interface AuthState {
-  user: User | null;
-  loading: boolean;
-  error: FirebaseError | Error | null;
-  isAuthenticated: boolean;
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  bio?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 /**
- * Custom hook for accessing Firebase authentication
+ * NextAuth user with extended properties
+ */
+export interface NextAuthUser {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+}
+
+/**
+ * Interface for auth state - matches component expectations
+ */
+export interface AuthState {
+  currentUser: NextAuthUser | null;
+  profile: UserProfile | null;
+  loading: boolean;
+  error: Error | null;
+  isAuthenticated: boolean;
+  signOut: () => Promise<void>;
+}
+
+/**
+ * Custom hook for accessing authentication via NextAuth
+ * Provides a consistent interface that matches component expectations
  * @returns Object containing authentication state and user information
  */
 export function useAuth(): AuthState {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<FirebaseError | Error | null>(null);
+  const { data: session, status } = useSession();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileError, setProfileError] = useState<Error | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
-  // Use useCallback to memoize the auth state change handler
-  const handleAuthStateChanged = useCallback((user: User | null) => {
-    setUser(user);
-    setLoading(false);
-  }, []);
-
-  // Use useCallback to memoize the error handler
-  const handleAuthError = useCallback((error: Error) => {
-    setError(error);
-    setLoading(false);
-  }, []);
-
+  // Fetch user profile from database when session exists
   useEffect(() => {
-    // Firebase auth state subscription
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      handleAuthStateChanged,
-      handleAuthError
-    );
+    if (!session?.user?.id) {
+      setProfile(null);
+      setProfileError(null);
+      return;
+    }
 
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
-  }, [handleAuthStateChanged, handleAuthError]); // Properly include dependencies
+    const fetchProfile = async () => {
+      setProfileLoading(true);
+      try {
+        const response = await fetch(`/api/user/profile?userId=${session.user.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setProfile(data.profile || null);
+          setProfileError(null);
+        } else {
+          // Profile doesn't exist yet - this is okay for new users
+          setProfile(null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user profile:', err);
+        setProfileError(err instanceof Error ? err : new Error('Failed to fetch profile'));
+        setProfile(null);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [session?.user?.id]);
+
+  const handleSignOut = async () => {
+    try {
+      await nextAuthSignOut({ callbackUrl: '/' });
+    } catch (err) {
+      console.error('Sign out error:', err);
+      throw err;
+    }
+  };
 
   return {
-    user,
-    loading,
-    error,
-    isAuthenticated: !!user,
+    currentUser: session?.user || null,
+    profile,
+    loading: status === 'loading' || profileLoading,
+    error: profileError,
+    isAuthenticated: !!session,
+    signOut: handleSignOut,
   };
 } 
