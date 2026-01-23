@@ -9,6 +9,7 @@ import {
 } from '@/app/lib/services/quiz/quizFetchService';
 import { DifficultyLevel, Quiz, Question, QuizCategory } from '@/app/types/quiz';
 import { memoizeWithCache } from '@/app/lib/cacheUtils';
+import { shouldUseMockData } from '@/app/lib/environment';
 import { mockDailyQuiz, mockQuestions } from '@/app/lib/services/quiz/mockDailyQuiz';
 
 // Memoize the fetch functions for better performance
@@ -69,12 +70,12 @@ export function useQuiz(quizId: string) {
   return useOptimizedQuery({
     queryKey: ['quiz', quizId],
     queryFn: () => {
-      // Use mock data for development only
-      if (process.env.NODE_ENV !== 'production' && quizId === 'daily-quiz-1') {
+      // Use mock data only in test environment or when explicitly enabled
+      if (shouldUseMockData() && quizId === 'daily-quiz-1') {
         return mockDailyQuiz;
       }
 
-      // Use the real service for other quiz IDs
+      // Use the real service for production and development
       return memoizedGetQuizById(quizId);
     },
     componentName: 'QuizDetail',
@@ -93,12 +94,12 @@ export function useQuizQuestions(questionIds: string[] | undefined) {
   return useOptimizedQuery({
     queryKey: ['questions', questionIds],
     queryFn: () => {
-      // Use mock data for development only
-      if (process.env.NODE_ENV !== 'production' && questionIds && questionIds.length > 0 && questionIds[0].startsWith('question-')) {
+      // Use mock data only in test environment or when explicitly enabled
+      if (shouldUseMockData() && questionIds && questionIds.length > 0 && questionIds[0].startsWith('question-')) {
         return mockQuestions;
       }
 
-      // Use the real service for other question IDs
+      // Use the real service for production and development
       return memoizedGetQuestionsByIds(questionIds || []);
     },
     componentName: 'QuizQuestions',

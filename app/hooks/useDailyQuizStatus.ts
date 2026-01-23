@@ -4,6 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getDailyQuizStatus } from '@/app/lib/services/userDailyQuizService';
 import { DailyQuizStatus } from '@/app/types/userDailyQuiz';
 import { useAuth } from '@/app/hooks/useAuth';
+import { safeAsync } from '@/app/lib/errorHandling';
+import { getApiBaseUrl } from '@/app/lib/environment';
+import { createAppError, ErrorType } from '@/app/lib/errorHandling';
 
 /**
  * Hook to get the current user's daily quiz status
@@ -80,20 +83,4 @@ export async function updateDailyQuizCompletion(quizId: string, score: number): 
   }
   
   return data as DailyQuizStatus;
-}
-
-/**
- * Generate mock daily quiz status for development
- */
-function getMockDailyQuizStatus(): DailyQuizStatus {
-  // Simulate a 50% chance of having completed today's quiz
-  const hasCompleted = Math.random() > 0.5;
-  
-  return {
-    hasCompleted,
-    completedAt: hasCompleted ? Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 12) : undefined,
-    currentStreak: hasCompleted ? Math.floor(Math.random() * 10) + 1 : 0,
-    bestStreak: Math.floor(Math.random() * 30) + 1,
-    lastCompletedDate: hasCompleted ? new Date().toISOString().split('T')[0] : undefined
-  };
 } 

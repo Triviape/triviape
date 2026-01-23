@@ -39,21 +39,34 @@ export function isBrowser(): boolean {
 
 /**
  * Check if mock data should be used
- * This can be controlled by environment variables or query parameters
+ * Only enabled in test environment or when explicitly requested
  */
 export function shouldUseMockData(): boolean {
-  // Check for environment variable
-  if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
+  // Never use mock data in production
+  if (isProduction()) {
+    return false;
+  }
+  
+  // Always use in test environment
+  if (isTest()) {
     return true;
   }
   
-  // Check for query parameter in browser
-  if (isBrowser() && new URLSearchParams(window.location.search).has('mock')) {
-    return true;
+  // In development, only use if explicitly enabled
+  if (isDevelopment()) {
+    // Check for environment variable
+    if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
+      return true;
+    }
+    
+    // Check for query parameter in browser
+    if (isBrowser() && new URLSearchParams(window.location.search).has('mock')) {
+      return true;
+    }
   }
   
-  // Default to using mock data only in development
-  return isDevelopment();
+  // Default to false - real data
+  return false;
 }
 
 /**
