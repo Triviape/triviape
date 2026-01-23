@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient, QueryKey, UseQueryOptions } from '@tanstack/react-query';
 import { getDailyQuiz, getTodayDateString } from '@/app/lib/services/dailyQuizService';
 import { Quiz } from '@/app/types/quiz';
-import { useEffect } from 'react';
 import { QUERY_CONFIGS } from '@/app/lib/query-config';
 
 /**
@@ -13,27 +12,17 @@ export const getDailyQuizQueryKey = (dateString: string): QueryKey => ['dailyQui
 /**
  * Custom hook for fetching the daily quiz with optimized caching
  * - Caches quiz data for the entire day
- * - Automatically refreshes when date changes
+ * - Automatically refreshes when date changes (via query key)
  * - Prefetches quiz questions for improved UX
+ * 
+ * Note: Date-based invalidation is handled automatically by React Query
+ * through the query key. When getTodayDateString() changes, the query key
+ * changes, causing React Query to fetch fresh data.
  */
 export function useDailyQuiz<TData = Quiz | null>(
   options: Omit<UseQueryOptions<Quiz | null, Error, TData, QueryKey>, 'queryKey' | 'queryFn'> = {}
 ) {
   const today = getTodayDateString();
-  const queryClient = useQueryClient();
-  
-  // Check if we need to force a refetch based on date change
-  useEffect(() => {
-    const lastFetchDate = localStorage.getItem('lastDailyQuizFetch');
-    
-    // If date has changed since last fetch, invalidate cache
-    if (lastFetchDate && lastFetchDate !== today) {
-      queryClient.invalidateQueries({ queryKey: getDailyQuizQueryKey(lastFetchDate) });
-    }
-    
-    // Update last fetch date
-    localStorage.setItem('lastDailyQuizFetch', today);
-  }, [today, queryClient]);
   
   return useQuery({
     queryKey: getDailyQuizQueryKey(today),
