@@ -17,7 +17,8 @@ export * from './auth';
 
 // Legacy exports for backward compatibility
 // These will be removed after all services are unified
-export { AuthService } from './authService';
+// @deprecated - Use ConsolidatedAuthService from './auth' instead
+export { authService as AuthService } from './auth/consolidatedAuthService';
 export { ProfileService } from './profileService';
 export { PreferencesService } from './preferencesService';
 export { ProgressionService } from './progressionService';
