@@ -5,8 +5,17 @@ import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
 /**
  * API route to test Firebase signup functionality
  * This endpoint allows testing signup without affecting real application state
+ * ⚠️ GATED: Only available in development/test environments
  */
 export async function POST(request: Request) {
+  // SECURITY: Gate test endpoints to development environment only
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { success: false, error: 'Not available in production' },
+      { status: 403 }
+    );
+  }
+
   try {
     // Get credentials from request
     const { email, password, displayName } = await request.json();

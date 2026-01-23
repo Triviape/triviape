@@ -5,8 +5,17 @@ import { getAuthErrorMessage } from '@/app/lib/authErrorHandler';
 /**
  * API route to test Firebase signin functionality
  * This endpoint allows testing signin with a known test account or any provided credentials
+ * ⚠️ GATED: Only available in development/test environments
  */
 export async function POST(request: Request) {
+  // SECURITY: Gate test endpoints to development environment only
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { success: false, error: 'Not available in production' },
+      { status: 403 }
+    );
+  }
+
   try {
     // Get credentials from request
     const { email, password } = await request.json();

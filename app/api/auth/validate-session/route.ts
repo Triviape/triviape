@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { auth } from '@/app/lib/auth/auth';
 import { validateSessionFingerprint } from '@/app/lib/security/sessionFingerprinting';
-import { withApiErrorHandling, ApiErrorCode } from '@/app/lib/apiUtils';
+import { withApiErrorHandling } from '@/app/lib/apiUtils';
 import { withRateLimit, RateLimitConfigs } from '@/app/lib/rateLimiter';
 
 /**
@@ -14,11 +14,7 @@ export async function POST(request: NextRequest) {
       // Check if user is authenticated
       const session = await auth();
       if (!session?.user) {
-        throw {
-          code: ApiErrorCode.UNAUTHORIZED,
-          message: 'Authentication required',
-          statusCode: 401
-        };
+        throw new Error('Authentication required');
       }
 
       // Parse request body
@@ -26,11 +22,7 @@ export async function POST(request: NextRequest) {
       const { deviceFingerprint } = body;
 
       if (!deviceFingerprint) {
-        throw {
-          code: ApiErrorCode.VALIDATION_ERROR,
-          message: 'Device fingerprint is required',
-          statusCode: 400
-        };
+        throw new Error('Device fingerprint is required');
       }
 
       // Validate session fingerprint
@@ -49,19 +41,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Return validation result
-      return NextResponse.json({
-        success: true,
-        data: {
-          isValid: comparison.isValid,
-          shouldChallenge: comparison.shouldChallenge,
-          riskLevel: comparison.riskLevel,
-          score: comparison.score,
-          // Don't expose differences for security reasons
-        },
-        meta: {
-          timestamp: new Date().toISOString()
-        }
-      });
+      return {
+        isValid: comparison.isValid,
+        shouldChallenge: comparison.shouldChallenge,
+        riskLevel: comparison.riskLevel,
+        score: comparison.score,
+        // Don't expose differences for security reasons
+      };
     });
   }, RateLimitConfigs.api);
 

@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getQuizzes } from '@/app/lib/services/quiz/quizFetchService';
 import { DifficultyLevel } from '@/app/types/quiz';
+import { withApiErrorHandling } from '@/app/lib/apiUtils';
 
 /**
  * GET /api/quizzes - Fetch quizzes with optional filtering
@@ -10,7 +11,7 @@ import { DifficultyLevel } from '@/app/types/quiz';
  * - pageSize: number (optional) - Number of items per page (default: 10)
  */
 export async function GET(request: NextRequest) {
-  try {
+  return withApiErrorHandling(request, async () => {
     const { searchParams } = new URL(request.url);
     
     // Extract query parameters
@@ -20,18 +21,12 @@ export async function GET(request: NextRequest) {
 
     // Validate difficulty if provided
     if (difficulty && !['easy', 'medium', 'hard'].includes(difficulty)) {
-      return NextResponse.json(
-        { error: 'Invalid difficulty level. Must be easy, medium, or hard.' },
-        { status: 400 }
-      );
+      throw new Error('Invalid difficulty level. Must be easy, medium, or hard.');
     }
 
     // Validate pageSize
     if (pageSize < 1 || pageSize > 50) {
-      return NextResponse.json(
-        { error: 'Page size must be between 1 and 50.' },
-        { status: 400 }
-      );
+      throw new Error('Page size must be between 1 and 50.');
     }
 
     // Fetch quizzes using the service
@@ -42,30 +37,10 @@ export async function GET(request: NextRequest) {
     });
 
     // Return the results
-    return NextResponse.json({
-      success: true,
+    return {
       data: result.items,
       hasMore: result.hasMore,
       totalItems: result.items.length
-    });
-
-  } catch (error) {
-    console.error('Error fetching quizzes:', error);
-    
-    // Return appropriate error response
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { 
-          error: 'Failed to fetch quizzes',
-          message: error.message
-        },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+    };
+  });
 }

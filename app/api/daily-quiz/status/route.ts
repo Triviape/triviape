@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/app/lib/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { withApiErrorHandling } from '@/app/lib/apiUtils';
 
 interface DailyQuizStatus {
   hasCompleted: boolean;
@@ -16,15 +17,11 @@ interface DailyQuizStatus {
  * Returns the status of the current user's daily quiz completion
  */
 export async function GET(req: NextRequest) {
-  try {
-    // Get the authenticated user's session
+  return withApiErrorHandling(req, async () => {
     const session = await auth();
     
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      throw new Error('Unauthorized');
     }
     
     const userId = session.user.id;
@@ -36,11 +33,11 @@ export async function GET(req: NextRequest) {
     
     if (!userDailyQuizSnap.exists()) {
       // User has no daily quiz history yet
-      return NextResponse.json({
+      return {
         hasCompleted: false,
         currentStreak: 0,
         bestStreak: 0
-      });
+      };
     }
     
     const userData = userDailyQuizSnap.data();
@@ -58,14 +55,8 @@ export async function GET(req: NextRequest) {
       status.completedAt = userData.completedAt;
     }
     
-    return NextResponse.json(status);
-  } catch (error) {
-    console.error('Error fetching daily quiz status:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch daily quiz status' },
-      { status: 500 }
-    );
-  }
+    return status;
+  });
 }
 
 /**
@@ -74,25 +65,19 @@ export async function GET(req: NextRequest) {
  * Request body: { quizId: string, score: number }
  */
 export async function POST(req: NextRequest) {
-  try {
+  return withApiErrorHandling(req, async () => {
     // Get authenticated user
     const session = await auth();
     
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      throw new Error('Unauthorized');
     }
     
     const userId = session.user.id;
     const data = await req.json();
     
     if (!data.quizId) {
-      return NextResponse.json(
-        { error: 'Quiz ID is required' },
-        { status: 400 }
-      );
+      throw new Error('Quiz ID is required');
     }
     
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
@@ -112,13 +97,13 @@ export async function POST(req: NextRequest) {
       
       // If user already completed today's quiz, don't update
       if (lastCompletedDate === today) {
-        return NextResponse.json({
+        return {
           hasCompleted: true,
           currentStreak: userData.currentStreak,
           bestStreak: userData.bestStreak,
           lastCompletedDate: today,
           completedAt: userData.completedAt
-        });
+        };
       }
       
       // Check if the streak continues or resets
@@ -161,18 +146,12 @@ export async function POST(req: NextRequest) {
     }
     
     // Return the updated status
-    return NextResponse.json({
+    return {
       hasCompleted: true,
       currentStreak,
       bestStreak,
       lastCompletedDate: today,
       completedAt: now
-    });
-  } catch (error) {
-    console.error('Error updating daily quiz status:', error);
-    return NextResponse.json(
-      { error: 'Failed to update daily quiz status' },
-      { status: 500 }
-    );
-  }
+    };
+  });
 } 

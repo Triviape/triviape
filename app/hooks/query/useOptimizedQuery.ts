@@ -29,7 +29,7 @@ export function useOptimizedQuery<TData, TError = AppError>({
   componentName,
   queryName,
   mockFn,
-  enableMockFallback = true,
+  enableMockFallback = false,
   ...options
 }: OptimizedQueryOptions<TData, TError>) {
   // Create a wrapped query function with error handling

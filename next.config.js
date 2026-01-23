@@ -33,13 +33,6 @@ const nextConfig = {
   serverExternalPackages: [
     'firebase-admin'
   ],
-  typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    // !! WARN !!
-    ignoreBuildErrors: true, // Always ignore build errors for now
-  },
   // Add compiler options for faster builds
   compiler: {
     // Remove console.log in production

@@ -1,50 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withApiErrorHandling, ApiErrorCode, createErrorResponse } from '@/app/lib/apiUtils';
 
 /**
  * GET handler for user profile
  * This is a protected route that requires authentication
  */
 export async function GET(req: NextRequest) {
-  // Check if the request has an authorization header with "Bearer expired-token"
-  const authHeader = req.headers.get('authorization');
-  if (authHeader === 'Bearer expired-token') {
-    return {
-      status: 401,
-      data: {
-        success: false,
-        error: 'Token expired'
-      }
-    } as any;
-  }
-  
-  // Check if the request has an authorization header
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return {
-      status: 401,
-      data: {
-        success: false,
-        error: 'Authentication required'
-      }
-    } as any;
-  }
-  
-  // For testing purposes, extract the token and check if it's valid
-  const token = authHeader.substring(7);
-  
-  // Return mock user profile data
-  return {
-    status: 200,
-    data: {
-      success: true,
-      profile: {
-        id: 'test-user-id',
-        name: 'Test User',
-        email: 'test@example.com',
-        role: 'user',
-        createdAt: new Date().toISOString(),
-      }
+  return withApiErrorHandling(req, async () => {
+    // Check if the request has an authorization header
+    const authHeader = req.headers.get('authorization');
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw {
+        code: ApiErrorCode.UNAUTHORIZED,
+        message: 'Authentication required',
+        statusCode: 401
+      };
     }
-  } as any;
+
+    // Extract and validate token
+    const token = authHeader.substring(7);
+
+    if (!token || token.trim() === '') {
+      throw {
+        code: ApiErrorCode.UNAUTHORIZED,
+        message: 'Invalid authentication token',
+        statusCode: 401
+      };
+    }
+
+    // TODO: Validate token against actual auth provider (Firebase/NextAuth)
+    // For now, any valid Bearer token is accepted
+    // This should be replaced with real token verification
+
+    // Return user profile data
+    return {
+      id: 'test-user-id',
+      name: 'Test User',
+      email: 'test@example.com',
+      role: 'user',
+      createdAt: new Date().toISOString(),
+    };
+  });
 }
 
 /**
@@ -52,52 +49,41 @@ export async function GET(req: NextRequest) {
  * This is a protected route that requires authentication
  */
 export async function PUT(req: NextRequest) {
-  // Check if the request has an authorization header with "Bearer expired-token"
-  const authHeader = req.headers.get('authorization');
-  if (authHeader === 'Bearer expired-token') {
-    return {
-      status: 401,
-      data: {
-        success: false,
-        error: 'Token expired'
-      }
-    } as any;
-  }
-  
-  // Check if the request has an authorization header
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return {
-      status: 401,
-      data: {
-        success: false,
-        error: 'Authentication required'
-      }
-    } as any;
-  }
-  
-  try {
+  return withApiErrorHandling(req, async () => {
+    // Check if the request has an authorization header
+    const authHeader = req.headers.get('authorization');
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw {
+        code: ApiErrorCode.UNAUTHORIZED,
+        message: 'Authentication required',
+        statusCode: 401
+      };
+    }
+
+    // Extract and validate token
+    const token = authHeader.substring(7);
+
+    if (!token || token.trim() === '') {
+      throw {
+        code: ApiErrorCode.UNAUTHORIZED,
+        message: 'Invalid authentication token',
+        statusCode: 401
+      };
+    }
+
+    // TODO: Validate token against actual auth provider (Firebase/NextAuth)
+    // For now, any valid Bearer token is accepted
+    // This should be replaced with real token verification
+
     // Parse the request body
     const body = await req.json();
-    
+
     // Return updated user profile
     return {
-      status: 200,
-      data: {
-        success: true,
-        profile: {
-          id: 'test-user-id',
-          ...body,
-          updatedAt: new Date().toISOString(),
-        }
-      }
-    } as any;
-  } catch (error) {
-    return {
-      status: 400,
-      data: {
-        success: false,
-        error: 'Invalid request body'
-      }
-    } as any;
-  }
+      id: 'test-user-id',
+      ...body,
+      updatedAt: new Date().toISOString(),
+    };
+  });
 } 

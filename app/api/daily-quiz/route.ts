@@ -1,27 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getDailyQuiz } from '@/app/actions/quizActions';
+import { withApiErrorHandling } from '@/app/lib/apiUtils';
 
 /**
  * GET /api/daily-quiz
  * Returns the quiz designated for the current day
  */
-export async function GET() {
-  try {
+export async function GET(req: NextRequest) {
+  return withApiErrorHandling(req, async () => {
     const dailyQuiz = await getDailyQuiz();
     
     if (!dailyQuiz) {
-      return NextResponse.json(
-        { error: 'No daily quiz available' },
-        { status: 404 }
-      );
+      throw new Error('No daily quiz available');
     }
     
-    return NextResponse.json(dailyQuiz);
-  } catch (error) {
-    console.error('Error fetching daily quiz:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch daily quiz' },
-      { status: 500 }
-    );
-  }
+    return dailyQuiz;
+  });
 } 

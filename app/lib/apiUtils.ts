@@ -2,8 +2,10 @@
  * Utilities for optimizing API requests
  */
 
+import { NextResponse } from 'next/server';
 import { memoizeWithCache } from './cacheUtils';
 import { logError, ErrorCategory, ErrorSeverity } from './errorHandler';
+import { getAuthErrorMessage } from './authErrorHandler';
 
 /**
  * API request options
@@ -302,6 +304,7 @@ export interface ApiResponse<T = any> {
     details?: any;
   };
   timestamp: string;
+  requestId: string;
 }
 
 /**
@@ -331,13 +334,21 @@ export enum ApiErrorCode {
 }
 
 /**
+ * Generate a unique request ID for tracking
+ */
+export function generateRequestId(): string {
+  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
  * Create a standardized success response
  */
-export function createSuccessResponse<T>(data: T): ApiResponse<T> {
+export function createSuccessResponse<T>(data: T, requestId: string): ApiResponse<T> {
   return {
     success: true,
     data,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    requestId,
   };
 }
 
@@ -346,6 +357,7 @@ export function createSuccessResponse<T>(data: T): ApiResponse<T> {
  */
 export function createErrorResponse(
   message: string,
+  requestId: string,
   code: ApiErrorCode = ApiErrorCode.UNKNOWN_ERROR,
   details?: any
 ): ApiResponse {
@@ -356,7 +368,8 @@ export function createErrorResponse(
       code,
       details
     },
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    requestId,
   };
 }
 
@@ -369,14 +382,21 @@ export async function withApiErrorHandling<T>(
   options?: {
     logErrors?: boolean;
     validateRequest?: (data: any) => { valid: boolean; errors?: any };
+    responseHandler?: (response: NextResponse, result: T) => void;
   }
 ): Promise<Response> {
+  const requestId = generateRequestId();
   try {
     // Execute the handler
     const result = await handler();
-    
-    // Return success response
-    return Response.json(createSuccessResponse(result));
+    const apiResponse = createSuccessResponse(result, requestId);
+    const response = NextResponse.json(apiResponse);
+
+    if (options?.responseHandler) {
+      options.responseHandler(response, result);
+    }
+
+    return response;
   } catch (error: any) {
     // Log the error if enabled
     if (options?.logErrors !== false) {
@@ -388,7 +408,7 @@ export async function withApiErrorHandling<T>(
           logError(error, {
             category: ErrorCategory.API,
             severity: ErrorSeverity.ERROR,
-            context: { request }
+            context: { request, requestId }
           });
         }
       } catch (loggingError) {
@@ -441,9 +461,7 @@ export async function withApiErrorHandling<T>(
     }
     
     // Return standardized error response
-    return Response.json(
-      createErrorResponse(message, errorCode, details),
-      { status: statusCode }
-    );
+    const apiResponse = createErrorResponse(message, requestId, errorCode, details);
+    return NextResponse.json(apiResponse, { status: statusCode });
   }
-} 
+}

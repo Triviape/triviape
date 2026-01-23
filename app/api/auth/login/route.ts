@@ -84,21 +84,14 @@ export async function POST(request: Request) {
         const userRecord = await FirebaseAdminService.getUserByEmail(email);
         
         // Return success response with verified credentials
-        return NextResponse.json({
-          success: true,
-          data: {
-            token: customToken,
-            user: {
-              uid: userCredential.user.uid,
-              email: userCredential.user.email,
-              displayName: userRecord.displayName || userCredential.user.displayName,
-            }
-          },
-          meta: {
-            timestamp: new Date().toISOString(),
-            requestId: generateRequestId()
+        return {
+          token: customToken,
+          user: {
+            uid: userCredential.user.uid,
+            email: userCredential.user.email,
+            displayName: userRecord.displayName || userCredential.user.displayName,
           }
-        });
+        };
       } catch (error: any) {
         // If error is already formatted, rethrow it
         if (error.code && error.statusCode) {
@@ -117,11 +110,4 @@ export async function POST(request: Request) {
   }, RateLimitConfigs.auth);
 
   return rateLimitedHandler(request);
-}
-
-/**
- * Generate a unique request ID for tracking
- */
-function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 } 

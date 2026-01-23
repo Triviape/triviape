@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { auth } from '@/auth';
 import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
+import { withApiErrorHandling } from '@/app/lib/apiUtils';
 
-export async function GET(_req: NextRequest) {
-  try {
+export async function GET(req: NextRequest) {
+  return withApiErrorHandling(req, async () => {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new Error('Authentication required');
     }
 
     const uid = session.user.id as string;
@@ -16,7 +17,7 @@ export async function GET(_req: NextRequest) {
     // Fetch user profile summary from users collection
     const userDoc = await db.collection('users').doc(uid).get();
     if (!userDoc.exists) {
-      return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+      throw new Error('User profile not found');
     }
 
     const profile = userDoc.data() || {};
@@ -29,7 +30,7 @@ export async function GET(_req: NextRequest) {
       .limit(10)
       .get();
 
-    const recentAttempts = attemptsSnap.docs.map((doc) => {
+    const recentAttempts = attemptsSnap.docs.map((doc: any) => {
       const d = doc.data() as any;
       return {
         id: doc.id,
@@ -64,9 +65,6 @@ export async function GET(_req: NextRequest) {
       createdAt: profile.createdAt ? (profile.createdAt.toDate ? profile.createdAt.toDate().toISOString() : new Date(profile.createdAt).toISOString()) : null,
     };
 
-    return NextResponse.json({ summary, recentAttempts });
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-    return NextResponse.json({ error: 'Failed to fetch user stats' }, { status: 500 });
-  }
+    return { summary, recentAttempts };
+  });
 }

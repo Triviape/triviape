@@ -1,0 +1,379 @@
+================================================================================
+COMPREHENSIVE CODEBASE ANALYSIS - ISSUE EXTRACTION SUMMARY
+================================================================================
+Document: /Users/dylanchidambaram/Documents/Software/triviape/docs/CODEBASE_ANALYSIS.md
+Analysis Date: 2026-01-23
+Total Issues Extracted: 82 across all sections
+
+================================================================================
+SECTION BREAKDOWN
+================================================================================
+
+SECTION 1: API Routes & HTTP Handling
+- Total Issues: 10
+- Critical: 2 (Hard-coded Bearer token, No standard response format)
+- High: 5 (Auth fragmentation, Input validation, Error handling, Rate limiting, Type safety)
+- Medium: 3 (Response format, Tracing, Documentation)
+
+SECTION 2: Component State Management
+- Total Issues: 11
+- Critical: 1 (Dual authentication systems)
+- High: 5 (Provider nesting, Query inconsistency, Cache invalidation, localStorage bypass, Real-time sync)
+- Medium: 5 (Prop drilling, Hydration checks, Performance overhead, Mock data, Decision tree)
+
+SECTION 3: Database Schema & Queries
+- Total Issues: 10
+- Critical: 4 (N+1 getFriends, 'in' operator limit, N+1 searchUsers, Leaderboard rank)
+- High: 4 (Missing indexes, Denormalization, No caching, Incomplete rules)
+- Medium: 2 (Real-time listener, Cascade delete)
+
+SECTION 4: Performance & Monitoring
+- Total Issues: 19
+- Critical: 3 (Metrics export disabled, Memory leak, RiveAnimation in production)
+- High: 4 (Dev-only monitoring, React Query metrics, Web Vitals incomplete, startMeasurement)
+- Medium: 12 (Component metrics zero, Redundant systems, Error differentiation, Monkeypatching, etc.)
+
+SECTION 5: Testing & Quality
+- Total Issues: 14
+- Critical: 4 (Over-mocking, API routes untracked, Tests skipped in CI, Emulator never touches Firebase)
+- High: 5 (API mocks, Emulator detection broken, Security tests mock, Test isolation, No thresholds)
+- Medium: 5 (E2E brittle, Error testing, Performance tests, Password reset flaky, Cleanup)
+
+SECTION 6: Security
+- Total Issues: 9
+- Critical: 2 (Test endpoints exposed, Hard-coded Bearer + mock profile)
+- High: 5 (Debug pages, Email logging, Email enumeration, Middleware not wired, CSP permissive)
+- Medium: 2 (Public endpoints auth, Admin credentials)
+
+SECTION 7: Build & Deployment
+- Total Issues: 16
+- Critical: 4 (Two config files, ignoreBuildErrors, No pre-deploy tests, Missing build step)
+- High: 5 (No Node version, Image config, Config drift, Type checking, build:no-types)
+- Medium: 7 (Multiple builds, Linting not integrated, Old TypeScript target, skipLibCheck, etc.)
+
+================================================================================
+SEVERITY DISTRIBUTION
+================================================================================
+
+🚨 CRITICAL ISSUES: 25 total
+  Section 1: 2 issues
+  Section 2: 1 issue
+  Section 3: 4 issues
+  Section 4: 3 issues
+  Section 5: 4 issues
+  Section 6: 2 issues
+  Section 7: 4 issues
+
+These require immediate attention - issues that can ship broken code or expose
+security vulnerabilities.
+
+🟠 HIGH PRIORITY ISSUES: 25 total
+  Section 1: 5 issues
+  Section 2: 5 issues
+  Section 3: 4 issues
+  Section 4: 4 issues
+  Section 5: 5 issues
+  Section 6: 5 issues
+  Section 7: 5 issues
+
+These impact functionality, performance, or security in significant ways.
+
+🟡 MEDIUM PRIORITY ISSUES: 25 total
+  Section 1: 3 issues
+  Section 2: 5 issues
+  Section 3: 2 issues
+  Section 4: 12 issues
+  Section 5: 5 issues
+  Section 6: 2 issues
+  Section 7: 7 issues
+
+These impact code quality, maintainability, or create technical debt.
+
+⚪ UNCLASSIFIED: 7 issues (not explicitly tiered in source)
+
+================================================================================
+ISSUES BLOCKING OTHER ISSUES (DEPENDENCY ANALYSIS)
+================================================================================
+
+HIGHEST IMPACT ISSUES (Unblock Multiple Others):
+
+1. Issue 1.2 - Hard-coded Bearer Token
+   - Blocks: 1.1 (Response format), 1.4 (Error handling), 2.3 (Auth fragmentation)
+   - Status: CRITICAL - Exposed in production code
+
+2. Issue 2.3 - Authentication State Fragmentation
+   - Blocks: 1.2, 1.3, 2.1 (Provider nesting)
+   - Status: CRITICAL - Three auth systems active
+
+3. Issue 7.2 - ignoreBuildErrors in Build
+   - Blocks: 7.3 (No pre-deploy tests), 7.4 (Missing build step)
+   - Status: CRITICAL - Type errors can ship
+
+4. Issue 5.4 - Emulator Tests Never Touch Firebase
+   - Blocks: 5.1 (Over-mocking), 5.3 (Tests skipped in CI)
+   - Status: CRITICAL - No real integration testing
+
+5. Issue 3.1 - N+1 in FriendService.getFriends()
+   - Blocks: 3.2 (in operator limit), 3.3 (User search)
+   - Status: CRITICAL - 99% query reduction needed
+
+DEPENDENCY CHAINS:
+
+Auth System Issues (Critical):
+  1.2 (Hard-coded Bearer) → 1.3 (Auth fragmentation) → 2.3 (State fragmentation)
+  Impact: 3 sections, fixes unlock auth consolidation
+
+Build & Testing Issues (Critical):
+  7.2 (ignoreBuildErrors) → 7.3 (No tests) → 7.4 (Missing build)
+  Impact: Prevents deploying broken code
+
+Database Query Issues (Critical):
+  3.1 (N+1 Friends) → 3.2 (in operator) → 3.3 (User search) → 3.4 (Leaderboard)
+  Impact: 4 related issues, 90%+ query reduction possible
+
+Performance Issues (Critical):
+  4.1 (Metrics disabled) → 4.2 (Memory leak) → 4.3 (RiveAnimation prod)
+  Impact: 3 interconnected production issues
+
+Testing Issues (Critical):
+  5.1 (Over-mocking) → 5.4 (Never real Firebase) → 5.3 (Skipped in CI)
+  Impact: 3 issues prevent reliable testing
+
+================================================================================
+AFFECTED FILES FREQUENCY ANALYSIS
+================================================================================
+
+Most Problematic Files (>3 issues each):
+
+1. next.config.js / next.config.ts
+   - Issues: 7.1 (Two files), 7.2 (ignoreBuildErrors), 7.6 (Image config), 7.9 (build:no-types)
+   - Status: CRITICAL - Config fragmentation
+
+2. app/api/user/profile/route.ts
+   - Issues: 1.2 (Hard-coded Bearer), 1.1 (Response format), 1.9 (Type safety), 2.3 (Auth fragmentation)
+   - Status: CRITICAL - Multiple issues in single file
+
+3. app/providers/PerformanceProvider.tsx
+   - Issues: 4.5 (Dynamic import), 4.6 (Dev-only gating), 4.11 (Dashboard mounted twice)
+   - Status: HIGH - Performance monitoring hub
+
+4. app/lib/services/friendService.ts
+   - Issues: 3.1 (N+1 getFriends), 3.2 (in operator limit), 3.8 (Real-time broadcast)
+   - Status: CRITICAL - Friend operations fundamentally inefficient
+
+5. app/api/auth/[...nextauth]/route.ts
+   - Issues: 6.4 (Email logging), 6.5 (Email enumeration), 2.3 (Auth fragmentation)
+   - Status: HIGH - Auth security issues
+
+6. jest.setup.ts
+   - Issues: 5.1 (Over-mocking), 5.4 (Never touches Firebase), 5.6 (Fetch mock breaks detection)
+   - Status: CRITICAL - Test foundation broken
+
+7. firebase-hosting-merge.yml
+   - Issues: 7.3 (No tests), 7.4 (Missing build step), 7.5 (No version pinning)
+   - Status: CRITICAL - Deployment pipeline incomplete
+
+================================================================================
+KEY THEMES
+================================================================================
+
+1. AUTHENTICATION SYSTEM CHAOS (Issues: 1.2, 1.3, 2.3, 6.1, 6.2)
+   - Three auth systems active (Firebase, NextAuth, Bearer tokens)
+   - Hard-coded test credentials in production
+   - Email enumeration vulnerability
+   - Test endpoints exposed
+   → RECOMMENDATION: Consolidate to ONE auth system immediately
+
+2. NO QUALITY GATES (Issues: 7.2, 7.3, 7.4, 5.3, 5.4)
+   - Type errors ignored in build
+   - No tests run before deployment
+   - Tests over-mocked, don't test real code
+   - Can deploy completely broken code
+   → RECOMMENDATION: Add CI/CD checks before Week 1 ends
+
+3. QUERY PERFORMANCE CRISIS (Issues: 3.1, 3.2, 3.3, 3.4, 3.5)
+   - N+1 queries everywhere
+   - 99% query reduction possible
+   - Silent data loss with 'in' operator
+   - Missing composite indexes
+   → RECOMMENDATION: Batch load patterns + indexes (Weeks 2-3)
+
+4. STATE MANAGEMENT FRAGMENTATION (Issues: 2.1, 2.2, 2.3, 2.5, 2.6, 2.7)
+   - Five nested providers
+   - Dual auth systems
+   - Three real-time update sources
+   - Mock data silently enabled
+   - localStorage bypassing React Query
+   → RECOMMENDATION: Consolidate to React Query + one auth system
+
+5. MONITORING BUILT BUT NOT USED (Issues: 4.1, 4.2, 4.3, 4.6)
+   - Metrics export disabled (commented out)
+   - Only dev-only monitoring active
+   - Memory leaks in frame tracking
+   - Production metrics lost
+   → RECOMMENDATION: Enable production metrics + fix memory leak
+
+6. TESTING TESTS MOCKS (Issues: 5.1, 5.4, 5.5, 5.7)
+   - Tests mock the thing they test
+   - Never touch real Firebase
+   - Tests over-mocked, low confidence
+   - Emulator runs but unused
+   → RECOMMENDATION: Remove mocks, use real Firebase in tests
+
+7. SECURITY HOLES (Issues: 6.1, 6.2, 6.3, 6.4, 6.5, 6.7)
+   - Test endpoints accessible in production
+   - Hard-coded test Bearer tokens
+   - Debug pages unguarded
+   - Email logging for enumeration attacks
+   - CSP too permissive
+   → RECOMMENDATION: Remove test code, fix security headers
+
+================================================================================
+CRITICAL PATH TO PRODUCTION READINESS
+================================================================================
+
+PHASE 1: EMERGENCY (Week 1) - 3-4 days
+Priority: FIX CRITICAL ISSUES
+- Remove hard-coded Bearer token from /api/user/profile (1.2)
+- Gate or remove test endpoints /api/auth/test-* (6.1)
+- Remove ignoreBuildErrors: true from next.config (7.2)
+- Add type checking to CI before deploy (7.3, 7.4)
+- Remove mock data or gate to dev-only (2.7)
+
+Impact: Prevents shipping broken code with test credentials
+
+PHASE 2: CONSOLIDATION (Weeks 2-3) - 4-5 days
+Priority: ARCHITECTURE ALIGNMENT
+- Choose ONE auth system (NextAuth recommended) (1.2, 1.3, 2.3)
+- Remove duplicate auth system completely
+- Consolidate state management (Provider nesting, real-time listeners) (2.1-2.7)
+- Standardize API response format (1.1, 1.4, 1.5)
+- Batch load friends (3.1, 3.2, 3.3, 3.4)
+
+Impact: Improves maintainability, reduces query costs by 99%, consolidates auth
+
+PHASE 3: QUALITY (Week 4) - 3-4 days
+Priority: TEST & VALIDATION
+- Run tests in CI before deployment (5.3, 7.3)
+- Add linting to CI (7.11)
+- Enable code coverage thresholds (5.9)
+- Add E2E tests to CI (5.10)
+- Fix test over-mocking (5.1, 5.4)
+
+Impact: Prevents regressions, builds confidence in releases
+
+PHASE 4: HARDENING (Weeks 5-6) - 5-7 days
+Priority: PERFORMANCE & SECURITY
+- Fix useBenchmark memory leak (4.2)
+- Enable production metrics export (4.1)
+- Add Firestore composite indexes (3.5)
+- Fix CSP headers (6.7)
+- Add rate limiting (1.6, 6.8)
+
+Impact: Improves performance, enables production monitoring, hardens security
+
+================================================================================
+ESTIMATED EFFORT BY ISSUE TYPE
+================================================================================
+
+Quick Wins (< 2 hours each):
+- 1.2: Remove hard-coded Bearer token check
+- 7.2: Remove ignoreBuildErrors: true
+- 6.1: Add NODE_ENV check to test endpoints
+- 7.4: Add build step to CI
+- 4.2: Clear frame array in useBenchmark cleanup
+
+Medium Tasks (2-8 hours each):
+- 1.3: Consolidate authentication
+- 2.3: Unify auth state
+- 3.1-3.4: Implement batch loading
+- 4.1: Enable metrics export
+- 5.3: Add tests to CI
+- 6.7: Fix CSP headers
+
+Large Tasks (8+ hours each):
+- 2.1-2.7: Refactor state management and providers
+- 3.5: Add Firestore indexes and schema migration
+- 5.1, 5.4: Remove mocks, use real Firebase in tests
+- 7.1: Consolidate build configs
+- Full testing suite overhaul
+
+Total Estimated: 160-210 hours for full remediation
+Distributed: ~4-5 weeks for team of 2 developers
+
+================================================================================
+PRODUCTION READINESS CHECKLIST
+================================================================================
+
+CRITICAL (BLOCKING DEPLOYMENT):
+☐ Remove hard-coded Bearer token (1.2)
+☐ Gate test endpoints to dev-only or remove (6.1)
+☐ Remove ignoreBuildErrors from build config (7.2)
+☐ Add type checking to CI (7.3)
+☐ Add tests to CI before deployment (7.3)
+
+HIGH (BEFORE PRODUCTION TRAFFIC):
+☐ Consolidate authentication to one system (1.3, 2.3)
+☐ Standardize API response format (1.1)
+☐ Add rate limiting to public endpoints (1.6)
+☐ Fix useBenchmark memory leak (4.2)
+☐ Disable RiveAnimation's useBenchmark in production (4.3)
+☐ Fix Firestore N+1 query patterns (3.1-3.4)
+☐ Add Firestore composite indexes (3.5)
+
+MEDIUM (PRODUCTION HARDENING):
+☐ Enable production metrics export (4.1)
+☐ Remove mock data or gate to dev (2.7)
+☐ Reduce provider nesting (2.1)
+☐ Fix CSP headers (6.7)
+☐ Stop logging sensitive data (6.4, 6.5)
+☐ Remove/fix debug endpoints (6.3)
+☐ Add request tracing (1.7)
+☐ Fix test over-mocking (5.1, 5.4)
+
+================================================================================
+DATA EXTRACTED
+================================================================================
+
+CSV File: /tmp/codebase_issues_extracted.csv
+Columns:
+  - Section: Issue location (1-7)
+  - IssueID: Unique identifier
+  - Title: Issue name
+  - Severity: CRITICAL, HIGH, MEDIUM
+  - AffectedFiles: Files with issue
+  - Description: What the issue is
+  - Dependencies: Issues blocked by this one
+
+Total Rows: 82 issue entries
+
+================================================================================
+RECOMMENDATIONS FOR NEXT STEPS
+================================================================================
+
+1. IMMEDIATE (Today)
+   - Review critical issues list (Section 1.2, 6.1, 6.2, 7.2)
+   - Check if deploy pipeline can handle type errors (7.2)
+   - Verify test endpoints are inaccessible in production
+
+2. THIS WEEK
+   - Remove ignoreBuildErrors: true
+   - Add type checking to CI
+   - Add tests to CI pipeline
+   - Remove hard-coded Bearer token
+   - Gate or remove test endpoints
+
+3. NEXT SPRINT
+   - Plan authentication consolidation
+   - Review and prioritize performance fixes (Section 3)
+   - Create detailed work breakdown for state management refactor
+
+4. ONGOING
+   - Track remediation progress against this analysis
+   - Update issue status as fixes are implemented
+   - Reference section numbers in commits/PRs
+   - Re-analyze after major refactors to identify new issues
+
+================================================================================
+END OF SUMMARY
+================================================================================

@@ -69,11 +69,11 @@ export function useQuiz(quizId: string) {
   return useOptimizedQuery({
     queryKey: ['quiz', quizId],
     queryFn: () => {
-      // Use mock data for development
-      if (quizId === 'daily-quiz-1') {
+      // Use mock data for development only
+      if (process.env.NODE_ENV !== 'production' && quizId === 'daily-quiz-1') {
         return mockDailyQuiz;
       }
-      
+
       // Use the real service for other quiz IDs
       return memoizedGetQuizById(quizId);
     },
@@ -93,11 +93,11 @@ export function useQuizQuestions(questionIds: string[] | undefined) {
   return useOptimizedQuery({
     queryKey: ['questions', questionIds],
     queryFn: () => {
-      // Use mock data for development
-      if (questionIds && questionIds.length > 0 && questionIds[0].startsWith('question-')) {
+      // Use mock data for development only
+      if (process.env.NODE_ENV !== 'production' && questionIds && questionIds.length > 0 && questionIds[0].startsWith('question-')) {
         return mockQuestions;
       }
-      
+
       // Use the real service for other question IDs
       return memoizedGetQuestionsByIds(questionIds || []);
     },
@@ -130,23 +130,15 @@ export function useDailyQuiz() {
   return useOptimizedQuery({
     queryKey: ['dailyQuiz'],
     queryFn: async () => {
-      try {
-        // Try to fetch from the real API first
-        const response = await fetch('/api/daily-quiz');
-        if (response.ok) {
-          return response.json();
-        }
-        console.log('Using mock daily quiz data as fallback');
-        // Fall back to mock data if API call fails
-        return mockDailyQuiz;
-      } catch (error) {
-        console.log('Error fetching daily quiz, using mock data:', error);
-        // Fall back to mock data on any error
-        return mockDailyQuiz;
+      const response = await fetch('/api/daily-quiz');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch daily quiz: ${response.status} ${response.statusText}`);
       }
+      return response.json();
     },
     componentName: 'DailyQuiz',
     queryName: 'daily_quiz',
     staleTime: 60 * 60 * 1000, // 1 hour
+    retry: 3, // Retry up to 3 times before failing
   });
 } 
