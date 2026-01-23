@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useQuery, useInfiniteQuery, useQueryClient, QueryKey } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { leaderboardService } from '@/app/lib/services/leaderboardService';
 import { 
   EnhancedLeaderboardEntry, 
@@ -7,10 +7,10 @@ import {
   LeaderboardType, 
   LeaderboardFilters,
   PaginatedLeaderboard,
-  LeaderboardSubscription,
   LeaderboardUpdate,
   GlobalLeaderboardStats
 } from '@/app/types/leaderboard';
+import { REALTIME_PRESETS } from './query/useRealtimeQuery';
 
 const QUERY_KEYS = {
   leaderboard: (type: LeaderboardType, period: LeaderboardPeriod, filters: LeaderboardFilters) => 
@@ -20,12 +20,13 @@ const QUERY_KEYS = {
 
 interface UseEnhancedLeaderboardOptions {
   enabled?: boolean;
-  refetchInterval?: number;
   realtime?: boolean;
 }
 
 /**
- * Enhanced hook for leaderboard functionality with real-time updates
+ * Enhanced hook for leaderboard functionality with real-time updates via React Query polling
+ * 
+ * Replaces Firebase listeners with React Query's refetchInterval for simpler state management
  */
 export function useEnhancedLeaderboard(
   type: LeaderboardType,
@@ -34,22 +35,20 @@ export function useEnhancedLeaderboard(
   options: UseEnhancedLeaderboardOptions = {}
 ) {
   const queryClient = useQueryClient();
-  const subscriptionRef = useRef<LeaderboardSubscription | null>(null);
-  const [isRealTimeConnected, setIsRealTimeConnected] = useState(false);
   
   const {
     enabled = true,
-    refetchInterval = 60000, // 1 minute
     realtime = false
   } = options;
 
-  // Main leaderboard query
+  // Main leaderboard query with optional real-time polling
   const leaderboardQuery = useQuery({
     queryKey: QUERY_KEYS.leaderboard(type, period, filters),
     queryFn: () => leaderboardService.getLeaderboard(type, period, filters),
     enabled,
-    staleTime: realtime ? 0 : 30000, // 30 seconds if not real-time
-    refetchInterval: realtime ? false : refetchInterval,
+    staleTime: realtime ? REALTIME_PRESETS.STANDARD.staleTime : 30000,
+    refetchInterval: realtime ? REALTIME_PRESETS.STANDARD.realtimeInterval : false,
+    refetchIntervalInBackground: realtime,
     retry: 2,
   });
 
@@ -61,94 +60,9 @@ export function useEnhancedLeaderboard(
     getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextCursor : undefined,
     initialPageParam: undefined as string | undefined,
     enabled,
-    staleTime: realtime ? 0 : 30000,
+    staleTime: realtime ? REALTIME_PRESETS.STANDARD.staleTime : 30000,
+    refetchInterval: realtime ? REALTIME_PRESETS.STANDARD.realtimeInterval : false,
   });
-
-  // Real-time subscription
-  useEffect(() => {
-    if (!realtime || !enabled) return;
-
-    const handleRealtimeUpdate = (update: LeaderboardUpdate) => {
-      // Invalidate queries to trigger refetch
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.leaderboard(type, period, filters),
-      });
-      
-      // Optionally, optimistically update the cache
-      updateCacheOptimistically(update);
-    };
-
-    subscriptionRef.current = leaderboardService.subscribeToLeaderboard(
-      type, 
-      period, 
-      filters, 
-      handleRealtimeUpdate
-    );
-    
-    setIsRealTimeConnected(subscriptionRef.current.isConnected);
-
-    return () => {
-      if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
-        subscriptionRef.current = null;
-        setIsRealTimeConnected(false);
-      }
-    };
-  }, [type, period, filters, realtime, enabled, queryClient]);
-
-  // Optimistic cache updates
-  const updateCacheOptimistically = useCallback((update: LeaderboardUpdate) => {
-    const queryKey = QUERY_KEYS.leaderboard(type, period, filters);
-    
-    queryClient.setQueryData(queryKey, (oldData: PaginatedLeaderboard | undefined) => {
-      if (!oldData) return oldData;
-
-      const updatedEntries = [...oldData.entries];
-      const entryIndex = updatedEntries.findIndex(entry => entry.id === update.entry.id);
-
-      switch (update.type) {
-        case 'entry_added':
-          if (entryIndex === -1) {
-            updatedEntries.push(update.entry);
-            // Re-sort by score and completion time
-            updatedEntries.sort((a, b) => {
-              if (a.score !== b.score) return b.score - a.score;
-              return a.completionTime - b.completionTime;
-            });
-            // Update ranks
-            updatedEntries.forEach((entry, index) => {
-              entry.rank = index + 1;
-            });
-          }
-          break;
-        case 'entry_updated':
-          if (entryIndex !== -1) {
-            updatedEntries[entryIndex] = update.entry;
-          }
-          break;
-        case 'entry_removed':
-          if (entryIndex !== -1) {
-            updatedEntries.splice(entryIndex, 1);
-            // Update ranks
-            updatedEntries.forEach((entry, index) => {
-              entry.rank = index + 1;
-            });
-          }
-          break;
-        case 'rank_changed':
-          if (entryIndex !== -1) {
-            updatedEntries[entryIndex] = { ...update.entry };
-          }
-          break;
-      }
-
-      return {
-        ...oldData,
-        entries: updatedEntries,
-        totalCount: updatedEntries.length
-      };
-    });
-  }, [type, period, filters, queryClient]);
 
   // Manual refresh
   const refresh = useCallback(() => {
@@ -189,7 +103,7 @@ export function useEnhancedLeaderboard(
     
     // Real-time status
     isRealTimeEnabled: realtime,
-    isRealTimeConnected,
+    isRealTimeConnected: realtime && !leaderboardQuery.isError,
     
     // Actions
     refresh,
