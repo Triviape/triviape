@@ -3,7 +3,7 @@ import { render, screen, act } from '@testing-library/react';
 import { RiveAnimation } from '@/app/components/animation/rive-animation';
 import { ResponsiveUIProvider } from '@/app/contexts/responsive-ui-context';
 
-// Mock Next.js Image component
+// Mock Next.js Image component (external dependency)
 jest.mock('next/image', () => ({
   __esModule: true,
   default: (props: any) => {
@@ -12,7 +12,7 @@ jest.mock('next/image', () => ({
   },
 }));
 
-// Mock the Rive library
+// Mock the Rive library (external dependency)
 jest.mock('@rive-app/react-canvas', () => {
   return {
     useRive: jest.fn().mockImplementation(({ onLoad }) => {
@@ -54,53 +54,6 @@ jest.mock('@rive-app/react-canvas', () => {
       BottomCenter: 'BottomCenter',
       BottomRight: 'BottomRight',
     },
-  };
-});
-
-// Mock the useBenchmark hook
-jest.mock('@/app/hooks/performance/useBenchmark', () => ({
-  useBenchmark: jest.fn().mockReturnValue({
-    renderTimeMs: 0,
-    frameDrops: 0,
-    renderCount: 0,
-    isPerformant: true
-  })
-}));
-
-// Mock component utils to verify memoization
-jest.mock('@/app/lib/componentUtils', () => {
-  const originalModule = jest.requireActual('@/app/lib/componentUtils');
-  
-  return {
-    ...originalModule,
-    // Track memoization calls
-    memoWithPerf: jest.fn((Component, options) => {
-      // Pass through the actual component but track the call
-      return Component;
-    }),
-  };
-});
-
-// Mock the responsive UI context
-jest.mock('@/app/contexts/responsive-ui-context', () => {
-  const original = jest.requireActual('@/app/contexts/responsive-ui-context');
-  return {
-    ...original,
-    useResponsiveUI: jest.fn().mockReturnValue({
-      deviceInfo: {
-        isMobile: false,
-        isTablet: false,
-        isDesktop: true,
-        screenSize: 'medium',
-        supportsTouch: false,
-        devicePerformance: 'high',
-      },
-      isTouch: false,
-      uiScale: 'regular',
-      animationLevel: 'full',
-      setAnimationLevel: jest.fn(),
-      setUIScale: jest.fn(),
-    }),
   };
 });
 
@@ -248,19 +201,5 @@ describe('RiveAnimation Component', () => {
     // Check that the default alt text is used
     const fallbackImg = screen.getByAltText('Animation fallback');
     expect(fallbackImg).toBeInTheDocument();
-  });
-  
-  test('verifies that memoization is applied', () => {
-    // Get the mock function
-    const memoWithPerfMock = require('@/app/lib/componentUtils').memoWithPerf;
-    
-    // Check that the memoWithPerf function was called with the correct parameters
-    expect(memoWithPerfMock).toHaveBeenCalledWith(
-      expect.any(Function), // Component
-      expect.objectContaining({
-        name: 'RiveAnimation',
-        warnAfterRenders: 3
-      })
-    );
   });
 }); 

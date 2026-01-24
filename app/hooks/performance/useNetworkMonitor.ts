@@ -2,7 +2,7 @@
  * Network Monitor Hook
  * 
  * A custom hook for monitoring network requests and resource loading.
- * Tracks fetch requests, resource loading, and provides insights into network performance.
+ * Uses PerformanceObserver API for proper instrumentation without monkeypatching.
  */
 
 import { useEffect } from 'react';
@@ -30,131 +30,104 @@ interface UseNetworkMonitorOptions {
 
 /**
  * Hook for monitoring network requests and resource loading
+ * Uses standard PerformanceObserver API to avoid monkeypatching
  */
 export function useNetworkMonitor({
   trackFetch = true,
   trackResources = true,
   trackNavigation = true
 }: UseNetworkMonitorOptions = {}) {
+  
+  // Track fetch/XHR and resource loading using PerformanceObserver
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    // Track fetch requests
-    if (trackFetch) {
-      const originalFetch = window.fetch;
-      
-      window.fetch = async (input, init) => {
-        const startTime = performance.now();
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const observers: PerformanceObserver[] = [];
+    
+    // Track resources (includes fetch, XHR, images, scripts, etc.)
+    if (trackFetch || trackResources) {
+      const resourceObserver = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
         
-        try {
-          const response = await originalFetch(input, init);
-          const endTime = performance.now();
-          const duration = endTime - startTime;
-          
-          // Record the fetch metric
-          recordMetric({
-            type: MetricType.RESOURCE,
-            name: `Fetch: ${url}`,
-            value: duration,
-            metadata: {
-              url,
-              method: init?.method || 'GET',
-              status: response.status,
-              ok: response.ok
-            }
-          });
-          
-          return response;
-        } catch (error) {
-          const endTime = performance.now();
-          const duration = endTime - startTime;
-          
-          // Record the failed fetch metric
-          recordMetric({
-            type: MetricType.RESOURCE,
-            name: `Failed Fetch: ${url}`,
-            value: duration,
-            metadata: {
-              url,
-              method: init?.method || 'GET',
-              error: error instanceof Error ? error.message : String(error)
-            }
-          });
-          
-          throw error;
-        }
-      };
+        entries.forEach((entry) => {
+          if (entry.entryType === 'resource') {
+            const resourceEntry = entry as PerformanceResourceTiming;
+            
+            // Categorize by initiator type
+            const isFetchOrXhr = resourceEntry.initiatorType === 'fetch' || resourceEntry.initiatorType === 'xmlhttprequest';
+            
+            // Skip if we're not tracking this type
+            if (isFetchOrXhr && !trackFetch) return;
+            if (!isFetchOrXhr && !trackResources) return;
+            
+            recordMetric({
+              type: MetricType.RESOURCE,
+              name: isFetchOrXhr ? `Network: ${resourceEntry.name}` : `Resource: ${resourceEntry.name}`,
+              value: resourceEntry.duration,
+              metadata: {
+                url: resourceEntry.name,
+                initiatorType: resourceEntry.initiatorType,
+                transferSize: resourceEntry.transferSize,
+                decodedBodySize: resourceEntry.decodedBodySize,
+                encodedBodySize: resourceEntry.encodedBodySize,
+                protocol: resourceEntry.nextHopProtocol
+              }
+            });
+          }
+        });
+      });
       
-      // Restore original fetch on cleanup
-      return () => {
-        window.fetch = originalFetch;
-      };
+      resourceObserver.observe({ 
+        entryTypes: ['resource'],
+        buffered: true // Capture resources loaded before observer was created
+      });
+      observers.push(resourceObserver);
     }
-  }, [trackFetch]);
+    
+    // Cleanup
+    return () => {
+      observers.forEach(observer => observer.disconnect());
+    };
+  }, [trackFetch, trackResources]);
   
-  // Track resource loading
+  // Track navigation timing
   useEffect(() => {
-    if (typeof window === 'undefined' || !trackResources) return;
+    if (typeof window === 'undefined' || !trackNavigation) return;
     
     const observer = new PerformanceObserver((list) => {
       const entries = list.getEntries();
       
       entries.forEach((entry) => {
-        if (entry.entryType === 'resource') {
-          const resourceEntry = entry as PerformanceResourceTiming;
+        if (entry.entryType === 'navigation') {
+          const navigationEntry = entry as PerformanceNavigationTiming;
           
+          // Record key navigation metrics
           recordMetric({
-            type: MetricType.RESOURCE,
-            name: `Resource: ${resourceEntry.name}`,
-            value: resourceEntry.duration,
+            type: MetricType.NAVIGATION,
+            name: 'Page Load',
+            value: navigationEntry.loadEventEnd - navigationEntry.startTime,
             metadata: {
-              url: resourceEntry.name,
-              initiatorType: resourceEntry.initiatorType,
-              transferSize: resourceEntry.transferSize,
-              decodedBodySize: resourceEntry.decodedBodySize,
-              encodedBodySize: resourceEntry.encodedBodySize
+              url: window.location.href,
+              domContentLoaded: navigationEntry.domContentLoadedEventEnd - navigationEntry.startTime,
+              domInteractive: navigationEntry.domInteractive - navigationEntry.startTime,
+              firstByte: navigationEntry.responseStart - navigationEntry.requestStart,
+              redirectTime: navigationEntry.redirectEnd - navigationEntry.redirectStart,
+              dnsLookup: navigationEntry.domainLookupEnd - navigationEntry.domainLookupStart,
+              tcpConnection: navigationEntry.connectEnd - navigationEntry.connectStart
             }
           });
         }
       });
     });
     
-    observer.observe({ entryTypes: ['resource'] });
+    observer.observe({ 
+      entryTypes: ['navigation'],
+      buffered: true
+    });
     
     return () => {
       observer.disconnect();
     };
-  }, [trackResources]);
-  
-  // Track navigation timing
-  useEffect(() => {
-    if (typeof window === 'undefined' || !trackNavigation) return;
-    
-    // Wait for the page to fully load
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        const navigationTiming = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-        
-        if (navigationTiming) {
-          // Record key navigation metrics
-          recordMetric({
-            type: MetricType.NAVIGATION,
-            name: 'Page Load Time',
-            value: navigationTiming.loadEventEnd - navigationTiming.startTime,
-            metadata: {
-              url: window.location.href,
-              domContentLoaded: navigationTiming.domContentLoadedEventEnd - navigationTiming.startTime,
-              domInteractive: navigationTiming.domInteractive - navigationTiming.startTime,
-              firstByte: navigationTiming.responseStart - navigationTiming.requestStart,
-              redirectTime: navigationTiming.redirectEnd - navigationTiming.redirectStart,
-              dnsLookup: navigationTiming.domainLookupEnd - navigationTiming.domainLookupStart,
-              tcpConnection: navigationTiming.connectEnd - navigationTiming.connectStart
-            }
-          });
-        }
-      }, 0);
-    });
   }, [trackNavigation]);
   
   return null;

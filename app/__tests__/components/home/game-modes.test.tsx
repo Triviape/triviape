@@ -3,36 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { GameModes } from '@/app/components/home/game-modes';
 import { ResponsiveUIProvider } from '@/app/contexts/responsive-ui-context';
 
-// Mock the device module
-jest.mock('@/app/lib/device', () => {
-  const defaultDeviceInfo = {
-    isMobile: false,
-    isTablet: false,
-    isDesktop: true,
-    browserName: 'jest',
-    supportsTouch: false,
-    supportsWebGL: true,
-    devicePerformance: 'high',
-    screenSize: 'large'
-  };
-  
-  return {
-    defaultDeviceInfo,
-    getDeviceInfo: jest.fn().mockReturnValue(defaultDeviceInfo),
-    useDeviceInfo: jest.fn().mockReturnValue(defaultDeviceInfo)
-  };
-});
-
-// Mock the button component to avoid ResponsiveUI dependency
-jest.mock('@/app/components/ui/button', () => {
-  return {
-    Button: ({ children, className, ...props }: any) => (
-      <button className={className} {...props}>{children}</button>
-    ),
-  };
-});
-
-// Mock next/link since it causes issues in tests
+// Mock next/link (external dependency)
 jest.mock('next/link', () => {
   return ({ children, href }: { children: React.ReactNode; href: string }) => {
     return <a href={href}>{children}</a>;

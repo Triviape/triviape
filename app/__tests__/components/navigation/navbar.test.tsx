@@ -3,16 +3,14 @@ import { render, screen } from '@testing-library/react';
 import { Navbar } from '@/app/components/navigation/navbar';
 import { ResponsiveUIProvider } from '@/app/contexts/responsive-ui-context';
 
-// Mock the button component to avoid ResponsiveUI dependency
-jest.mock('@/app/components/ui/button', () => {
-  return {
-    Button: ({ children, className, ...props }: any) => (
-      <button className={className} {...props}>{children}</button>
-    ),
+// Mock next/link (external dependency)
+jest.mock('next/link', () => {
+  return ({ children, href }: { children: React.ReactNode; href: string }) => {
+    return <a href={href}>{children}</a>;
   };
 });
 
-// Mock the useAuth hook
+// Mock useAuth since auth implementation may not be available
 jest.mock('@/app/hooks/useAuth', () => ({
   useAuth: () => ({
     currentUser: null,
@@ -25,13 +23,6 @@ jest.mock('@/app/hooks/useAuth', () => ({
     },
   }),
 }));
-
-// Mock next/link since it causes issues in tests
-jest.mock('next/link', () => {
-  return ({ children, href }: { children: React.ReactNode; href: string }) => {
-    return <a href={href}>{children}</a>;
-  };
-});
 
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(

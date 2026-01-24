@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/app/lib/utils';
 import dynamic from 'next/dynamic';
+import { useIsClient } from '@/app/hooks/useIsClient';
 
 // Dynamically import Rive to avoid SSR issues
 const Rive = dynamic(
@@ -15,13 +16,8 @@ interface RiveAnimationProps {
 }
 
 export function RiveAnimation({ className }: RiveAnimationProps) {
-  const [isClient, setIsClient] = useState(false);
+  const isClient = useIsClient();
   const [hasError, setHasError] = useState(false);
-
-  // Only render on client side to avoid hydration issues
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   if (!isClient || hasError) {
     return <div className={cn("w-full h-[200px] bg-muted/20 rounded-lg", className)} />;

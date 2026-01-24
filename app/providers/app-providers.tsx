@@ -13,6 +13,7 @@ import { useNetworkMonitor } from '@/app/hooks/performance/useNetworkMonitor';
 import dynamic from 'next/dynamic';
 import { ReactQueryProvider } from './query-provider';
 import { ResponsiveUIProvider } from '../contexts/responsive-ui-context';
+import { useIsClient } from '@/app/hooks/useIsClient';
 
 const PerformanceDashboard = dynamic(
   () => import('@/app/components/performance/PerformanceDashboard'),
@@ -41,11 +42,7 @@ const shouldUseEmulators = () => process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR =
 function NavigationMetricsTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isClient, setIsClient] = useState(false);
-  
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const isClient = useIsClient();
   
   useEffect(() => {
     if (!isClient) return;
@@ -108,7 +105,7 @@ function NavigationMetricsTracker() {
  * - Performance monitoring (dev only)
  */
 export function AppProviders({ children }: AppProvidersProps) {
-  const [isClient, setIsClient] = useState(false);
+  const isClient = useIsClient();
   const [firebaseError, setFirebaseError] = useState<Error | null>(null);
 
   // Initialize Firebase
@@ -136,7 +133,6 @@ export function AppProviders({ children }: AppProvidersProps) {
     };
 
     initFirebase();
-    setIsClient(true);
   }, []);
 
   // Performance monitoring

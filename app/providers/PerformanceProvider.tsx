@@ -7,11 +7,12 @@
 
 'use client';
 
-import React, { ReactNode, useEffect, useState, Suspense } from 'react';
+import React, { ReactNode, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { recordMetric, MetricType } from '@/app/lib/performanceAnalyzer';
 import { useNetworkMonitor } from '@/app/hooks/performance/useNetworkMonitor';
+import { useIsClient } from '@/app/hooks/useIsClient';
 
 // Dynamically import the performance dashboard to reduce bundle size
 const PerformanceDashboard = dynamic(
@@ -30,12 +31,7 @@ interface PerformanceProviderProps {
 function NavigationMetricsTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isClient, setIsClient] = useState(false);
-  
-  // Set isClient to true on client-side hydration
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const isClient = useIsClient();
   
   // Track page navigation
   useEffect(() => {
@@ -95,12 +91,7 @@ function NavigationMetricsTracker() {
  * Performance Provider Component
  */
 export default function PerformanceProvider({ children }: PerformanceProviderProps) {
-  const [isClient, setIsClient] = useState(false);
-  
-  // Set isClient to true on client-side hydration
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const isClient = useIsClient();
   
   // Enable network monitoring in development mode
   const showDashboard = process.env.NODE_ENV === 'development' && isClient;

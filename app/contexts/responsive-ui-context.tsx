@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { useDeviceInfo, DeviceInfo } from '@/app/lib/device';
+import { useIsClient } from '@/app/hooks/useIsClient';
 
 interface ResponsiveUIContextType {
   deviceInfo: DeviceInfo;
@@ -35,7 +36,7 @@ const ResponsiveUIContext = createContext<ResponsiveUIContextType>(defaultContex
 
 export function ResponsiveUIProvider({ children }: { children: React.ReactNode }) {
   const deviceInfo = useDeviceInfo();
-  const [isClient, setIsClient] = useState(false);
+  const isClient = useIsClient();
   
   // Determine default UI scale based on device info
   const getDefaultUIScale = useCallback((): 'compact' | 'regular' | 'large' => {
@@ -55,19 +56,11 @@ export function ResponsiveUIProvider({ children }: { children: React.ReactNode }
   const [uiScale, setUIScale] = useState<'compact' | 'regular' | 'large'>('regular');
   const [animationLevel, setAnimationLevel] = useState<'full' | 'reduced' | 'minimal'>('full');
   
-  // Only update values after initial client-side render to prevent hydration mismatch
+  // Update values after client hydration and when device info changes
   useEffect(() => {
-    setIsClient(true);
+    if (!isClient) return;
     setUIScale(getDefaultUIScale());
     setAnimationLevel(getDefaultAnimationLevel());
-  }, [getDefaultUIScale, getDefaultAnimationLevel]);
-  
-  // Update defaults when device info changes, but only after initial render
-  useEffect(() => {
-    if (isClient) {
-      setUIScale(getDefaultUIScale());
-      setAnimationLevel(getDefaultAnimationLevel());
-    }
   }, [isClient, getDefaultUIScale, getDefaultAnimationLevel]);
 
   // Memoize context value to prevent unnecessary re-renders
