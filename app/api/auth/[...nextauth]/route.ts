@@ -54,10 +54,12 @@ export const authConfig: NextAuthConfig = {
           
           // Immediately sign out from Firebase - we only needed password verification
           await auth.signOut();
-          
+
           // Return the user object that will be stored in the NextAuth JWT token
+          // IMPORTANT: id field here comes from Firebase user.uid
+          // It will be mapped through jwt callback -> token.id -> session.user.id
           return {
-            id: user.uid,
+            id: user.uid,  // Firebase UID becomes the primary identifier in NextAuth
             email: user.email,
             name: user.displayName || user.email?.split('@')[0] || 'User',
             image: user.photoURL
@@ -96,10 +98,11 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     async jwt({ token, user }) {
       try {
-        // Initial sign in
+        // Initial sign in - Map Firebase UID to NextAuth token
+        // This is where Firebase's user.uid becomes NextAuth's token.id
         if (user) {
           console.log('Setting JWT token for user:', user.email);
-          token.id = user.id;
+          token.id = user.id;  // user.id comes from Credentials provider (line 60 maps Firebase uid)
           token.email = user.email;
         }
         return token;
@@ -110,9 +113,11 @@ export const authConfig: NextAuthConfig = {
     },
     async session({ session, token }) {
       try {
+        // Session callback - Transfer JWT claims to session
+        // Maps token.id to session.user.id so frontend can access user ID
         if (token && session.user) {
           console.log('Setting session for user:', token.email);
-          session.user.id = token.id as string;
+          session.user.id = token.id as string;  // Now available as session.user.id throughout the app
           session.user.email = token.email as string;
         }
         return session;

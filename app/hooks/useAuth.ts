@@ -18,9 +18,14 @@ export interface UserProfile {
 
 /**
  * NextAuth user with extended properties
+ *
+ * IMPORTANT: The `id` field here is the Firebase UID
+ * - It comes from session.user.id which is mapped from Firebase user.uid
+ * - Use this id directly when querying Firestore documents
+ * - Equivalent to Firebase user.uid in the Credentials provider
  */
 export interface NextAuthUser {
-  id: string;
+  id: string;  // Firebase UID (from user.uid in auth)
   email?: string | null;
   name?: string | null;
   image?: string | null;
@@ -41,6 +46,15 @@ export interface AuthState {
 /**
  * Custom hook for accessing authentication via NextAuth
  * Provides a consistent interface that matches component expectations
+ *
+ * ID Property:
+ * - currentUser.id is the Firebase UID (Firebase user.uid mapped to NextAuth session.user.id)
+ * - Use currentUser.id directly as the document key when querying Firestore
+ *
+ * Example:
+ *   const { currentUser } = useAuth();
+ *   const userDoc = await db.collection('users').doc(currentUser.id).get();
+ *
  * @returns Object containing authentication state and user information
  */
 export function useAuth(): AuthState {
