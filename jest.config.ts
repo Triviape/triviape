@@ -34,6 +34,10 @@ const config: Config = {
   ],
   // Configure test reporting
   verbose: true,
+  // Transform ESM modules from node_modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(next-auth|@auth|@panva)/)',
+  ],
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config

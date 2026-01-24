@@ -7,6 +7,78 @@ jest.setTimeout(30000);
 // Mock fetch API
 global.fetch = jest.fn() as jest.Mock;
 
+// Mock Request and Response APIs
+global.Request = class Request {
+  constructor(public url: string, public init?: RequestInit) {}
+} as any;
+
+global.Response = class Response {
+  constructor(public body?: BodyInit | null, public init?: ResponseInit) {}
+  static json(data: any, init?: ResponseInit) {
+    return new Response(JSON.stringify(data), {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
+    });
+  }
+  static redirect(url: string, status = 302) {
+    return new Response(null, { status, headers: { Location: url } });
+  }
+} as any;
+
+// Mock HTMLCanvasElement for tests that use canvas
+HTMLCanvasElement.prototype.getContext = jest.fn(() => ({
+  clearRect: jest.fn(),
+  fillRect: jest.fn(),
+  fillStyle: '',
+  strokeStyle: '',
+  lineWidth: 1,
+  lineCap: 'butt',
+  lineJoin: 'miter',
+  miterLimit: 10,
+  shadowOffsetX: 0,
+  shadowOffsetY: 0,
+  shadowBlur: 0,
+  shadowColor: '',
+  globalAlpha: 1,
+  globalCompositeOperation: 'source-over',
+  font: '',
+  textAlign: 'start',
+  textBaseline: 'alphabetic',
+  direction: 'ltr',
+  drawImage: jest.fn(),
+  beginPath: jest.fn(),
+  closePath: jest.fn(),
+  moveTo: jest.fn(),
+  lineTo: jest.fn(),
+  bezierCurveTo: jest.fn(),
+  quadraticCurveTo: jest.fn(),
+  arc: jest.fn(),
+  arcTo: jest.fn(),
+  rect: jest.fn(),
+  fill: jest.fn(),
+  stroke: jest.fn(),
+  clip: jest.fn(),
+  isPointInPath: jest.fn(),
+  isPointInStroke: jest.fn(),
+  rotate: jest.fn(),
+  scale: jest.fn(),
+  translate: jest.fn(),
+  transform: jest.fn(),
+  setTransform: jest.fn(),
+  resetTransform: jest.fn(),
+  save: jest.fn(),
+  restore: jest.fn(),
+  createLinearGradient: jest.fn(),
+  createRadialGradient: jest.fn(),
+  createPattern: jest.fn(),
+  fillText: jest.fn(),
+  strokeText: jest.fn(),
+  measureText: jest.fn(() => ({ width: 0 })),
+  getImageData: jest.fn(),
+  putImageData: jest.fn(),
+  createImageData: jest.fn(),
+})) as any;
+
 // Mock console methods to reduce noise in test output
 const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
@@ -132,6 +204,12 @@ jest.mock('firebase/firestore', () => {
     getDocs: jest.fn(),
     query: jest.fn(),
     limit: jest.fn(),
+    writeBatch: jest.fn(() => ({
+      set: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      commit: jest.fn().mockResolvedValue({}),
+    })),
     CACHE_SIZE_UNLIMITED: 'CACHE_SIZE_UNLIMITED',
   };
 });
@@ -163,7 +241,43 @@ jest.mock('firebase/functions', () => {
   };
 });
 
+jest.mock('firebase/database', () => {
+  return {
+    getDatabase: jest.fn().mockReturnValue({}),
+    connectDatabaseEmulator: jest.fn(),
+    ref: jest.fn(),
+    get: jest.fn(),
+    set: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+    onValue: jest.fn(),
+  };
+});
+
 // Mock Next.js
 jest.mock('next/navigation', () => ({
   redirect: jest.fn(),
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    pathname: '/',
+    query: {},
+  })),
+  usePathname: jest.fn(() => '/'),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+}));
+
+// Mock NextAuth
+jest.mock('next-auth/react', () => ({
+  useSession: jest.fn(() => ({
+    data: null,
+    status: 'unauthenticated',
+  })),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  SessionProvider: ({ children }: { children: React.ReactNode }) => children,
 })); 
