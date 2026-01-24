@@ -33,6 +33,16 @@ export enum QuestionTypeEnum {
 }
 
 /**
+ * Question type enum for component usage
+ */
+export const QuestionType = {
+  MultipleChoice: 'multiple-choice',
+  TrueFalse: 'true-false',
+  ShortAnswer: 'short-answer',
+  Matching: 'matching'
+} as const;
+
+/**
  * Quiz category information
  */
 export interface QuizCategory {
@@ -41,6 +51,30 @@ export interface QuizCategory {
   description?: string;
   color?: string;
   icon?: string;
+}
+
+/**
+ * Answer option for a question
+ */
+export interface AnswerOption {
+  id: string;
+  text: string;
+  isCorrect?: boolean;
+  explanation?: string;
+}
+
+/**
+ * Question interface for quiz components
+ */
+export interface Question {
+  id: string;
+  text: string;
+  type: string;
+  answers: AnswerOption[];
+  hint?: string;
+  explanation?: string;
+  points?: number;
+  timeLimit?: number;
 }
 
 /**

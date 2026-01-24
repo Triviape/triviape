@@ -2,7 +2,8 @@
  * Unified quiz completion handler for both regular and daily quizzes
  */
 
-import { submitQuizAttempt } from '@/app/actions/quizActions';
+// NOTE: Import of submitQuizAttempt is deferred to avoid bundling server code on client
+// import { submitQuizAttempt } from '@/app/actions/quizActions';
 
 export interface QuizAnswerData {
   questionId: string;
@@ -50,6 +51,8 @@ export async function submitQuizCompletion(
     formData.append('os', navigator.platform);
     
     // Submit using the standard action
+    // Dynamic import to avoid bundling server code on client
+    const { submitQuizAttempt } = await import('@/app/actions/quizActions');
     const result = await submitQuizAttempt(formData);
     
     return result;

@@ -90,7 +90,7 @@ export default function OfflinePage() {
           {isOnline ? (
             <div className="text-center space-y-4">
               <p className="text-gray-600">
-                Great! You're back online. You can now access all features of Triviape.
+                Great! You&apos;re back online. You can now access all features of Triviape.
               </p>
               
               {lastOnline && (
@@ -114,8 +114,8 @@ export default function OfflinePage() {
             <div className="space-y-6">
               <div className="text-center">
                 <p className="text-gray-600 mb-4">
-                  It looks like you've lost your internet connection. 
-                  Don't worry - you can still access some features offline!
+                  It looks like you&apos;ve lost your internet connection. 
+                  Don&apos;t worry - you can still access some features offline!
                 </p>
                 
                 <div className="bg-blue-50 p-4 rounded-lg">

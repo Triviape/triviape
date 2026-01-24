@@ -220,7 +220,7 @@ export default function MultiplayerPage() {
                   🚀 Development Implementation
                 </h3>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
-                  This is a complete front-end implementation of the multiplayer system. To make it fully functional, you'll need to:
+                  This is a complete front-end implementation of the multiplayer system. To make it fully functional, you&apos;ll need to:
                 </p>
                 <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1 ml-4">
                   <li>• Set up a WebSocket server (Socket.io recommended)</li>

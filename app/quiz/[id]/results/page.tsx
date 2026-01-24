@@ -65,7 +65,7 @@ export default function QuizResultsPage({ params }: QuizResultsPageProps) {
           <CardHeader className="text-center">
             <CardTitle>No Results Found</CardTitle>
             <CardDescription>
-              We couldn't find your quiz results. Please try taking the quiz again.
+              We couldn&apos;t find your quiz results. Please try taking the quiz again.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-4">

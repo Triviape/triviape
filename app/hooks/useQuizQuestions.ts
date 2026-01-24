@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useQueryClient, QueryKey, UseQueryOptions, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient, QueryKey, UseQueryOptions, useMutation, QueryClient } from '@tanstack/react-query';
 import { getQuestionsByIds } from '@/app/lib/services/questionService';
 import { Question } from '@/app/types/question';
 import { useCallback, useMemo } from 'react';
@@ -51,17 +51,18 @@ export function useQuizQuestions<TData = Question[]>(
 /**
  * Prefetches questions for a quiz to improve user experience
  * 
+ * @param queryClient The QueryClient instance to use for prefetching
  * @param questionIds Array of question IDs to prefetch
  * @param options Additional query options for customization
  * @param retryCount Number of times to retry the prefetch if it fails
  * @returns Promise that resolves when the prefetch is complete
  */
 export function prefetchQuizQuestions(
+  queryClient: QueryClient,
   questionIds: string[] = [],
   options: Omit<UseQueryOptions<Question[], QuestionFetchError, QueryKey>, 'queryKey' | 'queryFn'> = {},
   retryCount = 1
 ): Promise<void> {
-  const queryClient = useQueryClient();
 
   // If no question IDs, skip prefetching
   if (!questionIds.length) {
