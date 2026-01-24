@@ -44,7 +44,12 @@
       "Bash(bd sync:*)",
       "Bash(bd update:*)",
       "Bash(ls:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(git push)",
+      "Bash(npm test:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Remove hard-coded test tokens from middleware\n\nCRITICAL FIX: Removed mock token/session verification from production middleware:\n- Removed string comparison against ''expired-token'' in authMiddleware\n- Removed string comparison against ''expired-session'' in main middleware\n- Updated to use proper NextAuth JWT verification via cookies\n- Added documentation clarifying that NextAuth handles token validation\n\nSecurity impact: Test code is no longer in production. Proper JWT validation\nis handled by NextAuth''s built-in mechanisms in route handlers using auth\\(\\).\n\nTests: Security/middleware tests pass \\(11/11\\)\n\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(done)",
+      "Bash(git commit:*)"
     ]
   }
 }
