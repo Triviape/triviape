@@ -46,6 +46,7 @@ export function useBenchmark(options: BenchmarkOptions): BenchmarkMetrics {
   const startTimeRef = useRef<number>(0);
   const renderCountRef = useRef<number>(0);
   const framesRef = useRef<number[]>([]);
+  const MAX_FRAME_SAMPLES = 120; // 2 seconds at 60fps, prevents unbounded memory growth
   
   // Adjust threshold based on device performance
   const adjustedThreshold = deviceInfo.devicePerformance === 'low' 
@@ -70,7 +71,11 @@ export function useBenchmark(options: BenchmarkOptions): BenchmarkMetrics {
       if (frameDuration > 16.7) {
         frameDrops += Math.floor(frameDuration / 16.7) - 1;
       }
-      
+
+      // Maintain circular buffer to prevent unbounded memory growth
+      if (framesRef.current.length >= MAX_FRAME_SAMPLES) {
+        framesRef.current.shift();
+      }
       framesRef.current.push(frameDuration);
       lastFrameTime = now;
       

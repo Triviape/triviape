@@ -5,6 +5,7 @@
 import { NextRequest } from 'next/server';
 import { logError, ErrorCategory, ErrorSeverity } from './errorHandler';
 import { RateLimitSchemas } from './validation/securitySchemas';
+import { UpstashRateLimitStore } from './rateLimiter/upstashStore';
 
 /**
  * Rate limit configuration
@@ -33,10 +34,11 @@ interface RateLimitEntry {
  * Rate limit store interface
  */
 interface RateLimitStore {
-  get(key: string): RateLimitEntry | undefined;
-  set(key: string, entry: RateLimitEntry): void;
-  delete(key: string): void;
-  clear(): void;
+  get(key: string): RateLimitEntry | undefined | Promise<RateLimitEntry | undefined>;
+  set(key: string, entry: RateLimitEntry): void | Promise<void>;
+  delete(key: string): void | Promise<void>;
+  clear(): void | Promise<void>;
+  cleanup?(): void;
 }
 
 /**
@@ -78,15 +80,32 @@ class MemoryRateLimitStore implements RateLimitStore {
  */
 export class RateLimiter {
   private store: RateLimitStore;
-  private cleanupInterval: NodeJS.Timeout;
+  private cleanupInterval?: NodeJS.Timeout;
 
   constructor(store?: RateLimitStore) {
-    this.store = store || new MemoryRateLimitStore();
-    
-    // Clean up expired entries every 5 minutes
-    this.cleanupInterval = setInterval(() => {
-      this.store.cleanup();
-    }, 5 * 60 * 1000);
+    if (store) {
+      this.store = store;
+    } else if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+      // Use Upstash Redis in production
+      try {
+        this.store = new UpstashRateLimitStore();
+      } catch (error) {
+        console.warn('Failed to initialize Upstash store, falling back to memory:', error);
+        this.store = new MemoryRateLimitStore();
+      }
+    } else {
+      // Fall back to in-memory store
+      this.store = new MemoryRateLimitStore();
+    }
+
+    // Only set up cleanup interval for memory store (Redis handles expiration automatically)
+    if (this.store instanceof MemoryRateLimitStore) {
+      this.cleanupInterval = setInterval(() => {
+        if (this.store instanceof MemoryRateLimitStore) {
+          this.store.cleanup();
+        }
+      }, 5 * 60 * 1000);
+    }
   }
 
   /**
@@ -112,7 +131,7 @@ export class RateLimiter {
    * Check if request is within rate limits
    */
   async checkLimit(
-    req: NextRequest, 
+    req: NextRequest,
     config: RateLimitConfig
   ): Promise<{
     allowed: boolean;
@@ -124,8 +143,8 @@ export class RateLimiter {
     const key = `${clientId}:${req.nextUrl.pathname}`;
     const now = Date.now();
 
-    // Get current entry
-    let entry = this.store.get(key);
+    // Get current entry (handle both sync and async stores)
+    let entry = await Promise.resolve(this.store.get(key));
 
     // If no entry or expired, create new one
     if (!entry || now > entry.resetTime) {
@@ -139,7 +158,7 @@ export class RateLimiter {
     // Check if limit exceeded
     if (entry.count >= config.max) {
       const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
-      
+
       logError(new Error(`Rate limit exceeded for ${clientId}`), {
         category: ErrorCategory.API,
         severity: ErrorSeverity.WARNING,
@@ -165,7 +184,7 @@ export class RateLimiter {
 
     // Increment count
     entry.count++;
-    this.store.set(key, entry);
+    await Promise.resolve(this.store.set(key, entry));
 
     return {
       allowed: true,
@@ -219,6 +238,7 @@ export class RateLimiter {
   destroy(): void {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
     }
   }
 }

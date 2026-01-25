@@ -54,6 +54,7 @@ function RiveAnimationBase({
   // Performance benchmark
   const metrics = useBenchmark({
     name: benchmarkName || `RiveAnimation-${src.split('/').pop()?.split('.')[0] || 'unknown'}`,
+    enabled: process.env.NODE_ENV === 'development',
     threshold: 32, // Higher threshold for animations
     onThresholdExceeded: (metrics) => {
       // Automatically reduce quality if performance is poor

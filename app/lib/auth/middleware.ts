@@ -146,12 +146,25 @@ export async function middleware(request: NextRequest) {
     );
   }
   
-  // 2. Rate limiting for API routes
+  // 2. Rate limiting for API routes with route-specific configs
   if (pathname.startsWith(API_ROUTE_PATTERN)) {
+    let rateLimitConfig = RateLimitConfigs.api; // Default
+
+    // Route-specific rate limit configurations
+    if (pathname.startsWith('/api/auth/')) {
+      rateLimitConfig = RateLimitConfigs.auth; // 5/15min
+    } else if (pathname.startsWith('/api/upload') || pathname.includes('/avatar')) {
+      rateLimitConfig = RateLimitConfigs.upload; // 10/hr
+    } else if (pathname.includes('/search')) {
+      rateLimitConfig = RateLimitConfigs.search; // 30/min
+    } else if (pathname.match(/\/api\/(daily-quiz|public)/)) {
+      rateLimitConfig = RateLimitConfigs.public; // 1000/min
+    }
+
     const rateLimitedHandler = withRateLimit(async (req: NextRequest) => {
       return NextResponse.next();
-    }, RateLimitConfigs.api);
-    
+    }, rateLimitConfig);
+
     const rateLimitResponse = await rateLimitedHandler(request);
     if (rateLimitResponse) {
       return applySecurityHeaders(rateLimitResponse);
