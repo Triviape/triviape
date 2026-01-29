@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { leaderboardService } from '@/app/lib/services/leaderboardService';
+import { leaderboardService } from '@/app/lib/services/leaderboard/leaderboardService';
 import { 
   EnhancedLeaderboardEntry, 
   LeaderboardPeriod, 

@@ -1,6 +1,6 @@
 import React from 'react';
 import QuizList from '@/app/components/quiz/QuizList';
-import { getCategories } from '@/app/lib/services/quiz/quizFetchService';
+import { quizService } from '@/app/lib/services/quiz';
 import { QuizCategory } from '@/app/types/quiz';
 
 // This is a server component that fetches categories
@@ -16,7 +16,7 @@ export default async function QuizzesPage() {
   let categories: QuizCategory[] = [];
   
   try {
-    categories = await getCategories();
+    categories = await quizService.getCategories();
   } catch (error) {
     console.error('Failed to fetch categories:', error);
   }

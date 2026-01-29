@@ -213,3 +213,37 @@ export interface FriendNotificationPreferences {
   friendOnline: boolean;
   achievementShared: boolean;
 }
+
+/**
+ * Direct message between friends
+ */
+export interface DirectMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderDisplayName: string;
+  senderAvatarUrl?: string;
+  recipientId: string;
+  content: string;
+  createdAt: string;
+  readAt?: string;
+  isRead: boolean;
+}
+
+/**
+ * Conversation between two users
+ */
+export interface Conversation {
+  id: string;
+  participantIds: [string, string];
+  participant1DisplayName: string;
+  participant1AvatarUrl?: string;
+  participant2DisplayName: string;
+  participant2AvatarUrl?: string;
+  lastMessage?: string;
+  lastMessageAt?: string;
+  lastMessageSenderId?: string;
+  unreadCount: Record<string, number>; // { [userId]: count }
+  createdAt: string;
+  updatedAt: string;
+}

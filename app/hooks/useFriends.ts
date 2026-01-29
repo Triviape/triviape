@@ -9,7 +9,10 @@ import {
   FriendSearchResult,
   FriendStats,
   ActivityFilters,
-  PresenceStatus
+  PresenceStatus,
+  ChallengeStatus,
+  Conversation,
+  DirectMessage
 } from '@/app/types/social';
 import { useAuth } from './useAuth';
 
@@ -17,6 +20,8 @@ const QUERY_KEYS = {
   friends: (userId: string) => ['friends', userId],
   friendRequests: (userId: string) => ['friend-requests', userId],
   friendActivity: (userId: string, filters: ActivityFilters) => ['friend-activity', userId, filters],
+  conversations: (userId: string) => ['conversations', userId],
+  messages: (conversationId: string) => ['messages', conversationId],
   friendSearch: (query: string, userId: string) => ['friend-search', query, userId],
   challenges: (userId: string) => ['challenges', userId],
   friendStats: (userId: string) => ['friend-stats', userId],
@@ -158,9 +163,17 @@ export function useFriendActivity(filters: ActivityFilters = {}) {
 /**
  * Hook for managing challenges
  */
-export function useChallenges() {
+export function useChallenges(statusFilter?: ChallengeStatus[]) {
   const { currentUser } = useAuth();
   const queryClient = useQueryClient();
+
+  // Query for fetching challenges
+  const { data: challenges, isLoading, error: queryError, refetch } = useQuery({
+    queryKey: QUERY_KEYS.challenges(currentUser?.uid || ''),
+    queryFn: () => friendService.getChallenges(currentUser!.uid, statusFilter),
+    enabled: !!currentUser?.uid,
+    staleTime: 30000,
+  });
 
   const sendChallengeMutation = useMutation({
     mutationFn: ({ 
@@ -179,10 +192,62 @@ export function useChallenges() {
     },
   });
 
+  const respondMutation = useMutation({
+    mutationFn: ({ challengeId, response }: { challengeId: string; response: 'accepted' | 'declined' }) =>
+      friendService.respondToChallenge(challengeId, currentUser!.uid, response),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.challenges(currentUser!.uid) });
+    },
+  });
+
+  const updateScoreMutation = useMutation({
+    mutationFn: ({ challengeId, score, timeInSeconds }: { challengeId: string; score: number; timeInSeconds: number }) =>
+      friendService.updateChallengeScore(challengeId, currentUser!.uid, score, timeInSeconds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.challenges(currentUser!.uid) });
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (challengeId: string) =>
+      friendService.cancelChallenge(challengeId, currentUser!.uid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.challenges(currentUser!.uid) });
+    },
+  });
+
+  // Computed values
+  const sentChallenges = challenges?.sent || [];
+  const receivedChallenges = challenges?.received || [];
+  const pendingReceived = receivedChallenges.filter(c => c.status === 'pending');
+  const activeChallenges = [...sentChallenges, ...receivedChallenges].filter(
+    c => c.status === 'in_progress' || c.status === 'accepted'
+  );
+  const completedChallenges = [...sentChallenges, ...receivedChallenges].filter(
+    c => c.status === 'completed'
+  );
+
   return {
+    // Data
+    sentChallenges,
+    receivedChallenges,
+    pendingReceived,
+    activeChallenges,
+    completedChallenges,
+    allChallenges: [...sentChallenges, ...receivedChallenges],
+    isLoading,
+    error: queryError,
+    refetch,
+    // Actions
     sendChallenge: sendChallengeMutation.mutateAsync,
+    respondToChallenge: respondMutation.mutateAsync,
+    updateScore: updateScoreMutation.mutateAsync,
+    cancelChallenge: cancelMutation.mutateAsync,
+    // Loading states
     isSending: sendChallengeMutation.isPending,
-    error: sendChallengeMutation.error,
+    isResponding: respondMutation.isPending,
+    isUpdatingScore: updateScoreMutation.isPending,
+    isCanceling: cancelMutation.isPending,
   };
 }
 
@@ -289,4 +354,115 @@ export function useFriendCache() {
     invalidateRequests,
     invalidateActivity,
   };
+}
+
+/**
+ * Hook for managing conversations
+ */
+export function useConversations() {
+  const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: conversations, isLoading, error } = useQuery({
+    queryKey: QUERY_KEYS.conversations(currentUser?.uid || ''),
+    queryFn: () => friendService.getConversations(currentUser!.uid),
+    enabled: !!currentUser?.uid,
+    staleTime: 30000,
+  });
+
+  // Calculate total unread
+  const totalUnread = conversations?.reduce((sum, conv) => {
+    return sum + (conv.unreadCount[currentUser?.uid || ''] || 0);
+  }, 0) || 0;
+
+  return {
+    conversations: conversations || [],
+    totalUnread,
+    isLoading,
+    error,
+  };
+}
+
+/**
+ * Hook for managing a single conversation's messages
+ */
+export function useMessages(conversationId: string | null) {
+  const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
+  const [realtimeMessages, setRealtimeMessages] = useState<DirectMessage[]>([]);
+
+  // Initial fetch of messages
+  const { data: initialMessages, isLoading } = useQuery({
+    queryKey: QUERY_KEYS.messages(conversationId || ''),
+    queryFn: () => friendService.getMessages(conversationId!),
+    enabled: !!conversationId && !!currentUser?.uid,
+    staleTime: 10000,
+  });
+
+  // Subscribe to real-time updates
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const unsubscribe = friendService.subscribeToMessages(conversationId, (messages) => {
+      setRealtimeMessages(messages);
+    });
+
+    return () => unsubscribe();
+  }, [conversationId]);
+
+  // Combine initial and realtime messages, preferring realtime
+  const messages = realtimeMessages.length > 0 ? realtimeMessages : (initialMessages || []);
+
+  // Send message mutation
+  const sendMutation = useMutation({
+    mutationFn: ({ recipientId, content }: { recipientId: string; content: string }) =>
+      friendService.sendMessage(currentUser!.uid, recipientId, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversations(currentUser!.uid) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.messages(conversationId || '') });
+    },
+  });
+
+  // Mark as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: () => friendService.markMessagesAsRead(conversationId!, currentUser!.uid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversations(currentUser!.uid) });
+    },
+  });
+
+  // Mark messages as read when conversation is opened
+  useEffect(() => {
+    if (conversationId && currentUser?.uid && messages.length > 0) {
+      markAsReadMutation.mutate();
+    }
+  }, [conversationId, currentUser?.uid, messages.length]);
+
+  return {
+    messages,
+    isLoading,
+    sendMessage: sendMutation.mutateAsync,
+    isSending: sendMutation.isPending,
+    markAsRead: markAsReadMutation.mutate,
+  };
+}
+
+/**
+ * Hook to start a conversation with a friend
+ */
+export function useStartConversation() {
+  const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
+
+  const startConversation = useCallback(async (friendId: string): Promise<Conversation> => {
+    if (!currentUser?.uid) {
+      throw new Error('Not authenticated');
+    }
+    
+    const conversation = await friendService.getOrCreateConversation(currentUser.uid, friendId);
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversations(currentUser.uid) });
+    return conversation;
+  }, [currentUser?.uid, queryClient]);
+
+  return { startConversation };
 }

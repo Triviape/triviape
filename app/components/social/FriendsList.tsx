@@ -26,6 +26,7 @@ import { cn } from '@/app/lib/utils';
 import { useFriends, useFriendRequests, useFriendSearch, useFriendStats } from '@/app/hooks/useFriends';
 import { Friend, FriendRequest } from '@/app/types/social';
 import { formatDistanceToNow } from 'date-fns';
+import { MessageDialog } from './MessageDialog';
 
 interface FriendsListProps {
   className?: string;
@@ -40,6 +41,8 @@ export function FriendsList({
 }: FriendsListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState('friends');
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [selectedFriendForMessage, setSelectedFriendForMessage] = useState<Friend | null>(null);
 
   const { 
     friends, 
@@ -47,6 +50,11 @@ export function FriendsList({
     offlineFriends, 
     isLoading: friendsLoading 
   } = useFriends();
+
+  const handleMessageClick = (friend: Friend) => {
+    setSelectedFriendForMessage(friend);
+    setMessageDialogOpen(true);
+  };
 
   const {
     sentRequests,
@@ -163,7 +171,7 @@ export function FriendsList({
           variant="outline"
           onClick={(e) => {
             e.stopPropagation();
-            // TODO: Implement messaging
+            handleMessageClick(friend);
           }}
         >
           <MessageCircle className="h-4 w-4" />
@@ -442,6 +450,13 @@ export function FriendsList({
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      {/* Message Dialog */}
+      <MessageDialog
+        friend={selectedFriendForMessage}
+        open={messageDialogOpen}
+        onOpenChange={setMessageDialogOpen}
+      />
     </Card>
   );
 }
