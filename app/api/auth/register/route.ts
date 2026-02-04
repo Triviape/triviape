@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
 import { withApiErrorHandling, ApiErrorCode } from '@/app/lib/apiUtils';
 import { withRateLimit, RateLimitConfigs } from '@/app/lib/rateLimiter';
@@ -8,16 +9,17 @@ import {
 import { 
   handleConflictError 
 } from '@/app/lib/services/errorHandler';
+import { createSessionCookie } from '@/app/lib/authUtils';
 
 /**
  * API route to handle user registration with enhanced security and rate limiting
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   // Apply rate limiting to prevent abuse
-  const rateLimitedHandler = withRateLimit(async (req: Request) => {
+  const rateLimitedHandler = withRateLimit(async (req: NextRequest) => {
     return withApiErrorHandling(req, async () => {
       // Parse and validate request body
-      const body = await request.json();
+      const body = await req.json();
       
       // Validate input with security checks
       const validationResult = sanitizeAndValidate(AuthInputSchemas.register, body);
@@ -64,14 +66,26 @@ export async function POST(request: Request) {
           emailVerified: false
         });
         
-        // Send email verification
-        await FirebaseAdminService.sendEmailVerification(userRecord.uid);
-        
-        // Return success - user should sign in via NextAuth
+        // TODO: Send email verification via generateEmailVerificationLink + email service when implemented
+        // Firebase Admin SDK does not have sendEmailVerification; use auth().generateEmailVerificationLink(email) + email provider
+
+        // Issue a session cookie so the new user is signed in immediately
+        const idToken = await FirebaseAdminService.getAuth().createCustomToken(userRecord.uid);
+        const sessionResult = await createSessionCookie(idToken);
+
+        if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
+          throw {
+            code: ApiErrorCode.INTERNAL_ERROR,
+            message: sessionResult.error || 'Failed to create session',
+            statusCode: 500
+          };
+        }
+
         return {
           success: true,
           userId: userRecord.uid,
-          message: 'Registration successful. Please sign in with your new account.'
+          message: 'Registration successful',
+          autoSignedIn: true
         };
       } catch (error: any) {
         // Handle specific Firebase errors

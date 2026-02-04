@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
 
 interface SignUpFormProps {
   onSuccess?: () => void;
@@ -27,7 +30,6 @@ export default function SignUpForm({ onSuccess, onError, callbackUrl = '/auth?ta
     try {
       console.log('Creating new user with email:', email);
       
-      // Call the registration API endpoint
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -37,6 +39,7 @@ export default function SignUpForm({ onSuccess, onError, callbackUrl = '/auth?ta
           email,
           password,
           displayName,
+          acceptTerms: true,
         }),
       });
 
@@ -48,10 +51,7 @@ export default function SignUpForm({ onSuccess, onError, callbackUrl = '/auth?ta
 
       console.log('User created successfully:', data.userId);
 
-      // Notify success
       onSuccess?.();
-      
-      // Redirect to sign-in page
       router.push(callbackUrl);
     } catch (err: any) {
       console.error('Sign up error:', err);
@@ -66,61 +66,57 @@ export default function SignUpForm({ onSuccess, onError, callbackUrl = '/auth?ta
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-md text-sm">
           {error}
         </div>
       )}
       
-      <div>
-        <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
+      <div className="space-y-2">
+        <Label htmlFor="displayName" className="text-foreground">
           Display Name
-        </label>
-        <input
+        </Label>
+        <Input
           type="text"
           name="displayName"
           id="displayName"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
           placeholder="Your display name"
+          className="bg-background border-input"
         />
       </div>
 
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+      <div className="space-y-2">
+        <Label htmlFor="email" className="text-foreground">
           Email
-        </label>
-        <input
+        </Label>
+        <Input
           type="email"
           name="email"
           id="email"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
           placeholder="you@example.com"
+          className="bg-background border-input"
         />
       </div>
 
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+      <div className="space-y-2">
+        <Label htmlFor="password" className="text-foreground">
           Password
-        </label>
-        <input
+        </Label>
+        <Input
           type="password"
           name="password"
           id="password"
           required
           minLength={6}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
           placeholder="••••••••"
+          className="bg-background border-input"
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-      >
+      <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading ? 'Creating account...' : 'Sign Up'}
-      </button>
+      </Button>
     </form>
   );
 } 

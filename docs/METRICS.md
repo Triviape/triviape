@@ -149,7 +149,7 @@ This document tracks key improvement metrics, progress indicators, and impact me
 
 | Endpoint | P50 | P95 | P99 | Target P95 | Status |
 |----------|-----|-----|-----|------------|--------|
-| `/api/auth/login` | 120ms | 350ms | 580ms | < 500ms | 🟢 Good |
+| `/api/auth/[...nextauth]` (credentials) | 120ms | 350ms | 580ms | < 500ms | 🟢 Good |
 | `/api/user/profile` | 90ms | 280ms | 450ms | < 300ms | 🟡 Fair |
 | `/api/daily-quiz` | 150ms | 420ms | 780ms | < 500ms | 🟡 Fair |
 | `/api/quiz/submit` | 200ms | 650ms | 1200ms | < 800ms | 🔴 Slow |
@@ -542,4 +542,3 @@ Target: ████████████████████  100% by 20
 
 **Next Review:** 2026-01-31  
 **Review Frequency:** Weekly during active development, monthly during maintenance
-

@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { UserService } from '@/app/lib/services/userService';
+import { userService } from '@/app/lib/services/user';
 import { createSessionCookie, revokeSession } from '@/app/lib/authUtils';
 import { getAuthErrorMessage } from '@/app/lib/authErrorHandler';
 import { FirebaseError } from 'firebase/app';
@@ -42,81 +42,32 @@ export async function login(prevState: any, formData: FormData) {
       };
     }
     
-    // Check if we're on the server side
-    if (typeof window === 'undefined') {
-      // We're on the server side, use the API route
-      try {
-        // Call the API route for login
-        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: validatedFields.data.email,
-            password: validatedFields.data.password,
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          return {
-            success: false,
-            error: errorData.error || 'Login failed',
-          };
-        }
-        
-        const data = await response.json();
-        
-        // Create a session cookie
-        const sessionResult = await createSessionCookie(data.idToken);
-        
-        if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
-          return {
-            success: false,
-            error: sessionResult.error || 'Failed to create session',
-          };
-        }
-        
-        return {
-          success: true,
-          redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
-        };
-      } catch (error) {
-        console.error('Server-side login error:', error);
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Login failed',
-        };
-      }
-    } else {
-      // Client-side login
-      const result = await UserService.signInWithEmail(
-        validatedFields.data.email,
-        validatedFields.data.password
-      );
-      
-      // Get the user's ID token for session creation
-      const idToken = await result.user.getIdToken();
-      
-      // Create a session cookie
-      const sessionResult = await createSessionCookie(idToken);
-      
-      if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
-        return {
-          success: false,
-          error: sessionResult.error || 'Failed to create session',
-        };
-      }
-      
-      // Update last login
-      await UserService.updateLastLogin(result.user.uid);
-      
+    // Client-side login only; server actions should use NextAuth directly
+    const result = await userService.signInWithEmail(
+      validatedFields.data.email,
+      validatedFields.data.password
+    );
+    
+    // Get the user's ID token for session creation
+    const idToken = await result.user.getIdToken();
+    
+    // Create a session cookie
+    const sessionResult = await createSessionCookie(idToken);
+    
+    if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
       return {
-        success: true,
-        redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
+        success: false,
+        error: sessionResult.error || 'Failed to create session',
       };
     }
+    
+    // Update last login
+    await userService.updateLastLogin(result.user.uid);
+    
+    return {
+      success: true,
+      redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
+    };
   } catch (error) {
     console.error('Login error:', error);
     
@@ -151,80 +102,30 @@ export async function register(prevState: any, formData: FormData) {
       };
     }
     
-    // Check if we're on the server side
-    if (typeof window === 'undefined') {
-      // We're on the server side, use the API route
-      try {
-        // Call the API route for registration
-        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: validatedFields.data.email,
-            password: validatedFields.data.password,
-            displayName: validatedFields.data.displayName,
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          return {
-            success: false,
-            error: errorData.error || 'Registration failed',
-          };
-        }
-        
-        const data = await response.json();
-        
-        // Create a session cookie
-        const sessionResult = await createSessionCookie(data.idToken);
-        
-        if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
-          return {
-            success: false,
-            error: sessionResult.error || 'Failed to create session',
-          };
-        }
-        
-        return {
-          success: true,
-          redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
-        };
-      } catch (error) {
-        console.error('Server-side registration error:', error);
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Registration failed',
-        };
-      }
-    } else {
-      // Client-side registration
-      const result = await UserService.registerWithEmail(
-        validatedFields.data.email,
-        validatedFields.data.password,
-        validatedFields.data.displayName
-      );
-      
-      // Get the user's ID token for session creation
-      const idToken = await result.user.getIdToken();
-      
-      // Create a session cookie
-      const sessionResult = await createSessionCookie(idToken);
-      
-      if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
-        return {
-          success: false,
-          error: sessionResult.error || 'Failed to create session',
-        };
-      }
-      
+    // Client-side registration only; server actions should use NextAuth directly
+    const result = await userService.registerWithEmail(
+      validatedFields.data.email,
+      validatedFields.data.password,
+      validatedFields.data.displayName
+    );
+    
+    // Get the user's ID token for session creation
+    const idToken = await result.user.getIdToken();
+    
+    // Create a session cookie
+    const sessionResult = await createSessionCookie(idToken);
+    
+    if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
       return {
-        success: true,
-        redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
+        success: false,
+        error: sessionResult.error || 'Failed to create session',
       };
     }
+    
+    return {
+      success: true,
+      redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
+    };
   } catch (error) {
     console.error('Registration error:', error);
     

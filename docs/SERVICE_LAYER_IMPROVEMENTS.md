@@ -224,7 +224,7 @@ const SECURITY_HEADERS = {
 ## 7. Updated API Routes
 
 ### Enhanced API Routes
-- **Login Route**: `app/api/auth/login/route.ts`
+- **Auth (NextAuth Credentials)**: `app/api/auth/[...nextauth]/route.ts` (credentials provider)
 - **Register Route**: `app/api/auth/register/route.ts`
 
 ### API Route Features:

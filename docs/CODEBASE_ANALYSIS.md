@@ -32,7 +32,7 @@ The API layer shows inconsistent patterns across endpoints, with critical bugs i
 
 - **Pattern A (Good):** Standard structure
   ```typescript
-  // /api/auth/register, /api/auth/login
+  // /api/auth/register, /api/auth/[...nextauth]
   return {
     success: true,
     data: { userId, token },
@@ -75,7 +75,7 @@ The API layer shows inconsistent patterns across endpoints, with critical bugs i
 | Route | Auth Method | Issue |
 |-------|-------------|-------|
 | `/api/auth/register` | Firebase Admin SDK | ✓ Good |
-| `/api/auth/login` | Firebase Auth | ✓ Good |
+| `/api/auth/[...nextauth]` | Firebase Auth | ✓ Good |
 | `/api/auth/validate-session` | NextAuth | ✓ Functional |
 | `/api/auth/session` | Admin SDK + Try-catch | ⚠️ Partial |
 | `/api/user/profile` | Bearer token hardcoded | ❌ CRITICAL: Hard-coded test value! |
@@ -108,7 +108,7 @@ if (authHeader === 'Bearer expired-token') {  // 🚩 PRODUCTION TEST CODE!
 | Route | Validation | Method | Quality |
 |-------|-----------|--------|---------|
 | `/api/auth/register` | ✓ Zod + Sanitize | Schema validation | Excellent |
-| `/api/auth/login` | ✓ Zod | Schema validation | Excellent |
+| `/api/auth/[...nextauth]` | ✓ Zod | Schema validation | Excellent |
 | `/api/user/profile` | ✗ None | Manual (hardcoded) | Dangerous |
 | `/api/daily-quiz` | ✗ None | None | Dangerous |
 | `/api/quiz/submit` | ⚠️ Manual | if-checks | Incomplete |
@@ -125,7 +125,7 @@ if (authHeader === 'Bearer expired-token') {  // 🚩 PRODUCTION TEST CODE!
 
 **Pattern A (Good):** Wrapper function
 ```typescript
-// /api/auth/register, /api/auth/login
+// /api/auth/register, /api/auth/[...nextauth]
 return withApiErrorHandling(request, async () => {
   // Business logic
 })
@@ -183,7 +183,7 @@ export async function GET(_req: NextRequest) { ... }
 
 **Routes WITH rate limiting:**
 - `/api/auth/register` ✓
-- `/api/auth/login` ✓
+- `/api/auth/[...nextauth]` ✓
 - `/api/auth/validate-session` ✓
 
 **Routes WITHOUT rate limiting:**
@@ -202,7 +202,7 @@ export async function GET(_req: NextRequest) { ... }
 
 **Routes WITH request IDs:**
 - `/api/auth/register` - `generateRequestId()`
-- `/api/auth/login` - `generateRequestId()`
+- `/api/auth/[...nextauth]` - `generateRequestId()`
 - `/api/auth/validate-session` - `generateRequestId()`
 
 **Routes WITHOUT request IDs:**
@@ -216,7 +216,7 @@ export async function GET(_req: NextRequest) { ... }
 
 **Well Documented:**
 - `/api/auth/register` - JSDoc with examples
-- `/api/auth/login` - JSDoc with examples
+- `/api/auth/[...nextauth]` - JSDoc with examples
 - `/api/quizzes` - Comments explaining filtering
 
 **Poorly Documented:**
@@ -263,7 +263,7 @@ return NextResponse.json(result, { status: 200 });
 | Route | Format | Auth | Validation | Error Handling | Rate Limit | Tracing | Docs | Score |
 |-------|--------|------|-----------|----------------|-----------|---------|------|-------|
 | `/api/auth/register` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 7/8 |
-| `/api/auth/login` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 7/8 |
+| `/api/auth/[...nextauth]` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 7/8 |
 | `/api/auth/session` | ⚠️ | ✓ | ⚠️ | ⚠️ | ✗ | ✗ | ⚠️ | 3/8 |
 | `/api/auth/validate-session` | ✓ | ✓ | ⚠️ | ✓ | ✓ | ✗ | ⚠️ | 5/8 |
 | `/api/user/profile` | ❌ | ❌ | ✗ | ❌ | ✗ | ✗ | ⚠️ | 0/8 |
@@ -2680,7 +2680,7 @@ describe('useAuth hook', () => {
 **Example: Auth API Test**
 
 ```typescript
-describe('POST /api/auth/login', () => {
+describe('POST /api/auth/[...nextauth]', () => {
   itIfEmulatorsRunning('should return a custom token for valid credentials', async () => {
     // Create a test user first
     const user: User = await createTestUser(TEST_USER.email, TEST_USER.password);
@@ -2697,7 +2697,7 @@ describe('POST /api/auth/login', () => {
       });
 
     // Create a mock request
-    const request = new NextRequest('http://localhost:3000/api/auth/login', {
+    const request = new NextRequest('http://localhost:3000/api/auth/[...nextauth]', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

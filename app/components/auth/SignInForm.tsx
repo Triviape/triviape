@@ -1,11 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useCSRFToken } from '@/app/hooks/useCSRFToken';
 import { handleAuthError } from '@/app/lib/errors/enhancedErrorHandling';
 import { EnhancedErrorHandler } from '@/app/components/errors/EnhancedErrorHandler';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
 
 interface SignInFormProps {
   onError?: (error: Error) => void;
@@ -16,7 +20,7 @@ export default function SignInForm({ onError, callbackUrl = '/dashboard' }: Sign
   const [isLoading, setIsLoading] = useState(false);
   const [enhancedError, setEnhancedError] = useState<any>(null);
   const router = useRouter();
-  const { token: csrfToken, getHeaders, isLoading: csrfLoading, error: csrfError } = useCSRFToken();
+  const { token: csrfToken, isLoading: csrfLoading, error: csrfError } = useCSRFToken();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,20 +32,16 @@ export default function SignInForm({ onError, callbackUrl = '/dashboard' }: Sign
     const password = formData.get('password') as string;
 
     const attemptSignIn = async () => {
-      console.log('Attempting to sign in with email:', email);
       const result = await signIn('credentials', {
         redirect: false,
         email,
         password,
       });
 
-      console.log('Sign in result:', result);
-
       if (result?.error) {
         throw new Error(result.error);
       }
 
-      console.log('Sign in successful, redirecting to:', callbackUrl);
       router.push(callbackUrl);
     };
 
@@ -74,7 +74,6 @@ export default function SignInForm({ onError, callbackUrl = '/dashboard' }: Sign
           error={enhancedError}
           onRetry={async () => {
             setEnhancedError(null);
-            // The retry will be handled by the enhanced error system
           }}
           onDismiss={() => setEnhancedError(null)}
           className="mb-4"
@@ -83,54 +82,54 @@ export default function SignInForm({ onError, callbackUrl = '/dashboard' }: Sign
       
       {/* CSRF Error Display */}
       {csrfError && !enhancedError && (
-        <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-md text-sm">
           {csrfError}
         </div>
       )}
 
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+      <div className="space-y-2">
+        <Label htmlFor="email" className="text-foreground">
           Email
-        </label>
-        <input
+        </Label>
+        <Input
           type="email"
           name="email"
           id="email"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
           placeholder="you@example.com"
+          className="bg-background border-input"
         />
       </div>
 
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+      <div className="space-y-2">
+        <Label htmlFor="password" className="text-foreground">
           Password
-        </label>
-        <input
+        </Label>
+        <Input
           type="password"
           name="password"
           id="password"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
           placeholder="••••••••"
+          className="bg-background border-input"
         />
       </div>
 
-      <button
+      <Button
         type="submit"
         disabled={isLoading || csrfLoading || !csrfToken}
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+        className="w-full"
       >
         {isLoading ? 'Signing in...' : csrfLoading ? 'Loading...' : 'Sign In'}
-      </button>
+      </Button>
 
       <div className="text-center mt-4">
-        <a
+        <Link
           href="/auth/forgot-password"
-          className="text-sm font-medium text-primary-600 hover:text-primary-500 focus:outline-none focus:underline"
+          className="text-sm font-medium text-primary hover:text-primary/90 focus:outline-none focus:underline"
         >
           Forgot your password?
-        </a>
+        </Link>
       </div>
     </form>
   );
