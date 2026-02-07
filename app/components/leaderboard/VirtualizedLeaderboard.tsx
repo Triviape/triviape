@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useEffect, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useInView } from 'react-intersection-observer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -60,6 +60,7 @@ export function VirtualizedLeaderboard({
   className
 }: VirtualizedLeaderboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   // Enhanced leaderboard hook with infinite query
@@ -95,14 +96,25 @@ export function VirtualizedLeaderboard({
     }
   }, [inView, hasNextPage, isLoadingMore, loadMore]);
 
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [searchQuery]);
+
   // Filter entries based on search
   const filteredEntries = useMemo(() => {
-    if (!searchQuery.trim()) return allEntries;
+    const normalizedQuery = debouncedSearchQuery.trim().toLowerCase();
+    if (!normalizedQuery) return allEntries;
     
     return allEntries.filter(entry =>
-      entry.displayName.toLowerCase().includes(searchQuery.toLowerCase())
+      entry.displayName.toLowerCase().includes(normalizedQuery)
     );
-  }, [allEntries, searchQuery]);
+  }, [allEntries, debouncedSearchQuery]);
 
   // Virtual container ref
   const parentRef = React.useRef<HTMLDivElement>(null);
