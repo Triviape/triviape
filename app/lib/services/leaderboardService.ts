@@ -5,10 +5,12 @@ import {
   orderBy, 
   limit, 
   getDocs, 
+  getCountFromServer,
   addDoc, 
   doc, 
   getDoc,
   startAfter,
+  documentId,
   DocumentSnapshot,
   onSnapshot,
   Unsubscribe
@@ -562,9 +564,70 @@ export class LeaderboardService {
     period: LeaderboardPeriod, 
     filters: LeaderboardFilters
   ): Promise<number | undefined> {
-    const leaderboard = await this.getLeaderboard(type, period, { ...filters, userId: undefined }, 1000);
-    const userEntry = leaderboard.entries.find(entry => entry.userId === userId);
-    return userEntry?.rank;
+    const leaderboardRef = collection(db, this.getCollectionName(type, period));
+    let userEntryQuery = query(
+      leaderboardRef,
+      where('period', '==', period),
+      where('userId', '==', userId),
+      orderBy('score', 'desc'),
+      orderBy('completionTime', 'asc'),
+      limit(1)
+    );
+
+    if (filters.categoryId) {
+      userEntryQuery = query(userEntryQuery, where('categoryId', '==', filters.categoryId));
+    }
+
+    const userEntrySnapshot = await getDocs(userEntryQuery);
+    if (userEntrySnapshot.empty) {
+      return undefined;
+    }
+
+    const userEntryDoc = userEntrySnapshot.docs[0];
+    const userEntryData = userEntryDoc.data() as EnhancedLeaderboardEntry;
+
+    let higherScoreQuery = query(
+      leaderboardRef,
+      where('period', '==', period),
+      where('score', '>', userEntryData.score)
+    );
+
+    let fasterTieBreakerQuery = query(
+      leaderboardRef,
+      where('period', '==', period),
+      where('score', '==', userEntryData.score),
+      where('completionTime', '<', userEntryData.completionTime)
+    );
+
+    let sameScoreAndTimeEarlierDocQuery = query(
+      leaderboardRef,
+      where('period', '==', period),
+      where('score', '==', userEntryData.score),
+      where('completionTime', '==', userEntryData.completionTime),
+      where(documentId(), '<', userEntryDoc.id)
+    );
+
+    if (filters.categoryId) {
+      higherScoreQuery = query(higherScoreQuery, where('categoryId', '==', filters.categoryId));
+      fasterTieBreakerQuery = query(fasterTieBreakerQuery, where('categoryId', '==', filters.categoryId));
+      sameScoreAndTimeEarlierDocQuery = query(
+        sameScoreAndTimeEarlierDocQuery,
+        where('categoryId', '==', filters.categoryId)
+      );
+    }
+
+    const [higherScoreCount, fasterTieBreakerCount, sameScoreAndTimeEarlierDocCount] = await Promise.all([
+      getCountFromServer(higherScoreQuery),
+      getCountFromServer(fasterTieBreakerQuery),
+      getCountFromServer(sameScoreAndTimeEarlierDocQuery)
+    ]);
+
+    return (
+      higherScoreCount.data().count +
+      fasterTieBreakerCount.data().count +
+      sameScoreAndTimeEarlierDocCount.data().count +
+      1
+    );
   }
 
   private async calculateRank(entry: Omit<EnhancedLeaderboardEntry, 'rank'>, period: LeaderboardPeriod): Promise<number> {
