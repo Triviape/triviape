@@ -13,14 +13,23 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   images: {
-    domains: ['firebasestorage.googleapis.com'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
-        pathname: '**',
+        hostname: 'firebasestorage.googleapis.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
       },
     ],
+    formats: ['image/avif', 'image/webp'],
+    imageSizes: [24, 32, 40, 48, 64, 96, 128],
+    minimumCacheTTL: 60 * 60 * 24,
   },
   reactStrictMode: true,
   // swcMinify: true, // Removed as it's enabled by default in Next.js 15

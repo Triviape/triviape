@@ -11,6 +11,9 @@ import { UserProfile } from '@/app/types/user';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
+const AVATAR_BLUR_PLACEHOLDER =
+  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiBmaWxsPSIjZTdlN2ViIi8+PC9zdmc+';
+
 function StatChip({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center p-3 bg-muted rounded-md">
@@ -205,6 +208,10 @@ export default function ProfilePage() {
                       src={profile.photoURL}
                       alt={profile.displayName}
                       fill
+                      sizes="96px"
+                      quality={70}
+                      placeholder="blur"
+                      blurDataURL={AVATAR_BLUR_PLACEHOLDER}
                       className="object-cover"
                     />
                   ) : (
