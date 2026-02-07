@@ -343,7 +343,7 @@ export function generateRequestId(): string {
 /**
  * Create a standardized success response
  */
-export function createSuccessResponse<T>(data: T, requestId: string): ApiResponse<T> {
+export function createSuccessResponse<T>(data: T, requestId: string = generateRequestId()): ApiResponse<T> {
   return {
     success: true,
     data,
@@ -357,16 +357,39 @@ export function createSuccessResponse<T>(data: T, requestId: string): ApiRespons
  */
 export function createErrorResponse(
   message: string,
-  requestId: string,
-  code: ApiErrorCode = ApiErrorCode.UNKNOWN_ERROR,
+  requestIdOrCodeOrDetails?: string | ApiErrorCode | any,
+  codeOrDetails: ApiErrorCode | any = ApiErrorCode.UNKNOWN_ERROR,
   details?: any
 ): ApiResponse {
+  const isApiErrorCode = (value: unknown): value is ApiErrorCode =>
+    typeof value === 'string' && (Object.values(ApiErrorCode) as string[]).includes(value);
+
+  // Compatibility signatures:
+  // 1) createErrorResponse(message, code, details)
+  // 2) createErrorResponse(message, requestId, code, details)
+  // 3) createErrorResponse(message, details)
+  let requestId = generateRequestId();
+  let resolvedCode: ApiErrorCode = ApiErrorCode.UNKNOWN_ERROR;
+  let resolvedDetails: any = undefined;
+
+  if (isApiErrorCode(requestIdOrCodeOrDetails)) {
+    resolvedCode = requestIdOrCodeOrDetails;
+    resolvedDetails = codeOrDetails ?? details;
+  } else if (typeof requestIdOrCodeOrDetails === 'string') {
+    requestId = requestIdOrCodeOrDetails;
+    resolvedCode = isApiErrorCode(codeOrDetails) ? codeOrDetails : ApiErrorCode.UNKNOWN_ERROR;
+    resolvedDetails = isApiErrorCode(codeOrDetails) ? details : codeOrDetails ?? details;
+  } else {
+    resolvedCode = isApiErrorCode(codeOrDetails) ? codeOrDetails : ApiErrorCode.UNKNOWN_ERROR;
+    resolvedDetails = requestIdOrCodeOrDetails ?? (isApiErrorCode(codeOrDetails) ? details : codeOrDetails ?? details);
+  }
+
   return {
     success: false,
     error: {
       message,
-      code,
-      details
+      code: resolvedCode,
+      details: resolvedDetails
     },
     timestamp: new Date().toISOString(),
     requestId,
@@ -382,15 +405,29 @@ export async function withApiErrorHandling<T>(
   options?: {
     logErrors?: boolean;
     validateRequest?: (data: any) => { valid: boolean; errors?: any };
-    responseHandler?: (response: NextResponse, result: T) => void;
+    responseHandler?: (response: Response, result: T) => void;
   }
 ): Promise<Response> {
   const requestId = generateRequestId();
+  const jsonResponse = (body: unknown, init?: ResponseInit): Response => {
+    try {
+      return NextResponse.json(body, init);
+    } catch {
+      return new Response(JSON.stringify(body), {
+        status: init?.status ?? 200,
+        headers: {
+          'content-type': 'application/json',
+          ...(init?.headers ?? {}),
+        },
+      });
+    }
+  };
+
   try {
     // Execute the handler
     const result = await handler();
     const apiResponse = createSuccessResponse(result, requestId);
-    const response = NextResponse.json(apiResponse);
+    const response = jsonResponse(apiResponse);
 
     if (options?.responseHandler) {
       options.responseHandler(response, result);
@@ -408,7 +445,14 @@ export async function withApiErrorHandling<T>(
           logError(error, {
             category: ErrorCategory.API,
             severity: ErrorSeverity.ERROR,
-            context: { request, requestId }
+            context: {
+              action: 'api_handler_error',
+              additionalData: {
+                requestId,
+                method: request.method,
+                url: request.url,
+              }
+            }
           });
         }
       } catch (loggingError) {
@@ -462,6 +506,6 @@ export async function withApiErrorHandling<T>(
     
     // Return standardized error response
     const apiResponse = createErrorResponse(message, requestId, errorCode, details);
-    return NextResponse.json(apiResponse, { status: statusCode });
+    return jsonResponse(apiResponse, { status: statusCode });
   }
 }

@@ -17,6 +17,7 @@
     "noImplicitThis": true,
     "strictNullChecks": true,
     "strictFunctionTypes": true,
+    "downlevelIteration": true,
     "forceConsistentCasingInFileNames": true,
     "plugins": [
       {

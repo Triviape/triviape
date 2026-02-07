@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
-import { useDeviceInfo, DeviceInfo } from '@/app/lib/device';
+import { useDeviceInfo as useDeviceInfoFromLib, DeviceInfo } from '@/app/lib/device';
 import { useIsClient } from '@/app/hooks/useIsClient';
 
 interface ResponsiveUIContextType {
@@ -35,7 +35,7 @@ const defaultContextValue: ResponsiveUIContextType = {
 const ResponsiveUIContext = createContext<ResponsiveUIContextType>(defaultContextValue);
 
 export function ResponsiveUIProvider({ children }: { children: React.ReactNode }) {
-  const deviceInfo = useDeviceInfo();
+  const deviceInfo = useDeviceInfoFromLib();
   const isClient = useIsClient();
   
   // Determine default UI scale based on device info

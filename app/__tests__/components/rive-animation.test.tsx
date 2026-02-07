@@ -71,6 +71,20 @@ describe('RiveAnimation Component', () => {
     jest.useFakeTimers();
     jest.spyOn(console, 'error').mockImplementation(() => {}); // Suppress expected console errors
     jest.spyOn(console, 'log').mockImplementation(() => {}); // Suppress logs
+    const useRiveMock = require('@rive-app/react-canvas').useRive;
+    useRiveMock.mockImplementation(({ onLoad }: { onLoad?: () => void }) => {
+      if (onLoad) {
+        setTimeout(() => onLoad(), 0);
+      }
+
+      return {
+        rive: {
+          on: jest.fn(),
+          off: jest.fn(),
+        },
+        RiveComponent: () => <div data-testid="rive-component">Rive Animation Mock</div>,
+      };
+    });
   });
 
   afterEach(() => {
@@ -104,12 +118,12 @@ describe('RiveAnimation Component', () => {
   test('renders fallback image when loading fails', () => {
     // Mock useRive to return null rive instance
     const useRiveMock = require('@rive-app/react-canvas').useRive;
-    useRiveMock.mockReturnValueOnce({
+    useRiveMock.mockImplementation(() => ({
       rive: null,
       RiveComponent: () => null,
-    });
+    }));
     
-    render(
+    const { rerender } = render(
       <TestWrapper>
         <RiveAnimation 
           src="/test-animation.riv"
@@ -125,11 +139,9 @@ describe('RiveAnimation Component', () => {
     act(() => {
       jest.advanceTimersByTime(6000);
     });
-    
-    // Force a re-render to reflect the state change after the timeout
-    render(
+    rerender(
       <TestWrapper>
-        <RiveAnimation 
+        <RiveAnimation
           src="/test-animation.riv"
           fallbackImageSrc="/fallback.png"
           fallbackImageAlt="Custom fallback alt text"
@@ -165,12 +177,12 @@ describe('RiveAnimation Component', () => {
   test('uses default alt text when not provided', () => {
     // Mock useRive to return null rive instance
     const useRiveMock = require('@rive-app/react-canvas').useRive;
-    useRiveMock.mockReturnValueOnce({
+    useRiveMock.mockImplementation(() => ({
       rive: null,
       RiveComponent: () => null,
-    });
+    }));
     
-    render(
+    const { rerender } = render(
       <TestWrapper>
         <RiveAnimation 
           src="/test-animation.riv"
@@ -185,11 +197,9 @@ describe('RiveAnimation Component', () => {
     act(() => {
       jest.advanceTimersByTime(6000);
     });
-    
-    // Force a re-render
-    render(
+    rerender(
       <TestWrapper>
-        <RiveAnimation 
+        <RiveAnimation
           src="/test-animation.riv"
           fallbackImageSrc="/fallback.png"
           width={200}

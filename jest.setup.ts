@@ -13,7 +13,32 @@ global.Request = class Request {
 } as any;
 
 global.Response = class Response {
-  constructor(public body?: BodyInit | null, public init?: ResponseInit) {}
+  body?: BodyInit | null;
+  init?: ResponseInit;
+
+  constructor(body?: BodyInit | null, init?: ResponseInit) {
+    this.body = body;
+    this.init = init;
+  }
+
+  get status() {
+    return this.init?.status ?? 200;
+  }
+
+  async json() {
+    if (typeof this.body === 'string') {
+      return JSON.parse(this.body);
+    }
+    return this.body;
+  }
+
+  async text() {
+    if (typeof this.body === 'string') {
+      return this.body;
+    }
+    return this.body ? JSON.stringify(this.body) : '';
+  }
+
   static json(data: any, init?: ResponseInit) {
     return new Response(JSON.stringify(data), {
       ...init,
@@ -182,13 +207,25 @@ jest.mock('firebase/auth', () => {
   return {
     getAuth: jest.fn().mockReturnValue({
       currentUser: null,
+      signOut: jest.fn(),
     }),
     initializeAuth: jest.fn().mockReturnValue({
       currentUser: null,
+      signOut: jest.fn(),
     }),
     indexedDBLocalPersistence: 'indexedDBLocalPersistence',
     connectAuthEmulator: jest.fn(),
     onAuthStateChanged: jest.fn(),
+    createUserWithEmailAndPassword: jest.fn(),
+    signInWithEmailAndPassword: jest.fn(),
+    signInWithPopup: jest.fn(),
+    updateProfile: jest.fn(),
+    sendEmailVerification: jest.fn(),
+    sendPasswordResetEmail: jest.fn(),
+    signOut: jest.fn(),
+    GoogleAuthProvider: jest.fn(),
+    TwitterAuthProvider: jest.fn(),
+    FacebookAuthProvider: jest.fn(),
   };
 });
 

@@ -16,6 +16,7 @@ export enum ErrorSeverity {
 // Error categories
 export enum ErrorCategory {
   AUTHENTICATION = 'authentication',
+  SECURITY = 'security',
   DATABASE = 'database',
   NETWORK = 'network',
   VALIDATION = 'validation',

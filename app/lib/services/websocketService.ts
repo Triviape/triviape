@@ -22,6 +22,7 @@ export class WebSocketService {
   private userId: string | null = null;
   private sessionId: string | null = null;
   private eventListeners = new Map<string, Set<Function>>();
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   public static getInstance(): WebSocketService {
     if (!WebSocketService.instance) {
@@ -104,6 +105,10 @@ export class WebSocketService {
       this.isConnected = false;
       this.sessionId = null;
       this.eventListeners.clear();
+    }
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
   }
 
@@ -274,9 +279,9 @@ export class WebSocketService {
 
     // Set up socket listener if not already set
     if (this.socket && !this.socket.hasListeners(event)) {
-      this.socket.on(event, (data: any) => {
+      this.socket.on(event as string, ((data: any) => {
         this.notifyListeners(event, data);
-      });
+      }) as any);
     }
   }
 
@@ -290,7 +295,7 @@ export class WebSocketService {
       if (listeners.size === 0) {
         this.eventListeners.delete(event);
         if (this.socket) {
-          this.socket.off(event);
+          this.socket.off(event as string);
         }
       }
     }
@@ -373,7 +378,10 @@ export class WebSocketService {
    * Start heartbeat interval
    */
   startHeartbeat(): void {
-    setInterval(() => {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+    this.heartbeatInterval = setInterval(() => {
       this.sendHeartbeat();
     }, 30000); // Send heartbeat every 30 seconds
   }

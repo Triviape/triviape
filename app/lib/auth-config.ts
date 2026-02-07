@@ -2,7 +2,7 @@ import type { NextAuthConfig } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { createSessionCookie } from '@/app/lib/authUtils';
 
-type RestSignInResult = {
+export type RestSignInResult = {
   uid: string;
   email: string;
   displayName?: string;
@@ -10,7 +10,7 @@ type RestSignInResult = {
   idToken: string;
 };
 
-async function signInWithEmailAndPasswordViaRest(email: string, password: string): Promise<RestSignInResult> {
+export async function signInWithEmailAndPasswordViaRest(email: string, password: string): Promise<RestSignInResult> {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   if (!apiKey) {
     throw new Error('Firebase API key is not configured');
@@ -110,6 +110,9 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.id = user.id;
         token.email = user.email;
+        token.name = user.name;
+        token.picture = user.image;
+        token.role = 'user';
       }
       return token;
     },
@@ -118,6 +121,11 @@ export const authConfig: NextAuthConfig = {
         session.user.id = token.id as string;
         session.user.uid = token.id as string; // alias for Firebase UID compatibility
         session.user.email = token.email as string;
+        session.user.name = (token.name as string | undefined) || session.user.name;
+        session.user.displayName = session.user.name;
+        session.user.image = (token.picture as string | undefined) || session.user.image;
+        session.user.photoURL = session.user.image;
+        session.user.role = (token.role as string | undefined) || 'user';
       }
       return session;
     }

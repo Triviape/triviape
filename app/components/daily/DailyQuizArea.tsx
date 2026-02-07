@@ -88,7 +88,6 @@ export function DailyQuizArea({
       const fallbackResults = calculateQuizResults(userAnswers, questions, Date.now() - 600000);
       
       onQuizComplete({
-        id: dailyQuiz.id,
         score: fallbackResults.score,
         totalQuestions: fallbackResults.totalQuestions,
         correctAnswers: fallbackResults.correctCount,

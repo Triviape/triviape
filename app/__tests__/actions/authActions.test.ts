@@ -1,5 +1,5 @@
 import { login, register, logout } from '@/app/actions/authActions';
-import { UserService } from '@/app/lib/services/userService';
+import { UserService } from '@/app/lib/services/user';
 import { createSessionCookie, revokeSession } from '@/app/lib/authUtils';
 import { redirect } from 'next/navigation';
 import { initTestFirebase } from '../utils/firebase-test-utils';
@@ -15,7 +15,7 @@ afterAll(async () => {
 });
 
 // Mock the dependencies
-jest.mock('@/app/lib/services/userService', () => ({
+jest.mock('@/app/lib/services/user', () => ({
   UserService: {
     signInWithEmail: jest.fn(),
     registerWithEmail: jest.fn(),

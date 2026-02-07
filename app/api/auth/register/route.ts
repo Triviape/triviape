@@ -10,6 +10,7 @@ import {
   handleConflictError 
 } from '@/app/lib/services/errorHandler';
 import { createSessionCookie } from '@/app/lib/authUtils';
+import { signInWithEmailAndPasswordViaRest } from '@/app/lib/auth-config';
 
 /**
  * API route to handle user registration with enhanced security and rate limiting
@@ -69,9 +70,9 @@ export async function POST(request: NextRequest) {
         // TODO: Send email verification via generateEmailVerificationLink + email service when implemented
         // Firebase Admin SDK does not have sendEmailVerification; use auth().generateEmailVerificationLink(email) + email provider
 
-        // Issue a session cookie so the new user is signed in immediately
-        const idToken = await FirebaseAdminService.getAuth().createCustomToken(userRecord.uid);
-        const sessionResult = await createSessionCookie(idToken);
+        // Sign in once via Firebase REST to get an ID token for session cookie issuance.
+        const signInResult = await signInWithEmailAndPasswordViaRest(email, password);
+        const sessionResult = await createSessionCookie(signInResult.idToken);
 
         if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
           throw {

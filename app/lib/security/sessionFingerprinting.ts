@@ -70,8 +70,7 @@ export class SessionFingerprintManager {
       return cfConnectingIP;
     }
     
-    // Fallback to remote address
-    return request.ip || 'unknown';
+    return 'unknown';
   }
 
   /**

@@ -8,6 +8,7 @@
 
 import { useEffect, useRef } from 'react';
 import { getPerformanceInstance } from '@/app/lib/firebase';
+import { trace as firebaseTrace } from 'firebase/performance';
 import { 
   recordMetric, 
   MetricType,
@@ -166,11 +167,11 @@ export function trackInteraction(componentName: string, interactionName: string)
   
   // Track in Firebase Performance if available
   const perf = getPerformanceInstance();
-  let trace: any = null;
+  let traceInstance: any = null;
   
   if (perf) {
-    trace = perf.trace(`${componentName}_${interactionName}`);
-    trace.start();
+    traceInstance = firebaseTrace(perf, `${componentName}_${interactionName}`);
+    traceInstance.start();
   }
   
   // Return a function to end the tracking
@@ -191,8 +192,8 @@ export function trackInteraction(componentName: string, interactionName: string)
       }
     });
     
-    if (trace) {
-      trace.stop();
+    if (traceInstance) {
+      traceInstance.stop();
     }
   };
 }

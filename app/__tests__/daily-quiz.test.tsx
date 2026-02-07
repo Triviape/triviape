@@ -83,7 +83,7 @@ describe('Daily Quiz Components', () => {
       expect(screen.getByText('5')).toBeInTheDocument(); // Best streak
       
       // Check that button is disabled
-      const button = screen.getByRole('button', { name: /Completed Today/i });
+      const button = screen.getByRole('button', { name: /Daily quiz completed/i });
       expect(button).toBeDisabled();
     });
     
@@ -146,9 +146,9 @@ describe('Daily Quiz Components', () => {
       );
       
       // Check for quiz information
-      expect(screen.getByText('Test Daily Quiz')).toBeInTheDocument();
+      expect(screen.getByText('The Daily Ape #1')).toBeInTheDocument();
       expect(screen.getByText('Test description')).toBeInTheDocument();
-      expect(screen.getByText('medium', { exact: false })).toBeInTheDocument();
+      expect(screen.getByText('60 seconds, 3 questions')).toBeInTheDocument();
       expect(screen.getByText('3', { exact: false })).toBeInTheDocument(); // 3 questions
       
       // Click start button

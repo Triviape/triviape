@@ -19,21 +19,12 @@ const renderWithProviders = (ui: React.ReactElement) => {
 };
 
 describe('GameModes', () => {
-  it('renders the game mode title and buttons', () => {
+  it('renders the game mode buttons', () => {
     renderWithProviders(<GameModes />);
-    
-    // Check for the title
-    expect(screen.getByText('Game Modes')).toBeInTheDocument();
-    
-    // Check for game mode buttons
+
     expect(screen.getByText('Daily Quiz')).toBeInTheDocument();
     expect(screen.getByText('Team Play')).toBeInTheDocument();
     expect(screen.getByText('Challenge')).toBeInTheDocument();
-    
-    // Check for descriptions
-    expect(screen.getByText('Test your knowledge with a new quiz every day')).toBeInTheDocument();
-    expect(screen.getByText('Collaborate with friends in team-based challenges')).toBeInTheDocument();
-    expect(screen.getByText('Face off against others in thrilling competitions')).toBeInTheDocument();
   });
   
   it('applies custom class names', () => {

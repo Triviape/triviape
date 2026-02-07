@@ -14,19 +14,29 @@
 
 import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
 import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { getFirestoreDb } from '@/app/lib/firebase';
+import { getFirestoreDb, initializeFirebaseAuth } from '@/app/lib/firebase';
 import { COLLECTIONS } from '@/app/lib/constants/collections';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  TwitterAuthProvider,
+  FacebookAuthProvider,
+  signInWithPopup,
+  updateProfile,
+  sendPasswordResetEmail,
+  type UserCredential,
+} from 'firebase/auth';
 import { 
   ServiceErrorType, 
   createServiceError,
   withErrorHandling
 } from '../core/errorHandler';
 import { 
-  UserInputSchemas, 
   AuthInputSchemas,
   sanitizeAndValidate 
 } from '@/app/lib/validation/securitySchemas';
-import { UserProfile } from '@/app/types/user';
+import { UserProfile, UserPreferences, PrivacySettings } from '@/app/types/user';
 
 // Configuration
 const GAME_CONFIG = {
@@ -35,7 +45,7 @@ const GAME_CONFIG = {
 };
 
 // Default user preferences
-const DEFAULT_USER_PREFERENCES = {
+const DEFAULT_USER_PREFERENCES: UserPreferences = {
   theme: 'system',
   soundEffects: true,
   musicVolume: 70,
@@ -51,7 +61,7 @@ const DEFAULT_USER_PREFERENCES = {
 };
 
 // Default privacy settings
-const DEFAULT_PRIVACY_SETTINGS = {
+const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
   showOnLeaderboards: true,
   profileVisibility: 'public',
   showOnlineStatus: true,
@@ -63,6 +73,51 @@ const DEFAULT_PRIVACY_SETTINGS = {
  * Authentication Service for server-side operations
  */
 export class ConsolidatedAuthService {
+  static async registerWithEmail(email: string, password: string, displayName: string): Promise<UserCredential> {
+    const auth = initializeFirebaseAuth();
+    const credential = await createUserWithEmailAndPassword(auth, email, password);
+
+    if (credential.user && displayName) {
+      await updateProfile(credential.user, { displayName });
+    }
+
+    return credential;
+  }
+
+  static async signInWithEmail(email: string, password: string): Promise<UserCredential> {
+    const auth = initializeFirebaseAuth();
+    return signInWithEmailAndPassword(auth, email, password);
+  }
+
+  static async signInWithGoogle(): Promise<UserCredential> {
+    if (typeof window === 'undefined') {
+      throw new Error('Google sign-in is only available in the browser');
+    }
+    const auth = initializeFirebaseAuth();
+    return signInWithPopup(auth, new GoogleAuthProvider());
+  }
+
+  static async signInWithTwitter(): Promise<UserCredential> {
+    if (typeof window === 'undefined') {
+      throw new Error('Twitter sign-in is only available in the browser');
+    }
+    const auth = initializeFirebaseAuth();
+    return signInWithPopup(auth, new TwitterAuthProvider());
+  }
+
+  static async signInWithFacebook(): Promise<UserCredential> {
+    if (typeof window === 'undefined') {
+      throw new Error('Facebook sign-in is only available in the browser');
+    }
+    const auth = initializeFirebaseAuth();
+    return signInWithPopup(auth, new FacebookAuthProvider());
+  }
+
+  static async signOut(): Promise<void> {
+    const auth = initializeFirebaseAuth();
+    await auth.signOut();
+  }
+
   /**
    * Create a new user (server-side only)
    * Called from registration API endpoint
@@ -142,34 +197,23 @@ export class ConsolidatedAuthService {
     }
   ) {
     const db = getFirestoreDb();
-    const userProfile: Partial<UserProfile> = {
+    const userProfile: UserProfile = {
       uid,
       email: data.email,
       displayName: data.displayName,
-      bio: '',
-      photoURL: null,
-      coverPhotoURL: null,
+      photoURL: undefined,
+      createdAt: Date.now(),
+      lastLoginAt: Date.now(),
+      isActive: true,
       level: 1,
       xp: 0,
+      xpToNextLevel: GAME_CONFIG.XP_PER_LEVEL,
       coins: GAME_CONFIG.DEFAULT_COINS,
-      achievements: [],
-      badges: [],
-      createdAt: serverTimestamp() as any,
-      updatedAt: serverTimestamp() as any,
-      lastLoginAt: serverTimestamp() as any,
-      isOnline: false,
+      quizzesTaken: 0,
+      questionsAnswered: 0,
+      correctAnswers: 0,
       preferences: DEFAULT_USER_PREFERENCES,
-      privacy: DEFAULT_PRIVACY_SETTINGS,
-      stats: {
-        totalGamesPlayed: 0,
-        totalGamesWon: 0,
-        totalQuestions: 0,
-        correctAnswers: 0,
-        winRate: 0,
-        averageScore: 0,
-        bestStreak: 0,
-        currentStreak: 0
-      }
+      privacySettings: DEFAULT_PRIVACY_SETTINGS,
     };
 
     await setDoc(doc(db, COLLECTIONS.USERS, uid), userProfile);
@@ -223,23 +267,15 @@ export class ConsolidatedAuthService {
     return withErrorHandling(async () => {
       const db = getFirestoreDb();
       const userRef = doc(db, COLLECTIONS.USERS, uid);
-      
-      // Validate updates
-      const validation = sanitizeAndValidate(UserInputSchemas.profile, updates);
-      if (!validation.success) {
-        throw createServiceError(
-          'Invalid profile data',
-          ServiceErrorType.VALIDATION_ERROR,
-          'VALIDATION_FAILED',
-          undefined,
-          { errors: validation.errors }
-        );
-      }
 
-      await updateDoc(userRef, {
-        ...validation.data,
-        updatedAt: serverTimestamp()
-      });
+      // Only persist user profile keys present in the shared UserProfile contract.
+      const safeUpdates: Partial<UserProfile> = {};
+      if (typeof updates.displayName === 'string') safeUpdates.displayName = updates.displayName;
+      if (typeof updates.photoURL === 'string' || updates.photoURL === undefined) safeUpdates.photoURL = updates.photoURL;
+      if (updates.preferences) safeUpdates.preferences = updates.preferences;
+      if (updates.privacySettings) safeUpdates.privacySettings = updates.privacySettings;
+
+      await updateDoc(userRef, safeUpdates as any);
 
       return { success: true };
     }, 'updateUserProfile');
@@ -265,7 +301,15 @@ export class ConsolidatedAuthService {
    */
   static async sendEmailVerification(uid: string) {
     return withErrorHandling(async () => {
-      await FirebaseAdminService.sendEmailVerification(uid);
+      const user = await FirebaseAdminService.getUserById(uid);
+      if (!user.email) {
+        throw createServiceError(
+          'User does not have an email address',
+          ServiceErrorType.VALIDATION_ERROR,
+          'MISSING_EMAIL'
+        );
+      }
+      await FirebaseAdminService.getAuth().generateEmailVerificationLink(user.email);
       return { success: true };
     }, 'sendEmailVerification');
   }
@@ -273,10 +317,10 @@ export class ConsolidatedAuthService {
   /**
    * Send password reset email
    */
-  static async sendPasswordReset(email: string) {
+  static async sendPasswordReset(email: string): Promise<void> {
     return withErrorHandling(async () => {
       // Validate email
-      const validation = sanitizeAndValidate(AuthInputSchemas.forgotPassword, { email });
+      const validation = sanitizeAndValidate(AuthInputSchemas.resetPassword, { email });
       if (!validation.success) {
         throw createServiceError(
           'Invalid email address',
@@ -285,12 +329,8 @@ export class ConsolidatedAuthService {
         );
       }
 
-      // Use Firebase Admin to generate password reset link
-      // Then send email via your email service
-      // For now, we'll use the client-side Firebase Auth method
-      // This should be replaced with Admin SDK password reset link generation
-      
-      return { success: true, message: 'Password reset email sent' };
+      const auth = initializeFirebaseAuth();
+      await sendPasswordResetEmail(auth, email);
     }, 'sendPasswordReset');
   }
 

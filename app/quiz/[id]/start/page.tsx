@@ -69,7 +69,7 @@ export default function QuizStartPage({ params }: PageProps) {
         setQuestions(questionsData);
         
         // Initialize quiz state
-        const maxPossibleScore = questionsData.reduce((total, q) => total + q.points, 0);
+        const maxPossibleScore = questionsData.reduce((total, q) => total + (q.points ?? 0), 0);
         
         setQuizState({
           currentQuestionIndex: 0,
@@ -119,13 +119,6 @@ export default function QuizStartPage({ params }: PageProps) {
     return () => clearInterval(timer);
   }, [quiz, quizState.isComplete]);
   
-  // Auto-submit quiz when completed
-  useEffect(() => {
-    if (quizState.isComplete && quizState.answers.length > 0) {
-      handleFinish();
-    }
-  }, [quizState.isComplete, quizState.answers.length, handleFinish]);
-  
   // Handle answering a question
   const handleAnswer = (questionId: string, selectedAnswerIds: string[]) => {
     const currentQuestion = questions[quizState.currentQuestionIndex];
@@ -140,7 +133,7 @@ export default function QuizStartPage({ params }: PageProps) {
       selectedAnswerIds.every(id => correctAnswerIds.includes(id));
     
     // Calculate points earned
-    const pointsEarned = isCorrect ? currentQuestion.points : 0;
+    const pointsEarned = isCorrect ? (currentQuestion.points ?? 0) : 0;
     
     // Calculate time spent on this question
     const timeSpent = Math.floor((Date.now() - quizState.startTime) / 1000);
@@ -221,6 +214,13 @@ export default function QuizStartPage({ params }: PageProps) {
       router.push(`/quiz/${params.id}/results?error=submission_failed`);
     }
   }, [quiz, questions, quizState.isComplete, quizState.startTime, quizState.endTime, quizState.answers, params.id, router]);
+
+  // Auto-submit quiz when completed
+  useEffect(() => {
+    if (quizState.isComplete && quizState.answers.length > 0) {
+      void handleFinish();
+    }
+  }, [quizState.isComplete, quizState.answers.length, handleFinish]);
   
   if (loading) {
     return (

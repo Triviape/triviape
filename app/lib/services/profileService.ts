@@ -5,7 +5,7 @@ import {
   doc,
   getFirestore
 } from 'firebase/firestore';
-import { UserProfile } from '@/app/types/user';
+import { UserProfile, UserPreferences, PrivacySettings } from '@/app/types/user';
 import { BaseServiceImplementation } from './baseService';
 import { 
   handleValidationError,
@@ -22,7 +22,7 @@ const COLLECTIONS = {
 };
 
 // Default user preferences - moved to configuration
-const DEFAULT_USER_PREFERENCES = {
+const DEFAULT_USER_PREFERENCES: UserPreferences = {
   theme: 'system',
   soundEffects: true,
   musicVolume: 70,
@@ -38,7 +38,7 @@ const DEFAULT_USER_PREFERENCES = {
 };
 
 // Default privacy settings - moved to configuration
-const DEFAULT_PRIVACY_SETTINGS = {
+const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
   showOnLeaderboards: true,
   profileVisibility: 'public',
   showOnlineStatus: true,
@@ -80,7 +80,7 @@ export class ProfileService extends BaseServiceImplementation<UserProfile> {
       uid: doc.id,
       displayName: data.displayName || '',
       email: data.email || '',
-      photoURL: data.photoURL || null,
+      photoURL: data.photoURL || undefined,
       createdAt: data.createdAt?.toMillis() || Date.now(),
       lastLoginAt: data.lastLoginAt?.toMillis() || Date.now(),
       isActive: data.isActive ?? true,
@@ -140,7 +140,7 @@ export class ProfileService extends BaseServiceImplementation<UserProfile> {
       }
 
       // Validate photoURL if provided
-      let validatedPhotoURL: string | null = null;
+      let validatedPhotoURL: string | undefined;
       if (userData.photoURL) {
         const urlValidation = sanitizeAndValidate(UserInputSchemas.url, userData.photoURL);
         if (!urlValidation.success) {

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient, QueryKey, UseQueryOptions } from '@tanstack/react-query';
+import { useQueryClient, QueryKey, UseQueryOptions } from '@tanstack/react-query';
 import { getLeaderboardEntries } from '@/app/lib/services/leaderboardService';
 import { DailyQuizLeaderboardEntry } from '@/app/types/leaderboard';
 import { getTodayDateString } from '@/app/lib/services/dailyQuizService';
@@ -10,7 +10,7 @@ import { useRealtimeQuery, REALTIME_PRESETS } from './query/useRealtimeQuery';
 export const getLeaderboardQueryKey = (quizId: string, dateString?: string): QueryKey => 
   dateString ? ['leaderboard', quizId, dateString] : ['leaderboard', quizId];
 
-interface UseLeaderboardOptions<TData> extends Omit<UseQueryOptions<DailyQuizLeaderboardEntry[], Error, TData, QueryKey>, 'queryKey' | 'queryFn'> {
+interface UseLeaderboardOptions extends Omit<UseQueryOptions<DailyQuizLeaderboardEntry[], Error, DailyQuizLeaderboardEntry[], QueryKey>, 'queryKey' | 'queryFn'> {
   /**
    * Enable real-time polling for live updates
    * Default: false
@@ -33,10 +33,10 @@ interface UseLeaderboardOptions<TData> extends Omit<UseQueryOptions<DailyQuizLea
  * // Real-time leaderboard (polls every 30s)
  * const { data } = useLeaderboard('quiz-1', '2026-01-23', { enableRealtime: true });
  */
-export function useLeaderboard<TData = DailyQuizLeaderboardEntry[]>(
+export function useLeaderboard(
   quizId: string,
   dateString?: string,
-  options: UseLeaderboardOptions<TData> = {}
+  options: UseLeaderboardOptions = {}
 ) {
   const { enableRealtime = false, ...queryOptions } = options;
   const queryKey = getLeaderboardQueryKey(quizId, dateString);

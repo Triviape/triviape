@@ -97,10 +97,12 @@ export class PerformanceMonitor {
   /**
    * Start measuring a performance metric
    */
-  startMeasurement(name: string): () => void {
+  startMeasurement(
+    name: string
+  ): (category?: PerformanceMetric['category'], metadata?: Record<string, any>) => void {
     const startTime = performance.now();
     
-    return (category: PerformanceMetric['category'], metadata?: Record<string, any>) => {
+    return (category: PerformanceMetric['category'] = 'general', metadata?: Record<string, any>) => {
       const duration = performance.now() - startTime;
       this.recordMetric(name, duration, category, metadata);
     };

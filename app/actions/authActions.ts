@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { userService } from '@/app/lib/services/user';
+import { UserService } from '@/app/lib/services/user';
 import { createSessionCookie, revokeSession } from '@/app/lib/authUtils';
 import { getAuthErrorMessage } from '@/app/lib/authErrorHandler';
 import { FirebaseError } from 'firebase/app';
@@ -43,7 +43,7 @@ export async function login(prevState: any, formData: FormData) {
     }
     
     // Client-side login only; server actions should use NextAuth directly
-    const result = await userService.signInWithEmail(
+    const result = await UserService.signInWithEmail(
       validatedFields.data.email,
       validatedFields.data.password
     );
@@ -62,7 +62,7 @@ export async function login(prevState: any, formData: FormData) {
     }
     
     // Update last login
-    await userService.updateLastLogin(result.user.uid);
+    await UserService.updateLastLogin(result.user.uid);
     
     return {
       success: true,
@@ -103,7 +103,7 @@ export async function register(prevState: any, formData: FormData) {
     }
     
     // Client-side registration only; server actions should use NextAuth directly
-    const result = await userService.registerWithEmail(
+    const result = await UserService.registerWithEmail(
       validatedFields.data.email,
       validatedFields.data.password,
       validatedFields.data.displayName

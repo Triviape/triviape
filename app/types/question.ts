@@ -1,28 +1,9 @@
 /**
- * Types for questions in the quiz application
+ * Backward-compatible aliases to the unified quiz/question model.
  */
 
-export interface AnswerOption {
-  id: string;
-  text: string;
-  isCorrect: boolean;
-}
-
-export interface QuestionAnalytics {
-  timesAnswered: number;
-  timesCorrect: number;
-  timesSkipped: number;
-  averageAnswerTime: number;
-}
-
-export interface Question {
-  id: string;
-  text: string;
-  imageUrl?: string;
-  answers: AnswerOption[];
-  difficulty: string;
-  categoryId: string;
-  analytics?: QuestionAnalytics;
-  createdAt: Date;
-  updatedAt: Date;
-} 
+export type {
+  AnswerOption,
+  Question,
+  QuestionAnalytics,
+} from './quiz';

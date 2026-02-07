@@ -223,7 +223,7 @@ async function updateWithRetry(
   retries = 3
 ): Promise<void> {
   try {
-    await updateDoc(docRef, updates);
+    await updateDoc(docRef, updates as any);
   } catch (error: any) {
     if (retries > 0 && (error.code === 'unavailable' || error.code === 'deadline-exceeded')) {
       // Wait before retrying (exponential backoff)

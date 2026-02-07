@@ -1,69 +1,60 @@
 'use client';
 
-import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
-import { useState, useEffect } from 'react';
+import { signOut as nextAuthSignOut, useSession } from 'next-auth/react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { PrivacySettings, UserPreferences, UserProfile } from '@/app/types/user';
 
-/**
- * User profile data from database
- */
-export interface UserProfile {
-  uid: string;
-  email: string;
-  displayName?: string;
-  photoURL?: string;
-  bio?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-/**
- * NextAuth user with extended properties
- *
- * IMPORTANT: The `id` field here is the Firebase UID
- * - It comes from session.user.id which is mapped from Firebase user.uid
- * - Use this id directly when querying Firestore documents
- * - Equivalent to Firebase user.uid in the Credentials provider
- */
 export interface NextAuthUser {
-  id: string;  // Firebase UID (from user.uid in auth)
+  id: string;
+  uid: string;
   email?: string | null;
   name?: string | null;
+  displayName?: string | null;
   image?: string | null;
+  photoURL?: string | null;
 }
 
-/**
- * Interface for auth state - matches component expectations
- */
+type MutationAction<TArgs extends unknown[] = [], TResult = void> = ((...args: TArgs) => Promise<TResult>) & {
+  mutate: (...args: TArgs) => void;
+  mutateAsync: (...args: TArgs) => Promise<TResult>;
+  isPending: boolean;
+};
+
 export interface AuthState {
   currentUser: NextAuthUser | null;
+  user: NextAuthUser | null;
   profile: UserProfile | null;
   loading: boolean;
+  isLoading: boolean;
   error: Error | null;
   isAuthenticated: boolean;
-  signOut: () => Promise<void>;
+  signOut: MutationAction<[], void>;
+  updateProfile: MutationAction<[Partial<UserProfile>], UserProfile | null>;
+  updatePreferences: MutationAction<[Partial<UserPreferences>, Partial<PrivacySettings>?], UserProfile | null>;
 }
 
-/**
- * Custom hook for accessing authentication via NextAuth
- * Provides a consistent interface that matches component expectations
- *
- * ID Property:
- * - currentUser.id is the Firebase UID (Firebase user.uid mapped to NextAuth session.user.id)
- * - Use currentUser.id directly as the document key when querying Firestore
- *
- * Example:
- *   const { currentUser } = useAuth();
- *   const userDoc = await db.collection('users').doc(currentUser.id).get();
- *
- * @returns Object containing authentication state and user information
- */
+function createMutationAction<TArgs extends unknown[], TResult>(
+  action: (...args: TArgs) => Promise<TResult>,
+  isPending: boolean
+): MutationAction<TArgs, TResult> {
+  const callable = ((...args: TArgs) => action(...args)) as MutationAction<TArgs, TResult>;
+  callable.mutate = (...args: TArgs) => {
+    void action(...args);
+  };
+  callable.mutateAsync = (...args: TArgs) => action(...args);
+  callable.isPending = isPending;
+  return callable;
+}
+
 export function useAuth(): AuthState {
   const { data: session, status } = useSession();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileError, setProfileError] = useState<Error | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [signOutPending, setSignOutPending] = useState(false);
+  const [updateProfilePending, setUpdateProfilePending] = useState(false);
+  const [updatePreferencesPending, setUpdatePreferencesPending] = useState(false);
 
-  // Fetch user profile from database when session exists
   useEffect(() => {
     if (!session?.user?.id) {
       setProfile(null);
@@ -75,41 +66,115 @@ export function useAuth(): AuthState {
       setProfileLoading(true);
       try {
         const response = await fetch(`/api/user/profile?userId=${session.user.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setProfile(data.profile || null);
-          setProfileError(null);
-        } else {
-          // Profile doesn't exist yet - this is okay for new users
+        if (!response.ok) {
           setProfile(null);
+          return;
         }
+
+        const payload = await response.json();
+        const nextProfile = (payload?.data ?? payload?.profile ?? null) as UserProfile | null;
+        setProfile(nextProfile);
+        setProfileError(null);
       } catch (err) {
-        console.error('Failed to fetch user profile:', err);
-        setProfileError(err instanceof Error ? err : new Error('Failed to fetch profile'));
         setProfile(null);
+        setProfileError(err instanceof Error ? err : new Error('Failed to fetch profile'));
       } finally {
         setProfileLoading(false);
       }
     };
 
-    fetchProfile();
+    void fetchProfile();
   }, [session?.user?.id]);
 
-  const handleSignOut = async () => {
+  const currentUser = useMemo<NextAuthUser | null>(() => {
+    if (!session?.user) {
+      return null;
+    }
+
+    return {
+      ...session.user,
+      uid: session.user.id,
+      displayName: session.user.displayName ?? session.user.name,
+      photoURL: session.user.photoURL ?? session.user.image,
+    };
+  }, [session?.user]);
+
+  const handleSignOut = useCallback(async (): Promise<void> => {
+    setSignOutPending(true);
     try {
       await nextAuthSignOut({ callbackUrl: '/' });
-    } catch (err) {
-      console.error('Sign out error:', err);
-      throw err;
+    } finally {
+      setSignOutPending(false);
     }
-  };
+  }, []);
+
+  const handleUpdateProfile = useCallback(async (updates: Partial<UserProfile>): Promise<UserProfile | null> => {
+    setUpdateProfilePending(true);
+    try {
+      setProfile((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        return { ...prev, ...updates };
+      });
+
+      return profile ? { ...profile, ...updates } : null;
+    } finally {
+      setUpdateProfilePending(false);
+    }
+  }, [profile]);
+
+  const handleUpdatePreferences = useCallback(
+    async (
+      preferences: Partial<UserPreferences>,
+      privacySettings?: Partial<PrivacySettings>
+    ): Promise<UserProfile | null> => {
+      setUpdatePreferencesPending(true);
+      try {
+        setProfile((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            preferences: {
+              ...prev.preferences,
+              ...preferences,
+              notifications: {
+                ...prev.preferences.notifications,
+                ...preferences.notifications,
+              },
+            },
+            privacySettings: privacySettings
+              ? {
+                  ...prev.privacySettings,
+                  ...privacySettings,
+                }
+              : prev.privacySettings,
+          };
+        });
+
+        return profile;
+      } finally {
+        setUpdatePreferencesPending(false);
+      }
+    },
+    [profile]
+  );
+
+  const isLoading = status === 'loading' || profileLoading;
 
   return {
-    currentUser: session?.user || null,
+    currentUser,
+    user: currentUser,
     profile,
-    loading: status === 'loading' || profileLoading,
+    loading: isLoading,
+    isLoading,
     error: profileError,
     isAuthenticated: !!session,
-    signOut: handleSignOut,
+    signOut: createMutationAction(handleSignOut, signOutPending),
+    updateProfile: createMutationAction(handleUpdateProfile, updateProfilePending),
+    updatePreferences: createMutationAction(handleUpdatePreferences, updatePreferencesPending),
   };
-} 
+}

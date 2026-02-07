@@ -1,12 +1,12 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Quiz, DifficultyLevel } from '@/app/types/quiz';
+import { Quiz, DifficultyLevel, QuizDifficulty } from '@/app/types/quiz';
 import { useBenchmark } from '@/app/hooks/performance/useBenchmark';
 import { cn } from '@/app/lib/utils';
 
 // Helper function to get difficulty badge color
-const getDifficultyColor = (difficulty: DifficultyLevel): string => {
+const getDifficultyColor = (difficulty: DifficultyLevel | QuizDifficulty | string): string => {
   switch (difficulty) {
     case DifficultyLevel.Easy:
       return 'bg-green-100 text-green-800';
@@ -28,7 +28,7 @@ interface QuizCardProps {
   ariaLabel?: string;
 }
 
-const QuizCard: React.FC<QuizCardProps> = ({ 
+export const QuizCard: React.FC<QuizCardProps> = ({ 
   quiz, 
   variant = 'default',
   showImage = true,
@@ -45,7 +45,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
   });
 
   // Format estimated duration from seconds to minutes
-  const formattedDuration = Math.ceil(quiz.estimatedDuration / 60);
+  const formattedDuration = Math.ceil((quiz.estimatedDuration ?? quiz.timeLimit ?? 0) / 60);
   
   // Determine card styling based on variant
   const getCardStyles = () => {
@@ -157,4 +157,4 @@ const QuizCard: React.FC<QuizCardProps> = ({
   );
 };
 
-export default QuizCard; 
+export default QuizCard;

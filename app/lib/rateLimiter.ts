@@ -119,10 +119,11 @@ export class RateLimiter {
     }
 
     // Fall back to IP address
-    const ip = req.ip || 
-               req.headers.get('x-forwarded-for')?.split(',')[0] || 
-               req.headers.get('x-real-ip') || 
-               'unknown';
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0] ||
+      req.headers.get('x-real-ip') ||
+      req.headers.get('cf-connecting-ip') ||
+      'unknown';
     
     return `ip:${ip}`;
   }

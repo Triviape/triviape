@@ -34,6 +34,12 @@ import {
   SidebarInset
 } from "@/app/components/ui/sidebar";
 
+type SidebarNavItem = {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+};
+
 export function ShadcnSidebar() {
   const pathname = usePathname();
   
@@ -100,7 +106,7 @@ export function ShadcnSidebar() {
   ];
   
   // Render navigation items
-  const renderNavItems = (items) => {
+  const renderNavItems = (items: SidebarNavItem[]) => {
     return items.map((item) => (
       <SidebarMenuItem key={item.href}>
         <SidebarMenuButton

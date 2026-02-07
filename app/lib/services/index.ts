@@ -7,7 +7,18 @@
 // Core services
 export { BaseServiceImplementation } from './core/baseService';
 export * from './core/errorHandler';
-export * from './core/performanceMonitor';
+export {
+  PerformanceMonitor,
+  performanceMonitor,
+  measureLeaderboardLoad,
+  measureFriendAction,
+  measureMultiplayerAction,
+  measureSocialAction,
+  measureAuthOperation,
+  measureQuizOperation,
+  measureUserOperation,
+  recordRealtimeLatency,
+} from './core/performanceMonitor';
 
 // Unified User Services (Phase 3 - COMPLETED)
 export * from './user';
@@ -26,7 +37,16 @@ export { UserService } from './userService';
 
 // Daily Quiz Services (Phase 4 - NEXT)
 export * from './dailyQuizService';
-export * from './userDailyQuizService';
+export {
+  getYesterdayDateString,
+  isConsecutiveDay,
+  getUserDailyQuizData,
+  getUserStreak,
+  updateUserDailyQuizData,
+  updateUserStreak,
+  recordDailyQuizCompletion as recordUserDailyQuizCompletion,
+  getDailyQuizStatus,
+} from './userDailyQuizService';
 export * from './quizCompletionService';
 
 // Question Services (Phase 4 - NEXT)
@@ -37,7 +57,15 @@ export * from './leaderboardService';
 
 // Social Services (Phase 5 - NEXT)
 export * from './friendService';
-export * from './socialPerformanceMonitor';
+export {
+  SocialPerformanceMonitor,
+  socialPerformanceMonitor,
+  measureLeaderboardLoad as measureSocialLeaderboardLoad,
+  measureFriendAction as measureSocialFriendAction,
+  measureMultiplayerAction as measureSocialMultiplayerAction,
+  measureSocialAction as measureSocialDomainAction,
+  recordRealtimeLatency as recordSocialRealtimeLatency,
+} from './socialPerformanceMonitor';
 
 // Multiplayer Services (Phase 6 - NEXT)
 export * from './websocketService';

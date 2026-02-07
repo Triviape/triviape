@@ -8,50 +8,42 @@ import { safeAsync } from '@/app/lib/errorHandling';
 import { getApiBaseUrl } from '@/app/lib/environment';
 import { createAppError, ErrorType } from '@/app/lib/errorHandling';
 
-/**
- * Hook to get the current user's daily quiz status
- * @returns Query result with the user's daily quiz status
- */
 export function useDailyQuizStatus() {
-  const { user } = useAuth();
-  
+  const { currentUser } = useAuth();
+
   return useQuery({
-    queryKey: ['dailyQuizStatus', user?.uid],
+    queryKey: ['dailyQuizStatus', currentUser?.uid],
     queryFn: async () => {
-      if (!user?.uid) {
+      if (!currentUser?.uid) {
         throw new Error('User is not authenticated');
       }
-      
-      return getDailyQuizStatus(user.uid);
+
+      return getDailyQuizStatus(currentUser.uid);
     },
-    enabled: !!user?.uid,
+    enabled: !!currentUser?.uid,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     retry: 3,
   });
 }
 
-/**
- * Hook to check if the user has completed today's daily quiz
- * @returns Boolean indicating if today's quiz is completed
- */
 export function useHasCompletedDailyQuiz() {
   const { data: status, isLoading, error } = useDailyQuizStatus();
-  
-  return {
+
+  const normalized = {
     hasCompleted: status?.hasCompletedToday ?? false,
     currentStreak: status?.currentStreak ?? 0,
+    bestStreak: status?.longestStreak ?? 0,
+  };
+
+  return {
+    ...normalized,
+    data: normalized,
     isLoading,
-    error
+    error,
   };
 }
 
-/**
- * Hook to update the daily quiz completion status
- * @param quizId The ID of the completed quiz
- * @param score The score achieved
- * @returns Promise that resolves when the update is complete
- */
 export async function updateDailyQuizCompletion(quizId: string, score: number): Promise<DailyQuizStatus> {
   const [data, error] = await safeAsync(async () => {
     const apiBaseUrl = getApiBaseUrl();
@@ -65,7 +57,7 @@ export async function updateDailyQuizCompletion(quizId: string, score: number): 
         score,
       }),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw createAppError(
@@ -74,13 +66,13 @@ export async function updateDailyQuizCompletion(quizId: string, score: number): 
         { code: `HTTP_${response.status}` }
       );
     }
-    
+
     return response.json();
   });
-  
+
   if (error) {
     throw error;
   }
-  
+
   return data as DailyQuizStatus;
-} 
+}

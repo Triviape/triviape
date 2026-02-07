@@ -385,7 +385,9 @@ export class EnhancedErrorHandler {
         operation: operationName,
         context,
         showToast,
-        onRetry: operation,
+        onRetry: async () => {
+          await operation();
+        },
         maxRetries
       });
       return [null, enhancedError];

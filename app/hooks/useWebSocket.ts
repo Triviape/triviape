@@ -51,7 +51,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       
       // Set up global event listeners
       webSocketService.on('error', (data) => {
-        onError?.(data.error);
+        onError?.(data.message);
       });
       
       webSocketService.on('connection-lost', () => {
@@ -277,7 +277,7 @@ export function useMultiplayerSession() {
     // Register event listeners
     Object.entries(eventHandlers).forEach(([event, handler]) => {
       if (handler) {
-        service.on(event as keyof GameEvents, handler);
+        service.on(event as keyof GameEvents, handler as any);
       }
     });
 
@@ -285,7 +285,7 @@ export function useMultiplayerSession() {
     return () => {
       Object.entries(eventHandlers).forEach(([event, handler]) => {
         if (handler) {
-          service.off(event as keyof GameEvents, handler);
+          service.off(event as keyof GameEvents, handler as any);
         }
       });
     };

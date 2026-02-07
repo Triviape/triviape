@@ -2,7 +2,7 @@
  * Utilities for optimizing images
  */
 
-import { getStorage } from './firebase';
+import { getStorageInstance } from './firebase';
 import { ref, uploadBytes, getDownloadURL, UploadMetadata } from 'firebase/storage';
 
 /**
@@ -112,7 +112,7 @@ export async function uploadOptimizedImage(
     );
     
     // Upload to Firebase Storage
-    const storage = getStorage();
+    const storage = getStorageInstance();
     const storageRef = ref(storage, path);
     
     const metadata: UploadMetadata = {

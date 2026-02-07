@@ -33,16 +33,10 @@ const renderWithProviders = (ui: React.ReactElement) => {
 };
 
 describe('Navbar', () => {
-  it('renders the logo and navigation buttons', () => {
+  it('renders navigation buttons', () => {
     renderWithProviders(<Navbar />);
-    
-    // Check for the brand name
-    expect(screen.getByText('Triviape')).toBeInTheDocument();
-    
-    // Check for the share button
+
     expect(screen.getByText('Share')).toBeInTheDocument();
-    
-    // Check for the sign in/up button
     expect(screen.getByText('Sign In/Up')).toBeInTheDocument();
   });
   

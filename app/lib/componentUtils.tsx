@@ -6,7 +6,7 @@
  * @docRef: /docs/patterns/component-patterns/memoization.md
  */
 
-import React, { ComponentType, forwardRef, memo, useRef, useState, useEffect } from 'react';
+import React, { ComponentType, memo, useRef, useState, useEffect } from 'react';
 import { usePerformanceMonitor } from '@/app/hooks/performance/usePerformanceMonitor';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
@@ -55,7 +55,7 @@ export function memoWithPerf<P extends object>(
   } = options;
   
   // Create wrapper component that includes performance monitoring
-  const WrappedComponent = (props: P, ref: any) => {
+  const WrappedComponent: React.FC<P> = (props: P) => {
     const renderCount = useRef(0);
     
     // Track render count for debugging
@@ -78,7 +78,6 @@ export function memoWithPerf<P extends object>(
       <Component
         {...props}
         {...devProps}
-        ref={ref}
       />
     );
   };
@@ -86,11 +85,8 @@ export function memoWithPerf<P extends object>(
   // Set display name for debugging
   WrappedComponent.displayName = `MemoWithPerf(${name})`;
   
-  // Use forwardRef to handle refs properly
-  const ForwardedComponent = forwardRef(WrappedComponent);
-  
   // Return memoized component
-  return memo(ForwardedComponent, areEqual);
+  return memo(WrappedComponent, areEqual as any);
 }
 
 /**
@@ -229,7 +225,7 @@ export const MeasureRenders: React.FC<{
   children: React.ReactNode;
   onRender?: (
     id: string,
-    phase: "mount" | "update",
+    phase: "mount" | "update" | "nested-update",
     actualDuration: number,
     baseDuration: number,
     startTime: number,
@@ -238,7 +234,7 @@ export const MeasureRenders: React.FC<{
 }> = ({ id, children, onRender }) => {
   const handleRender = (
     profileId: string,
-    phase: "mount" | "update",
+    phase: "mount" | "update" | "nested-update",
     actualDuration: number,
     baseDuration: number,
     startTime: number,

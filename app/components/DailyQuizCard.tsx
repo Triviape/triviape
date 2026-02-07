@@ -70,7 +70,7 @@ export function DailyQuizCard({ onStartClick }: DailyQuizCardProps) {
             <span className="stat-label">Questions</span>
           </div>
           <div className="stat">
-            <span className="stat-value">{Math.round(dailyQuiz.timeLimit / 60)}</span>
+            <span className="stat-value">{Math.round((dailyQuiz.timeLimit ?? 0) / 60)}</span>
             <span className="stat-label">Minutes</span>
           </div>
           {currentStreak > 0 && (

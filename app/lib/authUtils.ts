@@ -3,29 +3,14 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { FirebaseAdminService } from './firebaseAdmin';
-import { UserService } from './services/userService';
-
-/**
- * Session duration (5 days)
- */
-const SESSION_DURATION = 5 * 24 * 60 * 60 * 1000;
 
 /**
  * Create a session cookie from a Firebase ID token
  */
 export async function createSessionCookie(idToken: string, maxAge: number = 60 * 60 * 24 * 5 * 1000): Promise<string | { success: boolean; error?: string }> {
   try {
-    // First check if this is a custom token
-    if (idToken.startsWith('eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.')) {
-      console.log('Detected custom token, exchanging for ID token first');
-      // We need to exchange the custom token for an ID token
-      // This requires client-side auth, which we can't do server-side
-      // Instead, return the custom token and let the client handle the exchange
-      return idToken;
-    }
-    
     // Verify the ID token
-    const decodedToken = await FirebaseAdminService.getAuth().verifyIdToken(idToken);
+    await FirebaseAdminService.getAuth().verifyIdToken(idToken);
     
     // Create a session cookie
     const sessionCookie = await FirebaseAdminService.getAuth().createSessionCookie(idToken, {

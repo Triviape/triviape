@@ -2,7 +2,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getQuizById, getCategories } from '@/app/lib/services/quiz/quizFetchService';
-import { DifficultyLevel } from '@/app/types/quiz';
+import { DifficultyLevel, QuizDifficulty } from '@/app/types/quiz';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 
@@ -28,7 +28,7 @@ export async function generateMetadata({
 }
 
 // Helper function to get difficulty badge color
-const getDifficultyColor = (difficulty: DifficultyLevel): string => {
+const getDifficultyColor = (difficulty: DifficultyLevel | QuizDifficulty | string): string => {
   switch (difficulty) {
     case DifficultyLevel.Easy:
       return 'bg-green-100 text-green-800';
@@ -72,7 +72,7 @@ export default async function QuizPage({
   );
   
   // Format estimated duration from seconds to minutes
-  const formattedDuration = Math.ceil(quiz.estimatedDuration / 60);
+  const formattedDuration = Math.ceil((quiz.estimatedDuration ?? quiz.timeLimit ?? 0) / 60);
   
   return (
     <div className="container mx-auto px-4 py-8">

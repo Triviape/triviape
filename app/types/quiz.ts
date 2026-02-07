@@ -1,61 +1,40 @@
 /**
- * Quiz-related type definitions
- * Centralized type definitions for quiz-related data structures
+ * Unified quiz and question model definitions.
  */
 
-/**
- * Quiz difficulty levels
- */
 export type QuizDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
 
-/**
- * Difficulty level enum for backward compatibility
- */
 export enum DifficultyLevel {
   Easy = 'easy',
   Medium = 'medium',
   Hard = 'hard',
-  Expert = 'expert'
+  Expert = 'expert',
 }
 
-/**
- * Question types
- */
-export type QuestionType = 'multiple-choice' | 'true-false' | 'open-ended';
+export type QuestionType = 'multiple-choice' | 'true-false' | 'open-ended' | 'short-answer' | 'matching' | 'true_false';
 
-/**
- * Question type enum for backward compatibility
- */
 export enum QuestionTypeEnum {
   MultipleChoice = 'multiple-choice',
   TrueFalse = 'true-false',
-  OpenEnded = 'open-ended'
+  OpenEnded = 'open-ended',
 }
 
-/**
- * Question type enum for component usage
- */
 export const QuestionType = {
   MultipleChoice: 'multiple-choice',
   TrueFalse: 'true-false',
   ShortAnswer: 'short-answer',
-  Matching: 'matching'
+  Matching: 'matching',
 } as const;
 
-/**
- * Quiz category information
- */
 export interface QuizCategory {
   id: string;
   name: string;
   description?: string;
   color?: string;
   icon?: string;
+  parentCategoryId?: string;
 }
 
-/**
- * Answer option for a question
- */
 export interface AnswerOption {
   id: string;
   text: string;
@@ -63,23 +42,48 @@ export interface AnswerOption {
   explanation?: string;
 }
 
-/**
- * Question interface for quiz components
- */
+export interface QuestionAnalytics {
+  timesAnswered: number;
+  timesCorrect?: number;
+  timesSkipped?: number;
+  averageAnswerTime: number;
+}
+
 export interface Question {
   id: string;
   text: string;
-  type: string;
+  type?: QuestionType | string;
   answers: AnswerOption[];
+  imageUrl?: string;
+  difficulty?: QuizDifficulty | string;
+  categoryId?: string;
   hint?: string;
   explanation?: string;
   points?: number;
   timeLimit?: number;
+  options?: string[];
+  correctAnswer?: string | string[];
+  analytics?: QuestionAnalytics;
+  timesAnswered?: number;
+  timesAnsweredCorrectly?: number;
+  averageAnswerTime?: number;
+  skipRate?: number;
+  tags?: string[];
+  isActive?: boolean;
+  createdAt?: Date | number;
+  updatedAt?: Date | number;
 }
 
-/**
- * Quiz question interface
- */
+export interface QuestionSummary {
+  id: string;
+  text: string;
+  type?: QuestionType | string;
+  difficulty?: QuizDifficulty | string;
+  categoryId?: string;
+  points?: number;
+  isActive?: boolean;
+}
+
 export interface QuizQuestion {
   id: string;
   text: string;
@@ -91,41 +95,36 @@ export interface QuizQuestion {
   timeLimit?: number;
 }
 
-/**
- * Quiz interface
- */
 export interface Quiz {
   id: string;
   title: string;
   description: string;
-  categoryId: string;
-  difficulty: QuizDifficulty;
-  timeLimit: number; // in seconds
+  categoryId?: string;
+  categoryIds?: string[];
+  difficulty: QuizDifficulty | string;
+  timeLimit?: number;
   questionIds: string[];
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  
-  // Daily quiz specific fields
+  isActive?: boolean;
+  createdAt?: Date | number;
+  updatedAt?: Date | number;
   isDailyQuiz?: boolean;
   dailyQuizDate?: string | null;
-  
-  // Optional metadata
   createdBy?: string;
   tags?: string[];
-  imageUrl?: string;
-  estimatedDuration?: number; // in minutes
+  imageUrl?: string | null;
+  coverImage?: string | null;
+  estimatedDuration?: number;
   maxAttempts?: number;
-  
-  // Statistics
+  shuffleQuestions?: boolean;
+  baseXP?: number;
+  baseCoins?: number;
+  passingScore?: number;
   totalAttempts?: number;
   averageScore?: number;
   completionRate?: number;
+  timesPlayed?: number;
 }
 
-/**
- * Quiz attempt interface
- */
 export interface QuizAttempt {
   id: string;
   quizId: string;
@@ -135,24 +134,18 @@ export interface QuizAttempt {
   score?: number;
   maxScore?: number;
   answers: QuizAnswer[];
-  timeSpent: number; // in seconds
+  timeSpent: number;
   status: 'in-progress' | 'completed' | 'abandoned';
 }
 
-/**
- * Quiz answer interface
- */
 export interface QuizAnswer {
   questionId: string;
   answer: string | string[];
   isCorrect?: boolean;
   points?: number;
-  timeSpent: number; // in seconds
+  timeSpent: number;
 }
 
-/**
- * Quiz result interface
- */
 export interface QuizResult {
   attemptId: string;
   quizId: string;
@@ -170,9 +163,6 @@ export interface QuizResult {
   };
 }
 
-/**
- * Quiz statistics interface
- */
 export interface QuizStats {
   totalAttempts: number;
   averageScore: number;
@@ -182,9 +172,6 @@ export interface QuizStats {
   categoryDistribution: Record<string, number>;
 }
 
-/**
- * Quiz creation/update interface
- */
 export interface QuizFormData {
   title: string;
   description: string;
@@ -198,9 +185,6 @@ export interface QuizFormData {
   maxAttempts?: number;
 }
 
-/**
- * Quiz search/filter interface
- */
 export interface QuizFilters {
   categoryId?: string;
   difficulty?: QuizDifficulty;
@@ -214,9 +198,6 @@ export interface QuizFilters {
   search?: string;
 }
 
-/**
- * Quiz completion status
- */
 export interface QuizCompletionStatus {
   quizId: string;
   userId: string;
@@ -225,4 +206,4 @@ export interface QuizCompletionStatus {
   bestScore?: number;
   attemptsCount: number;
   lastAttemptedAt?: Date;
-} 
+}

@@ -14,12 +14,20 @@ declare module "next-auth" {
     user: {
       /** The user's ID (Firebase UID). Maps from Firebase user.uid to NextAuth session.user.id */
       id: string;
+      /** Alias for Firebase UID for legacy callers still using user.uid */
+      uid?: string;
       /** The user's name (or username). */
       name?: string | null;
+      /** Alias for name used by legacy profile UI */
+      displayName?: string | null;
       /** The user's email address. */
       email?: string | null;
+      /** Optional application role for authorization decisions. */
+      role?: string;
       /** The user's image URL. */
       image?: string | null;
+      /** Alias for image used by legacy profile UI */
+      photoURL?: string | null;
     } & DefaultSession["user"];
   }
 
@@ -33,9 +41,13 @@ declare module "next-auth" {
   interface User {
     /** Firebase UID - used as the primary identifier across the app */
     id: string;
+    uid?: string;
     name?: string | null;
+    displayName?: string | null;
     email?: string | null;
+    role?: string;
     image?: string | null;
+    photoURL?: string | null;
   }
 }
 
@@ -46,5 +58,6 @@ declare module "next-auth/jwt" {
     name?: string | null;
     email?: string | null;
     picture?: string | null;
+    role?: string;
   }
-} 
+}

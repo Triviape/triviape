@@ -5,11 +5,13 @@
 
 // Base service implementation
 export { 
-  BaseService, 
-  BaseServiceImplementation, 
-  ListOptions, 
-  ListResult, 
-  BatchOperations 
+  BaseServiceImplementation
+} from './baseService';
+export type {
+  BaseService,
+  ListOptions,
+  ListResult,
+  BatchOperations,
 } from './baseService';
 
 // Error handling

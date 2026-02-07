@@ -92,4 +92,10 @@ export async function incrementQuizzesCreated(userId: string): Promise<void> {
       error instanceof Error ? error : new Error(String(error))
     );
   }
-} 
+}
+
+export const StatsService = {
+  getUserStats,
+  updateQuizStats,
+  incrementQuizzesCreated,
+};

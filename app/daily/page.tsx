@@ -4,12 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DailyQuizArea } from '@/app/components/daily/DailyQuizArea';
 import { updateDailyQuizCompletion } from '@/app/hooks/useDailyQuizStatus';
-
-export enum QuizState {
-  PRE_QUIZ = 'pre-quiz',
-  IN_PROGRESS = 'in-progress',
-  RESULTS = 'results'
-}
+import { QuizState } from '@/app/page';
 
 export default function DailyQuizPage() {
   const router = useRouter();
@@ -29,7 +24,7 @@ export default function DailyQuizPage() {
   };
   
   const handleStartQuiz = () => {
-    setQuizState(QuizState.IN_PROGRESS);
+    setQuizState(QuizState.GAMEPLAY);
     setCurrentQuestionIndex(0);
     setUserAnswers({});
   };

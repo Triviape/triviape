@@ -1,8 +1,7 @@
 import React from 'react';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import Link from 'next/link';
-import Image from 'next/image';
-import { cn } from '@/lib/utils';
+import { cn } from '@/app/lib/utils';
 
 // Custom components for markdown
 const components = {
@@ -60,9 +59,10 @@ const components = {
       {...props}
     />
   ),
-  a: ({ className, ...props }: React.HTMLAttributes<HTMLAnchorElement>) => (
+  a: ({ className, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
     <Link
       className={cn("font-medium text-primary underline underline-offset-4", className)}
+      href={href || '#'}
       {...props}
     />
   ),

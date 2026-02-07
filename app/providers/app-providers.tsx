@@ -16,7 +16,7 @@ import { ResponsiveUIProvider } from '../contexts/responsive-ui-context';
 import { useIsClient } from '@/app/hooks/useIsClient';
 
 const PerformanceDashboard = dynamic(
-  () => import('@/app/components/performance/PerformanceDashboard'),
+  () => import('@/app/components/performance/PerformanceDashboard').then((m) => m.PerformanceDashboard),
   { 
     ssr: false,
     loading: () => <div className="hidden">Loading performance dashboard...</div>

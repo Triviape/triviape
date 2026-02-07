@@ -16,7 +16,7 @@ import { useIsClient } from '@/app/hooks/useIsClient';
 
 // Dynamically import the performance dashboard to reduce bundle size
 const PerformanceDashboard = dynamic(
-  () => import('@/app/components/performance/PerformanceDashboard'),
+  () => import('@/app/components/performance/PerformanceDashboard').then((m) => m.PerformanceDashboard),
   { 
     ssr: false,
     loading: () => <div className="hidden">Loading performance dashboard...</div>

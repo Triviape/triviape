@@ -10,10 +10,10 @@ interface RateLimitEntry {
 }
 
 interface RateLimitStore {
-  get(key: string): RateLimitEntry | undefined;
-  set(key: string, entry: RateLimitEntry): void;
-  delete(key: string): void;
-  clear(): void;
+  get(key: string): RateLimitEntry | undefined | Promise<RateLimitEntry | undefined>;
+  set(key: string, entry: RateLimitEntry): void | Promise<void>;
+  delete(key: string): void | Promise<void>;
+  clear(): void | Promise<void>;
   cleanup?(): void;
 }
 

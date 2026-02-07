@@ -1,4 +1,4 @@
-import { UserPreferences, PrivacySettings } from '@/app/types/user';
+import { UserPreferences, PrivacySettings, UserProfile } from '@/app/types/user';
 import { 
   withErrorHandling
 } from './errorHandler';
@@ -17,7 +17,7 @@ export class PreferencesService {
   ): Promise<void> {
     return withErrorHandling(async () => {
       const instance = new ProfileService();
-      await instance.update(userId, { preferences });
+      await instance.update(userId, { preferences } as Partial<UserProfile>);
     }, 'updateUserPreferences');
   }
 
@@ -30,7 +30,7 @@ export class PreferencesService {
   ): Promise<void> {
     return withErrorHandling(async () => {
       const instance = new ProfileService();
-      await instance.update(userId, { privacySettings: settings });
+      await instance.update(userId, { privacySettings: settings } as Partial<UserProfile>);
     }, 'updatePrivacySettings');
   }
 

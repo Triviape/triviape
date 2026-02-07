@@ -34,7 +34,9 @@ import {
   isSupported,
   type Analytics
 } from 'firebase/analytics';
-import { getPerformance, type Performance } from 'firebase/performance';
+import { getPerformance } from 'firebase/performance';
+
+type Performance = ReturnType<typeof getPerformance>;
 
 /**
  * Firebase configuration object
@@ -241,6 +243,8 @@ export const db = initializeFirestore();
 export const storage = initializeFirebaseStorage();
 export const functions = initializeFirebaseFunctions();
 export const realtimeDb = initializeRealtimeDatabase();
+export const analytics = firebaseAnalytics;
+export const performance = initializePerformance();
 
 // Re-export Firebase auth methods for convenience
 export {
@@ -259,3 +263,21 @@ export const getPerformanceInstance = () => initializePerformance();
 export const getStorageInstance = () => storage;
 export const getFunctionsInstance = () => functions;
 export const getApp = () => app;
+
+export default {
+  app,
+  auth,
+  db,
+  storage,
+  functions,
+  realtimeDb,
+  analytics,
+  performance,
+  getApp,
+  getAuth: getAuthInstance,
+  getFirestore: getFirestoreDb,
+  getStorage: getStorageInstance,
+  getFunctions: getFunctionsInstance,
+  getAnalytics: initializeFirebaseAnalytics,
+  getPerformance: getPerformanceInstance,
+};

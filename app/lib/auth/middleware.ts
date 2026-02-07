@@ -106,7 +106,7 @@ function validateRequest(req: NextRequest): { valid: boolean; errors?: string[] 
 /**
  * Apply security headers to response
  */
-function applySecurityHeaders(response: NextResponse): NextResponse {
+function applySecurityHeaders<T extends Response>(response: T): T {
   Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
     response.headers.set(key, value);
   });

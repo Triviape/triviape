@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { leaderboardService } from '@/app/lib/services/leaderboard/leaderboardService';
+import { leaderboardService } from '@/app/lib/services/leaderboardService';
 import { 
   EnhancedLeaderboardEntry, 
   LeaderboardPeriod, 
@@ -147,7 +147,7 @@ export function useAddToLeaderboard() {
     period: LeaderboardPeriod = 'daily'
   ) => {
     try {
-      const result = await leaderboardService.addToLeaderboard(userId, params, period);
+      const result = await leaderboardService.addToEnhancedLeaderboard(userId, params, period);
       
       // Invalidate all leaderboard queries
       queryClient.invalidateQueries({

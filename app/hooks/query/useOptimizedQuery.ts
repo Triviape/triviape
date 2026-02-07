@@ -12,13 +12,14 @@ import { QUERY_CONFIGS, smartRetry } from '@/app/lib/query-config';
 /**
  * Extended query options for performance monitoring
  */
-interface OptimizedQueryOptions<TData, TError> extends Omit<UseQueryOptions<TData, TError, TData, QueryKey>, 'queryKey' | 'queryFn'> {
+export interface OptimizedQueryOptions<TData, TError> extends Omit<UseQueryOptions<TData, TError, TData, QueryKey>, 'queryKey' | 'queryFn'> {
   queryKey: QueryKey;
   queryFn: QueryFunction<TData, QueryKey>;
   componentName?: string;
   queryName?: string;
   mockFn?: () => TData;
   enableMockFallback?: boolean;
+  trackPerformance?: boolean;
 }
 
 /**
@@ -31,6 +32,7 @@ export function useOptimizedQuery<TData, TError = AppError>({
   queryName,
   mockFn,
   enableMockFallback = false,
+  trackPerformance,
   ...options
 }: OptimizedQueryOptions<TData, TError>) {
   // Create a wrapped query function with error handling

@@ -15,7 +15,6 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { Memory } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 
 interface PerformanceMetrics {
@@ -52,6 +51,7 @@ export function PerformanceDashboard({
   });
   const [isVisible, setIsVisible] = useState(false);
   const [alerts, setAlerts] = useState<string[]>([]);
+  const [detailsOpen, setDetailsOpen] = useState(showDetails);
 
   // Performance monitoring
   useEffect(() => {
@@ -176,7 +176,7 @@ export function PerformanceDashboard({
 
             <div className="space-y-1">
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Memory className="w-3 h-3" />
+                <HardDrive className="w-3 h-3" />
                 Memory
               </div>
               <div className="text-lg font-semibold">
@@ -186,7 +186,7 @@ export function PerformanceDashboard({
             </div>
           </div>
 
-          {showDetails && (
+          {detailsOpen && (
             <div className="space-y-3 pt-2 border-t">
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
@@ -234,10 +234,10 @@ export function PerformanceDashboard({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowDetails(!showDetails)}
+              onClick={() => setDetailsOpen((prev) => !prev)}
               className="flex-1"
             >
-              {showDetails ? 'Hide' : 'Details'}
+              {detailsOpen ? 'Hide' : 'Details'}
             </Button>
           </div>
         </CardContent>
