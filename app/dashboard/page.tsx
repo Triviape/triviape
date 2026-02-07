@@ -2,12 +2,23 @@
 
 import React from 'react';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
+import { leaderboardService } from '@/app/lib/services/leaderboardService';
 
 export default function Dashboard() {
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    void queryClient.prefetchQuery({
+      queryKey: ['leaderboard', 'global', 'daily', {}],
+      queryFn: () => leaderboardService.getLeaderboard('global', 'daily', {}),
+      staleTime: 30000
+    });
+  }, [queryClient]);
   
   return (
     <div className="py-8">

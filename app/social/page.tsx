@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/app/components/layouts/app-layout';
 import { Navbar } from '@/app/components/navigation/navbar';
 import { FriendsList } from '@/app/components/social/FriendsList';
@@ -25,15 +26,31 @@ import {
 } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 import { useFriendActivity, usePresence } from '@/app/hooks/useFriends';
+import { useAuth } from '@/app/hooks/useAuth';
+import { friendService } from '@/app/lib/services/friendService';
 import { Friend, FriendActivity } from '@/app/types/social';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function SocialPage() {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const queryClient = useQueryClient();
+  const { currentUser } = useAuth();
   const { data: activities, isLoading: activitiesLoading } = useFriendActivity();
   
   // Initialize presence tracking
   usePresence();
+
+  React.useEffect(() => {
+    if (!currentUser?.uid) {
+      return;
+    }
+
+    void queryClient.prefetchQuery({
+      queryKey: ['friends', currentUser.uid],
+      queryFn: () => friendService.getFriends(currentUser.uid),
+      staleTime: 60000
+    });
+  }, [currentUser?.uid, queryClient]);
 
   const handleFriendClick = (friend: Friend) => {
     setSelectedFriend(friend);

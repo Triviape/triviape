@@ -2,6 +2,7 @@
 
 import { signOut as nextAuthSignOut, useSession } from 'next-auth/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { PrivacySettings, UserPreferences, UserProfile } from '@/app/types/user';
 
 export interface NextAuthUser {
@@ -46,8 +47,22 @@ function createMutationAction<TArgs extends unknown[], TResult>(
   return callable;
 }
 
+const USER_PROFILE_STALE_TIME = 60 * 1000;
+const userProfileQueryKey = (userId: string) => ['user-profile', userId] as const;
+
+async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
+  const response = await fetch(`/api/user/profile?userId=${userId}`);
+  if (!response.ok) {
+    return null;
+  }
+
+  const payload = await response.json();
+  return (payload?.data ?? payload?.profile ?? null) as UserProfile | null;
+}
+
 export function useAuth(): AuthState {
   const { data: session, status } = useSession();
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileError, setProfileError] = useState<Error | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -65,14 +80,11 @@ export function useAuth(): AuthState {
     const fetchProfile = async () => {
       setProfileLoading(true);
       try {
-        const response = await fetch(`/api/user/profile?userId=${session.user.id}`);
-        if (!response.ok) {
-          setProfile(null);
-          return;
-        }
-
-        const payload = await response.json();
-        const nextProfile = (payload?.data ?? payload?.profile ?? null) as UserProfile | null;
+        const nextProfile = await queryClient.fetchQuery({
+          queryKey: userProfileQueryKey(session.user.id),
+          queryFn: () => fetchUserProfile(session.user.id),
+          staleTime: USER_PROFILE_STALE_TIME
+        });
         setProfile(nextProfile);
         setProfileError(null);
       } catch (err) {
@@ -84,7 +96,7 @@ export function useAuth(): AuthState {
     };
 
     void fetchProfile();
-  }, [session?.user?.id]);
+  }, [queryClient, session?.user?.id]);
 
   const currentUser = useMemo<NextAuthUser | null>(() => {
     if (!session?.user) {
