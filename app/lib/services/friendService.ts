@@ -15,7 +15,9 @@ import {
   serverTimestamp,
   and,
   or,
-  documentId
+  documentId,
+  QuerySnapshot,
+  DocumentData
 } from 'firebase/firestore';
 import { ref, set, onValue, off, push, get } from 'firebase/database';
 import { db, realtimeDb } from '@/app/lib/firebase';
@@ -275,13 +277,13 @@ export class FriendService {
   /**
    * Search for users to add as friends
    */
-  async searchUsers(query: string, currentUserId: string, limit = 20): Promise<FriendSearchResult[]> {
+  async searchUsers(searchTerm: string, currentUserId: string, maxResults = 20): Promise<FriendSearchResult[]> {
     try {
       // This is a simplified search - in production, you'd use full-text search
       const usersQuery = query(
         collection(db, COLLECTIONS.USERS),
         orderBy('displayName'),
-        limit(limit)
+        limit(maxResults)
       );
 
       const snapshot = await getDocs(usersQuery);
@@ -300,8 +302,8 @@ export class FriendService {
         if (userId === currentUserId) continue;
 
         // Simple text matching - replace with proper search in production
-        if (userData.displayName?.toLowerCase().includes(query.toLowerCase()) ||
-            userData.email?.toLowerCase().includes(query.toLowerCase())) {
+        if (userData.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            userData.email?.toLowerCase().includes(searchTerm.toLowerCase())) {
           matchingUserIds.push(userId);
           userDataMap.set(userId, userData);
         }
@@ -1040,8 +1042,6 @@ export class FriendService {
       // to reduce callback frequency
       const presenceRef = ref(realtimeDb, 'presence');
       let debounceTimeout: NodeJS.Timeout | null = null;
-      const friendIdsSet = new Set(friendIds);
-      
       const unsubscribe = onValue(presenceRef, (snapshot) => {
         const presenceData = snapshot.val() || {};
         
@@ -1082,16 +1082,26 @@ export class FriendService {
   private async batchGetUsers(userIds: string[]): Promise<Map<string, any>> {
     const result = new Map();
     const BATCH_SIZE = 10; // Firestore 'in' operator limit
+    const uniqueUserIds = [...new Set(userIds)];
+    const batches: string[][] = [];
 
-    for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
-      const batch = userIds.slice(i, i + BATCH_SIZE);
-      const q = query(
-        collection(db, COLLECTIONS.USERS),
-        where(documentId(), 'in', batch)
-      );
-      const snapshot = await getDocs(q);
-      snapshot.docs.forEach(doc => result.set(doc.id, doc.data()));
+    for (let i = 0; i < uniqueUserIds.length; i += BATCH_SIZE) {
+      batches.push(uniqueUserIds.slice(i, i + BATCH_SIZE));
     }
+
+    const snapshots = await Promise.all(
+      batches.map(batch => {
+        const q = query(
+          collection(db, COLLECTIONS.USERS),
+          where(documentId(), 'in', batch)
+        );
+        return getDocs(q);
+      })
+    );
+
+    snapshots.forEach(snapshot => {
+      snapshot.docs.forEach(doc => result.set(doc.id, doc.data()));
+    });
 
     return result;
   }
@@ -1127,39 +1137,42 @@ export class FriendService {
       return {};
     }
 
+    const uniqueFriendIds = [...new Set(friendIds)];
+
     // Get current user's friends (1 query)
     const userFriends = await this.getCurrentUserFriendIdsOptimized(userId);
     const userFriendsSet = new Set(userFriends);
 
     // Batch fetch all friendships for the given friendIds
-    // Instead of N queries, we use ceil(N/10) queries
+    // Instead of N queries, we use ceil(N/10) * 2 queries
     const BATCH_SIZE = 10;
     const allFriendshipsMap = new Map<string, Set<string>>();
 
     // Initialize sets for each friend
-    friendIds.forEach(id => allFriendshipsMap.set(id, new Set()));
+    uniqueFriendIds.forEach(id => allFriendshipsMap.set(id, new Set()));
+
+    const batchRequests: Array<Promise<[QuerySnapshot<DocumentData>, QuerySnapshot<DocumentData>]>> = [];
 
     // Query friendships where any of the friendIds appears as userId1 or userId2
-    for (let i = 0; i < friendIds.length; i += BATCH_SIZE) {
-      const batch = friendIds.slice(i, i + BATCH_SIZE);
-      
-      // Query where friendId is userId1
+    for (let i = 0; i < uniqueFriendIds.length; i += BATCH_SIZE) {
+      const batch = uniqueFriendIds.slice(i, i + BATCH_SIZE);
+
       const query1 = query(
         collection(db, 'friendships'),
         where('userId1', 'in', batch)
       );
-      
-      // Query where friendId is userId2
+
       const query2 = query(
         collection(db, 'friendships'),
         where('userId2', 'in', batch)
       );
 
-      const [snapshot1, snapshot2] = await Promise.all([
-        getDocs(query1),
-        getDocs(query2)
-      ]);
+      batchRequests.push(Promise.all([getDocs(query1), getDocs(query2)]));
+    }
 
+    const batchSnapshots = await Promise.all(batchRequests);
+
+    batchSnapshots.forEach(([snapshot1, snapshot2]) => {
       // Process results from query1 (friendId is userId1)
       snapshot1.docs.forEach(doc => {
         const data = doc.data();
@@ -1179,13 +1192,12 @@ export class FriendService {
           allFriendshipsMap.get(friendId)!.add(otherId);
         }
       });
-    }
+    });
 
     // Calculate mutual friends
     const result: Record<string, number> = {};
-    friendIds.forEach(friendId => {
+    uniqueFriendIds.forEach(friendId => {
       const friendFriends = allFriendshipsMap.get(friendId) || new Set();
-      // Count how many of friendFriends are also in userFriendsSet
       let mutualCount = 0;
       friendFriends.forEach(id => {
         if (userFriendsSet.has(id)) {
@@ -1193,6 +1205,13 @@ export class FriendService {
         }
       });
       result[friendId] = mutualCount;
+    });
+
+    // Preserve original shape in case duplicates were requested
+    friendIds.forEach(friendId => {
+      if (result[friendId] === undefined) {
+        result[friendId] = 0;
+      }
     });
 
     return result;
@@ -1251,11 +1270,13 @@ export class FriendService {
   private async getPendingRequestUserIds(userId: string): Promise<Array<{fromUserId: string, toUserId: string}>> {
     const requestsQuery = query(
       collection(db, 'friend_requests'),
-      or(
-        where('fromUserId', '==', userId),
-        where('toUserId', '==', userId)
+      and(
+        or(
+          where('fromUserId', '==', userId),
+          where('toUserId', '==', userId)
+        ),
+        where('status', '==', 'pending')
       ),
-      where('status', '==', 'pending')
     );
 
     const snapshot = await getDocs(requestsQuery);
