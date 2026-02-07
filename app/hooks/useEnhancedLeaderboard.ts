@@ -1,14 +1,11 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { leaderboardService } from '@/app/lib/services/leaderboardService';
 import { 
-  EnhancedLeaderboardEntry, 
   LeaderboardPeriod, 
   LeaderboardType, 
   LeaderboardFilters,
-  PaginatedLeaderboard,
-  LeaderboardUpdate,
-  GlobalLeaderboardStats
+  LeaderboardUpdate
 } from '@/app/types/leaderboard';
 import { REALTIME_PRESETS } from './query/useRealtimeQuery';
 
@@ -18,15 +15,16 @@ const QUERY_KEYS = {
   stats: (period: LeaderboardPeriod) => ['leaderboard-stats', period],
 } as const;
 
+const HIDDEN_REFETCH_BASE_DELAY = 1000;
+const HIDDEN_REFETCH_MAX_DELAY = 30000;
+
 interface UseEnhancedLeaderboardOptions {
   enabled?: boolean;
   realtime?: boolean;
 }
 
 /**
- * Enhanced hook for leaderboard functionality with real-time updates via React Query polling
- * 
- * Replaces Firebase listeners with React Query's refetchInterval for simpler state management
+ * Enhanced hook for leaderboard functionality with optional Firestore listener-driven updates.
  */
 export function useEnhancedLeaderboard(
   type: LeaderboardType,
@@ -40,15 +38,107 @@ export function useEnhancedLeaderboard(
     enabled = true,
     realtime = false
   } = options;
+  const hiddenRefetchDelayRef = useRef(HIDDEN_REFETCH_BASE_DELAY);
+  const hiddenRefetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Main leaderboard query with optional real-time polling
+  const invalidateLeaderboardQueries = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.leaderboard(type, period, filters),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: [...QUERY_KEYS.leaderboard(type, period, filters), 'infinite'],
+    });
+  }, [filters, period, queryClient, type]);
+
+  const clearPendingHiddenRefetch = useCallback(() => {
+    if (hiddenRefetchTimeoutRef.current) {
+      clearTimeout(hiddenRefetchTimeoutRef.current);
+      hiddenRefetchTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleVisibilityAwareRefetch = useCallback(() => {
+    if (!realtime) {
+      return;
+    }
+
+    if (typeof document === 'undefined' || !document.hidden) {
+      clearPendingHiddenRefetch();
+      hiddenRefetchDelayRef.current = HIDDEN_REFETCH_BASE_DELAY;
+      invalidateLeaderboardQueries();
+      return;
+    }
+
+    if (hiddenRefetchTimeoutRef.current) {
+      return;
+    }
+
+    const delay = hiddenRefetchDelayRef.current;
+    hiddenRefetchTimeoutRef.current = setTimeout(() => {
+      hiddenRefetchTimeoutRef.current = null;
+
+      if (typeof document !== 'undefined' && document.hidden) {
+        hiddenRefetchDelayRef.current = Math.min(
+          hiddenRefetchDelayRef.current * 2,
+          HIDDEN_REFETCH_MAX_DELAY
+        );
+        scheduleVisibilityAwareRefetch();
+        return;
+      }
+
+      hiddenRefetchDelayRef.current = HIDDEN_REFETCH_BASE_DELAY;
+      invalidateLeaderboardQueries();
+    }, delay);
+  }, [clearPendingHiddenRefetch, invalidateLeaderboardQueries, realtime]);
+
+  useEffect(() => {
+    if (!enabled || !realtime) {
+      clearPendingHiddenRefetch();
+      hiddenRefetchDelayRef.current = HIDDEN_REFETCH_BASE_DELAY;
+      return;
+    }
+
+    const subscription = leaderboardService.subscribeToLeaderboard(
+      type,
+      period,
+      filters,
+      (_update: LeaderboardUpdate) => {
+        scheduleVisibilityAwareRefetch();
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+      clearPendingHiddenRefetch();
+      hiddenRefetchDelayRef.current = HIDDEN_REFETCH_BASE_DELAY;
+    };
+  }, [clearPendingHiddenRefetch, enabled, filters, period, realtime, scheduleVisibilityAwareRefetch, type]);
+
+  useEffect(() => {
+    if (!enabled || !realtime || typeof document === 'undefined') {
+      return;
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        clearPendingHiddenRefetch();
+        hiddenRefetchDelayRef.current = HIDDEN_REFETCH_BASE_DELAY;
+        invalidateLeaderboardQueries();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [clearPendingHiddenRefetch, enabled, invalidateLeaderboardQueries, realtime]);
+
+  // Main leaderboard query with optional real-time listener updates
   const leaderboardQuery = useQuery({
     queryKey: QUERY_KEYS.leaderboard(type, period, filters),
     queryFn: () => leaderboardService.getLeaderboard(type, period, filters),
     enabled,
     staleTime: realtime ? REALTIME_PRESETS.STANDARD.staleTime : 30000,
-    refetchInterval: realtime ? REALTIME_PRESETS.STANDARD.realtimeInterval : false,
-    refetchIntervalInBackground: realtime,
     retry: 2,
   });
 
@@ -61,7 +151,6 @@ export function useEnhancedLeaderboard(
     initialPageParam: undefined as string | undefined,
     enabled,
     staleTime: realtime ? REALTIME_PRESETS.STANDARD.staleTime : 30000,
-    refetchInterval: realtime ? REALTIME_PRESETS.STANDARD.realtimeInterval : false,
   });
 
   // Manual refresh

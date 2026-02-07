@@ -344,17 +344,42 @@ export class LeaderboardService {
     callback: (update: LeaderboardUpdate) => void
   ): LeaderboardSubscription {
     const subscriptionKey = this.getSubscriptionKey(type, period, filters);
-    
-    // Use Firebase Realtime Database for live updates
-    const realtimeRef = ref(realtimeDb, `leaderboards/${type}/${period}`);
-    
-    const unsubscribe = onValue(realtimeRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        // Process real-time update
-        this.processRealtimeUpdate(data, callback);
+    const leaderboardRef = collection(db, this.getCollectionName(type, period));
+    let leaderboardQuery = query(
+      leaderboardRef,
+      where('period', '==', period),
+      orderBy('score', 'desc'),
+      orderBy('completionTime', 'asc'),
+      limit(LEADERBOARD_PAGE_SIZE)
+    );
+
+    if (filters.categoryId) {
+      leaderboardQuery = query(leaderboardQuery, where('categoryId', '==', filters.categoryId));
+    }
+
+    const unsubscribe = onSnapshot(
+      leaderboardQuery,
+      (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          const updateTypeMap = {
+            added: 'entry_added',
+            modified: 'entry_updated',
+            removed: 'entry_removed'
+          } as const;
+
+          callback({
+            type: updateTypeMap[change.type],
+            entry: {
+              ...(change.doc.data() as EnhancedLeaderboardEntry),
+              id: change.doc.id
+            }
+          });
+        });
+      },
+      (error) => {
+        console.error('Error in Firestore leaderboard subscription:', error);
       }
-    });
+    );
 
     this.subscriptions.set(subscriptionKey, unsubscribe);
 
