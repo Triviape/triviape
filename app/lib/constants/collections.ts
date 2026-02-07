@@ -7,6 +7,7 @@ export const COLLECTIONS = {
   // User-related collections
   USERS: 'users',
   USER_PROFILES: 'user_profiles',
+  USER_PROFILE_SUMMARIES: 'user_profile_summaries',
   USER_STATS: 'user_stats',
   USER_DAILY_QUIZZES: 'user_daily_quizzes',
   

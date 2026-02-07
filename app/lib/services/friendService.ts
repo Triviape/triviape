@@ -8,6 +8,7 @@ import {
   addDoc,
   doc,
   getDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   arrayUnion,
@@ -254,7 +255,7 @@ export class FriendService {
             totalQuizzes: friendData.quizzesTaken || 0,
             averageScore: friendData.averageScore || 0,
             favoriteCategory: friendData.favoriteCategory,
-            achievements: friendData.achievements?.length || 0,
+            achievements: friendData.achievementsCount || friendData.achievements?.length || 0,
             showStats: friendData.privacySettings?.shareActivityWithFriends !== false,
             showActivity: friendData.privacySettings?.shareActivityWithFriends !== false,
             allowChallenges: friendship.allowChallenges
@@ -1089,8 +1090,45 @@ export class FriendService {
       batches.push(uniqueUserIds.slice(i, i + BATCH_SIZE));
     }
 
-    const snapshots = await Promise.all(
+    const summarySnapshots = await Promise.all(
       batches.map(batch => {
+        const q = query(
+          collection(db, COLLECTIONS.USER_PROFILE_SUMMARIES),
+          where(documentId(), 'in', batch)
+        );
+        return getDocs(q);
+      })
+    );
+
+    summarySnapshots.forEach(snapshot => {
+      snapshot.docs.forEach(summaryDoc => {
+        const summaryData = summaryDoc.data();
+        result.set(summaryDoc.id, {
+          level: summaryData.level || 1,
+          lastLoginAt: summaryData.lastLoginAt,
+          quizzesTaken: summaryData.quizzesTaken || 0,
+          averageScore: summaryData.averageScore || 0,
+          favoriteCategory: summaryData.favoriteCategory,
+          achievementsCount: summaryData.achievementsCount || 0,
+          privacySettings: {
+            shareActivityWithFriends: summaryData.shareActivityWithFriends
+          }
+        });
+      });
+    });
+
+    const missingUserIds = uniqueUserIds.filter(userId => !result.has(userId));
+    if (missingUserIds.length === 0) {
+      return result;
+    }
+
+    const missingBatches: string[][] = [];
+    for (let i = 0; i < missingUserIds.length; i += BATCH_SIZE) {
+      missingBatches.push(missingUserIds.slice(i, i + BATCH_SIZE));
+    }
+
+    const userSnapshots = await Promise.all(
+      missingBatches.map(batch => {
         const q = query(
           collection(db, COLLECTIONS.USERS),
           where(documentId(), 'in', batch)
@@ -1099,10 +1137,32 @@ export class FriendService {
       })
     );
 
-    snapshots.forEach(snapshot => {
-      snapshot.docs.forEach(doc => result.set(doc.id, doc.data()));
+    const summaryBackfillWrites: Promise<void>[] = [];
+    userSnapshots.forEach(snapshot => {
+      snapshot.docs.forEach(userDoc => {
+        const userData = userDoc.data();
+        result.set(userDoc.id, userData);
+
+        summaryBackfillWrites.push(
+          setDoc(
+            doc(db, COLLECTIONS.USER_PROFILE_SUMMARIES, userDoc.id),
+            {
+              level: userData.level || 1,
+              lastLoginAt: userData.lastLoginAt || null,
+              quizzesTaken: userData.quizzesTaken || 0,
+              averageScore: userData.averageScore || 0,
+              favoriteCategory: userData.favoriteCategory || null,
+              achievementsCount: userData.achievements?.length || 0,
+              shareActivityWithFriends: userData.privacySettings?.shareActivityWithFriends !== false,
+              updatedAt: new Date().toISOString()
+            },
+            { merge: true }
+          )
+        );
+      });
     });
 
+    await Promise.allSettled(summaryBackfillWrites);
     return result;
   }
 
