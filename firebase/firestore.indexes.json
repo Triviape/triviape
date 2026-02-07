@@ -157,6 +157,114 @@
         { "fieldPath": "recipientId", "order": "ASCENDING" },
         { "fieldPath": "isRead", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "leaderboards_global_daily",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_global_weekly",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_global_monthly",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_global_all-time",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_category_daily",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_category_weekly",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_category_monthly",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_category_all-time",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_friends_daily",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_friends_weekly",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_friends_monthly",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboards_friends_all-time",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "period", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "completionTime", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
