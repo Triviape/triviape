@@ -34,6 +34,12 @@ import { socialPerformanceMonitor } from './socialPerformanceMonitor';
 
 const LEADERBOARD_PAGE_SIZE = 25;
 const CACHE_TTL = 60000; // 1 minute
+const CACHE_CLEANUP_INTERVAL = 30000; // 30 seconds
+
+type CacheEntry = {
+  data: any;
+  expiresAt: number;
+};
 
 /**
  * Helper functions for date calculations
@@ -71,7 +77,8 @@ function getDateString(period: LeaderboardPeriod): string {
 export class LeaderboardService {
   private static instance: LeaderboardService;
   private subscriptions = new Map<string, Unsubscribe>();
-  private cache = new Map<string, { data: any; timestamp: number }>();
+  private cache = new Map<string, CacheEntry>();
+  private cacheCleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   public static getInstance(): LeaderboardService {
     if (!LeaderboardService.instance) {
@@ -472,22 +479,36 @@ export class LeaderboardService {
 
   private getFromCache(key: string): any {
     const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    if (cached && Date.now() < cached.expiresAt) {
       return cached.data;
+    }
+    if (cached) {
+      this.cache.delete(key);
     }
     return null;
   }
 
   private setCache(key: string, data: any, ttl = CACHE_TTL): void {
+    this.ensureCacheCleanupInterval();
     this.cache.set(key, {
       data,
-      timestamp: Date.now()
+      expiresAt: Date.now() + ttl
     });
+  }
 
-    // Clean up cache after TTL
-    setTimeout(() => {
-      this.cache.delete(key);
-    }, ttl);
+  private ensureCacheCleanupInterval(): void {
+    if (this.cacheCleanupInterval) {
+      return;
+    }
+
+    this.cacheCleanupInterval = setInterval(() => {
+      const now = Date.now();
+      this.cache.forEach((value, key) => {
+        if (now >= value.expiresAt) {
+          this.cache.delete(key);
+        }
+      });
+    }, CACHE_CLEANUP_INTERVAL);
   }
 
   private clearCacheForPeriod(period: LeaderboardPeriod): void {
@@ -574,6 +595,10 @@ export class LeaderboardService {
   public cleanup(): void {
     this.subscriptions.forEach(unsubscribe => unsubscribe());
     this.subscriptions.clear();
+    if (this.cacheCleanupInterval) {
+      clearInterval(this.cacheCleanupInterval);
+      this.cacheCleanupInterval = null;
+    }
     this.cache.clear();
   }
 }
@@ -609,4 +634,4 @@ export async function calculateUserRanking(
   dateString?: string
 ): Promise<UserRanking> {
   return leaderboardService.calculateUserRanking(userId, quizId, dateString);
-} 
+}
