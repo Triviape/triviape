@@ -44,6 +44,7 @@
     "firebase:verify": "node scripts/db/verify-collections.js",
     "firebase:import-data": "node scripts/db/add-quiz.js",
     "firebase:import-additional-data": "node scripts/db/add-additional-quizzes.js",
+    "firebase:backfill-profile-summaries": "node scripts/db/backfill-user-profile-summaries.js",
     "firebase:start-emulators": "node scripts/start-emulators.js",
     "firebase:deploy": "firebase deploy",
     "firebase:check-emulators": "node scripts/check-emulators.js",
