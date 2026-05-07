@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Metadata } from 'next';
 import AuthPageClient from '../components/auth/AuthPage';
 
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <AuthPageClient />;
-} 
+  return (
+    <Suspense fallback={null}>
+      <AuthPageClient />
+    </Suspense>
+  );
+}

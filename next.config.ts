@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  experimental: {
+    webpackBuildWorker: true,
+  },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
@@ -39,19 +41,6 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [
     'firebase-admin'
   ],
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        net: false,
-        tls: false,
-        fs: false,
-        dns: false,
-        child_process: false,
-      };
-    }
-    return config;
-  },
 };
 
 const withBundleAnalyzer =
@@ -60,10 +49,4 @@ const withBundleAnalyzer =
       require('@next/bundle-analyzer')({ enabled: true })
     : (config: NextConfig) => config;
 
-const analyzedConfig = withBundleAnalyzer(nextConfig);
-
-export default process.env.NEXT_PUBLIC_SENTRY_DSN
-  ? withSentryConfig(analyzedConfig, {
-      silent: true,
-    })
-  : analyzedConfig;
+export default withBundleAnalyzer(nextConfig);

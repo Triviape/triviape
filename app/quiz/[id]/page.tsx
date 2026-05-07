@@ -6,12 +6,14 @@ import { DifficultyLevel, QuizDifficulty } from '@/app/types/quiz';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 
+type QuizPageProps = {
+  params: Promise<{ id: string }>;
+};
+
 // Generate metadata for the page
-export async function generateMetadata({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: QuizPageProps): Promise<Metadata> {
   const { id } = await params;
   const quiz = await getQuizById(id);
   
@@ -45,12 +47,9 @@ const getDifficultyColor = (difficulty: DifficultyLevel | QuizDifficulty | strin
 };
 
 // Define the params type for page
-export default async function QuizPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }>;
-  searchParams?: { [key: string]: string | string[] | undefined };
-}) {
+export default async function QuizPage({
+  params,
+}: QuizPageProps) {
   const { id } = await params;
 
   // Fetch quiz data

@@ -1,20 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "./providers/app-providers";
 import { Toaster } from "./components/ui/toaster";
 import { ErrorBoundary } from "./lib/componentUtils";
 import { SecurityMetaTags } from "./components/security/CSRFMetaTag";
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+import "@/app/lib/env"; // Validate environment variables at startup
 
 export const metadata: Metadata = {
   title: "Triviape - The Ultimate Trivia Experience",
@@ -82,17 +72,12 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
         
         {/* Preconnect to external domains for performance */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
         
         {/* DNS prefetch for performance */}
-        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="dns-prefetch" href="//firebasestorage.googleapis.com" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
-      >
+      <body className="font-sans antialiased h-full">
         <ErrorBoundary>
           <AppProviders>
             {children}

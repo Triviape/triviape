@@ -78,20 +78,7 @@ export function logError(
   // Log to console
   console.error(`[${severity.toUpperCase()}] [${category}] ${error.message}`, errorData);
 
-  // Report to Sentry in production
-  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_SENTRY_DSN) {
-    void import('@sentry/nextjs')
-      .then((Sentry) => {
-        Sentry.captureException(error, {
-          level: severity === ErrorSeverity.CRITICAL ? 'fatal' : severity,
-          tags: { category },
-          extra: errorContext,
-        });
-      })
-      .catch(() => {
-        // Ignore observability failures in the error handler itself.
-      });
-  }
+  // Sentry capture is disabled while we stabilize the production build.
 }
 
 /**
