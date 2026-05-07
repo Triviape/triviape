@@ -8,11 +8,11 @@ import {
   LeaderboardUpdate
 } from '@/app/types/leaderboard';
 import { REALTIME_PRESETS } from './query/useRealtimeQuery';
+import { queryKeys } from '@/app/lib/queryKeys';
 
 const QUERY_KEYS = {
-  leaderboard: (type: LeaderboardType, period: LeaderboardPeriod, filters: LeaderboardFilters) => 
-    ['leaderboard', type, period, filters],
-  stats: (period: LeaderboardPeriod) => ['leaderboard-stats', period],
+  leaderboard: queryKeys.leaderboard,
+  stats: queryKeys.leaderboardStats,
 } as const;
 
 const HIDDEN_REFETCH_BASE_DELAY = 1000;

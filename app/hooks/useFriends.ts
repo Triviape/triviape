@@ -15,17 +15,7 @@ import {
   DirectMessage
 } from '@/app/types/social';
 import { useAuth } from './useAuth';
-
-const QUERY_KEYS = {
-  friends: (userId: string) => ['friends', userId],
-  friendRequests: (userId: string) => ['friend-requests', userId],
-  friendActivity: (userId: string, filters: ActivityFilters) => ['friend-activity', userId, filters],
-  conversations: (userId: string) => ['conversations', userId],
-  messages: (conversationId: string) => ['messages', conversationId],
-  friendSearch: (query: string, userId: string) => ['friend-search', query, userId],
-  challenges: (userId: string) => ['challenges', userId],
-  friendStats: (userId: string) => ['friend-stats', userId],
-} as const;
+import { queryKeys as QUERY_KEYS } from '@/app/lib/queryKeys';
 
 /**
  * Hook for managing user's friends

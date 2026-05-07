@@ -24,7 +24,7 @@ export interface StandardError {
   code?: string | ApiErrorCode;
   message?: string;
   statusCode?: number;
-  details?: any;
+  details?: unknown;
 }
 
 /**
@@ -36,7 +36,7 @@ export interface ErrorMiddlewareOptions {
   /** Whether to include stack traces in development (default: true) */
   includeStackTrace?: boolean;
   /** Custom error transformer */
-  transformError?: (error: any) => StandardError;
+  transformError?: (error: unknown) => StandardError;
 }
 
 /**
@@ -50,12 +50,17 @@ const DEFAULT_OPTIONS: ErrorMiddlewareOptions = {
 /**
  * Map common error patterns to standardized error responses
  */
-function normalizeError(error: any, options: ErrorMiddlewareOptions): {
+function normalizeError(error: Record<string, unknown>, options: ErrorMiddlewareOptions): {
   statusCode: number;
   errorCode: ApiErrorCode;
   message: string;
-  details?: any;
+  details?: unknown;
 } {
+  const errorMessage = typeof error.message === 'string' ? error.message : undefined;
+  const errorCode = typeof error.code === 'string' ? error.code : undefined;
+  const errorName = typeof error.name === 'string' ? error.name : undefined;
+  const statusCode = typeof error.statusCode === 'number' ? error.statusCode : undefined;
+
   // Custom transformer if provided
   if (options.transformError) {
     const transformed = options.transformError(error);
@@ -68,7 +73,7 @@ function normalizeError(error: any, options: ErrorMiddlewareOptions): {
   }
 
   // Firebase Auth errors
-  if (error.code && typeof error.code === 'string' && error.code.startsWith('auth/')) {
+  if (errorCode?.startsWith('auth/')) {
     return {
       statusCode: 401,
       errorCode: ApiErrorCode.UNAUTHORIZED,
@@ -77,98 +82,99 @@ function normalizeError(error: any, options: ErrorMiddlewareOptions): {
   }
 
   // Already structured errors with statusCode
-  if (error.statusCode) {
-    const statusCode = error.statusCode;
-    let errorCode = ApiErrorCode.INTERNAL_ERROR;
+  if (statusCode) {
+    let normalizedErrorCode = ApiErrorCode.INTERNAL_ERROR;
 
     if (statusCode === 400) {
-      errorCode = ApiErrorCode.BAD_REQUEST;
+      normalizedErrorCode = ApiErrorCode.BAD_REQUEST;
     } else if (statusCode === 401) {
-      errorCode = ApiErrorCode.UNAUTHORIZED;
+      normalizedErrorCode = ApiErrorCode.UNAUTHORIZED;
     } else if (statusCode === 403) {
-      errorCode = ApiErrorCode.FORBIDDEN;
+      normalizedErrorCode = ApiErrorCode.FORBIDDEN;
     } else if (statusCode === 404) {
-      errorCode = ApiErrorCode.NOT_FOUND;
+      normalizedErrorCode = ApiErrorCode.NOT_FOUND;
     } else if (statusCode === 409) {
-      errorCode = ApiErrorCode.CONFLICT;
+      normalizedErrorCode = ApiErrorCode.CONFLICT;
     } else if (statusCode === 422) {
-      errorCode = ApiErrorCode.VALIDATION_ERROR;
+      normalizedErrorCode = ApiErrorCode.VALIDATION_ERROR;
     } else if (statusCode === 503) {
-      errorCode = ApiErrorCode.SERVICE_UNAVAILABLE;
+      normalizedErrorCode = ApiErrorCode.SERVICE_UNAVAILABLE;
     }
 
     return {
       statusCode,
-      errorCode: error.code || errorCode,
-      message: error.message || 'An error occurred',
+      errorCode: (Object.values(ApiErrorCode) as string[]).includes(errorCode ?? '')
+        ? (errorCode as ApiErrorCode)
+        : normalizedErrorCode,
+      message: errorMessage || 'An error occurred',
       details: error.details,
     };
   }
 
   // Validation errors
   if (
-    error.message?.toLowerCase().includes('validation') ||
-    error.code === 'validation-failed' ||
-    error.name === 'ValidationError'
+    errorMessage?.toLowerCase().includes('validation') ||
+    errorCode === 'validation-failed' ||
+    errorName === 'ValidationError'
   ) {
     return {
       statusCode: 400,
       errorCode: ApiErrorCode.VALIDATION_ERROR,
-      message: error.message || 'Validation failed',
+      message: errorMessage || 'Validation failed',
       details: error.details || error.errors,
     };
   }
 
   // Not Found errors
   if (
-    error.message?.toLowerCase().includes('not found') ||
-    error.code === 'not-found' ||
-    error.name === 'NotFoundError'
+    errorMessage?.toLowerCase().includes('not found') ||
+    errorCode === 'not-found' ||
+    errorName === 'NotFoundError'
   ) {
     return {
       statusCode: 404,
       errorCode: ApiErrorCode.NOT_FOUND,
-      message: error.message || 'Resource not found',
+      message: errorMessage || 'Resource not found',
     };
   }
 
   // Permission/Authorization errors
   if (
-    error.code === 'permission-denied' ||
-    error.code === 'forbidden' ||
-    error.message?.toLowerCase().includes('permission') ||
-    error.message?.toLowerCase().includes('forbidden')
+    errorCode === 'permission-denied' ||
+    errorCode === 'forbidden' ||
+    errorMessage?.toLowerCase().includes('permission') ||
+    errorMessage?.toLowerCase().includes('forbidden')
   ) {
     return {
       statusCode: 403,
       errorCode: ApiErrorCode.FORBIDDEN,
-      message: error.message || 'Permission denied',
+      message: errorMessage || 'Permission denied',
     };
   }
 
   // Conflict errors
   if (
-    error.code === 'conflict' ||
-    error.code === 'already-exists' ||
-    error.message?.toLowerCase().includes('already exists')
+    errorCode === 'conflict' ||
+    errorCode === 'already-exists' ||
+    errorMessage?.toLowerCase().includes('already exists')
   ) {
     return {
       statusCode: 409,
       errorCode: ApiErrorCode.ALREADY_EXISTS,
-      message: error.message || 'Resource already exists',
+      message: errorMessage || 'Resource already exists',
     };
   }
 
   // Network/Service errors
   if (
-    error.name === 'NetworkError' ||
-    error.message?.toLowerCase().includes('network') ||
-    error.message?.toLowerCase().includes('timeout')
+    errorName === 'NetworkError' ||
+    errorMessage?.toLowerCase().includes('network') ||
+    errorMessage?.toLowerCase().includes('timeout')
   ) {
     return {
       statusCode: 503,
       errorCode: ApiErrorCode.SERVICE_UNAVAILABLE,
-      message: error.message || 'Service temporarily unavailable',
+      message: errorMessage || 'Service temporarily unavailable',
     };
   }
 
@@ -176,8 +182,10 @@ function normalizeError(error: any, options: ErrorMiddlewareOptions): {
   return {
     statusCode: 500,
     errorCode: ApiErrorCode.INTERNAL_ERROR,
-    message: error.message || 'An unexpected error occurred',
-    details: options.includeStackTrace ? { stack: error.stack } : undefined,
+    message: errorMessage || 'An unexpected error occurred',
+    details: options.includeStackTrace && typeof error.stack === 'string'
+      ? { stack: error.stack }
+      : undefined,
   };
 }
 
@@ -204,7 +212,7 @@ function normalizeError(error: any, options: ErrorMiddlewareOptions): {
  * }
  * ```
  */
-export async function withErrorHandling<T = any>(
+export async function withErrorHandling<T = unknown>(
   request: NextRequest,
   handler: () => Promise<T>,
   options: ErrorMiddlewareOptions = {}
@@ -223,9 +231,10 @@ export async function withErrorHandling<T = any>(
       timestamp: new Date().toISOString(),
       requestId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Normalize the error to a standard format
-    const { statusCode, errorCode, message, details } = normalizeError(error, config);
+    const errObj = (typeof error === 'object' && error !== null ? error : { message: String(error) }) as Record<string, unknown>;
+    const { statusCode, errorCode, message, details } = normalizeError(errObj, config);
 
     // Log the error if enabled
     if (config.logErrors !== false) {
@@ -259,7 +268,7 @@ export async function withErrorHandling<T = any>(
 /**
  * Type guard to check if an error is a StandardError
  */
-export function isStandardError(error: any): error is StandardError {
+export function isStandardError(error: unknown): error is StandardError {
   return (
     typeof error === 'object' &&
     error !== null &&
@@ -279,7 +288,7 @@ export function throwStandardError(
   code: ApiErrorCode,
   message: string,
   statusCode: number,
-  details?: any
+  details?: unknown
 ): never {
   const error: StandardError = {
     code,

@@ -1,6 +1,5 @@
 import type { NextAuthConfig } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { createSessionCookie } from '@/app/lib/authUtils';
 
 export type RestSignInResult = {
   uid: string;
@@ -57,6 +56,31 @@ export async function signInWithEmailAndPasswordViaRest(email: string, password:
   };
 }
 
+/**
+ * Send email verification using Firebase REST API.
+ * Uses the same Identity Toolkit endpoint that Firebase client SDK uses internally.
+ */
+export async function sendEmailVerificationViaRest(idToken: string): Promise<void> {
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey) {
+    throw new Error('Firebase API key is not configured');
+  }
+
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestType: 'VERIFY_EMAIL', idToken }),
+    }
+  );
+
+  if (!response.ok) {
+    const data = await response.json();
+    console.error('Failed to send verification email:', data?.error?.message);
+  }
+}
+
 interface FirebaseCredentials {
   email: string;
   password: string;
@@ -85,8 +109,6 @@ export const authConfig: NextAuthConfig = {
 
         try {
           const user = await signInWithEmailAndPasswordViaRest(email, password);
-          // Issue Firebase Admin session cookie for server actions expecting it
-          await createSessionCookie(user.idToken);
 
           return {
             id: user.uid,

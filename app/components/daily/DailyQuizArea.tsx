@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/app/lib/utils';
-import { QuizState } from '@/app/page';
+import { QuizState } from '@/app/types/quizState';
 import { DailyQuizPreScreen } from './DailyQuizPreScreen';
 import { DailyQuizGameplay } from './DailyQuizGameplay';
 import { DailyQuizResults } from './DailyQuizResults';

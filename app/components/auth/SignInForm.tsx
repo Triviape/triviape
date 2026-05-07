@@ -4,6 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { signInSchema, SignInFormData } from '@/app/lib/validation/authSchemas';
 import { useCSRFToken } from '@/app/hooks/useCSRFToken';
 import { handleAuthError } from '@/app/lib/errors/enhancedErrorHandling';
 import { EnhancedErrorHandler } from '@/app/components/errors/EnhancedErrorHandler';
@@ -18,24 +21,27 @@ interface SignInFormProps {
 
 export default function SignInForm({ onError, callbackUrl = '/dashboard' }: SignInFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [enhancedError, setEnhancedError] = useState<any>(null);
+  const [enhancedError, setEnhancedError] = useState<Awaited<ReturnType<typeof handleAuthError>> | null>(null);
   const router = useRouter();
   const { token: csrfToken, isLoading: csrfLoading, error: csrfError } = useCSRFToken();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignInFormData>({
+    resolver: zodResolver(signInSchema),
+  });
+
+  const onSubmit = async (data: SignInFormData) => {
     setIsLoading(true);
     setEnhancedError(null);
-
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
 
     const attemptSignIn = async () => {
       const result = await signIn('credentials', {
         redirect: false,
-        email,
-        password,
+        email: data.email,
+        password: data.password,
       });
 
       if (result?.error) {
@@ -47,40 +53,31 @@ export default function SignInForm({ onError, callbackUrl = '/dashboard' }: Sign
 
     try {
       await attemptSignIn();
-    } catch (err: any) {
-      console.error('Sign in error:', err);
-      
-      // Use enhanced error handling
-      const enhancedErr = await handleAuthError(err, attemptSignIn);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      const enhancedErr = await handleAuthError(error, attemptSignIn);
       setEnhancedError(enhancedErr);
-      
-      // Call legacy error handler for backwards compatibility
-      onError?.(err instanceof Error ? err : new Error(String(err)));
+      onError?.(error);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* CSRF Protection */}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {csrfToken && (
         <input type="hidden" name="csrf-token" value={csrfToken} />
       )}
-      
-      {/* Enhanced Error Display */}
+
       {enhancedError && (
-        <EnhancedErrorHandler 
+        <EnhancedErrorHandler
           error={enhancedError}
-          onRetry={async () => {
-            setEnhancedError(null);
-          }}
+          onRetry={async () => { setEnhancedError(null); }}
           onDismiss={() => setEnhancedError(null)}
           className="mb-4"
         />
       )}
-      
-      {/* CSRF Error Display */}
+
       {csrfError && !enhancedError && (
         <div className="bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-md text-sm">
           {csrfError}
@@ -88,31 +85,31 @@ export default function SignInForm({ onError, callbackUrl = '/dashboard' }: Sign
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-foreground">
-          Email
-        </Label>
+        <Label htmlFor="email" className="text-foreground">Email</Label>
         <Input
           type="email"
-          name="email"
           id="email"
-          required
           placeholder="you@example.com"
           className="bg-background border-input"
+          {...register('email')}
         />
+        {errors.email && (
+          <p className="text-sm text-destructive">{errors.email.message}</p>
+        )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password" className="text-foreground">
-          Password
-        </Label>
+        <Label htmlFor="password" className="text-foreground">Password</Label>
         <Input
           type="password"
-          name="password"
           id="password"
-          required
           placeholder="••••••••"
           className="bg-background border-input"
+          {...register('password')}
         />
+        {errors.password && (
+          <p className="text-sm text-destructive">{errors.password.message}</p>
+        )}
       </div>
 
       <Button
@@ -133,4 +130,4 @@ export default function SignInForm({ onError, callbackUrl = '/dashboard' }: Sign
       </div>
     </form>
   );
-} 
+}

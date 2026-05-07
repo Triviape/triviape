@@ -7,14 +7,7 @@ import { HeroSection } from '@/app/components/home/hero-section';
 import { ShadcnSidebar } from '@/app/components/navigation/shadcn-sidebar';
 import { DailyQuizArea } from '@/app/components/daily/DailyQuizArea';
 import { StageArea } from '@/app/components/home/stage-area';
-
-// Define quiz state constants
-export enum QuizState {
-  HERO = 'HERO',
-  PRE_QUIZ = 'PRE_QUIZ',
-  GAMEPLAY = 'GAMEPLAY',
-  RESULTS = 'RESULTS'
-}
+import { QuizState } from '@/app/types/quizState';
 
 export default function Home() {
   // Quiz state management

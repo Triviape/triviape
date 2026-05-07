@@ -14,7 +14,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3030](http://localhost:3030) with your browser to see the result.
+Open [http://localhost:3031](http://localhost:3031) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
@@ -76,7 +76,7 @@ node scripts/secure-credentials.js
 
 This script stores your service account credentials in the `FIREBASE_ADMIN_CREDENTIALS` environment variable in `.env.local`.
 
-For detailed information about environment setup and security best practices, see the [Environment Setup Guide](./docs/environment-setup.md).
+For detailed information about environment setup and security best practices, see the [Environment Setup Guide](./docs/setup/environment.md).
 
 ## Firebase Authentication
 
@@ -106,7 +106,7 @@ FIREBASE_STORAGE_EMULATOR_HOST=localhost:9199
 
 4. Enable Email/Password authentication in the Firebase Console
 
-For detailed instructions on setting up Firebase, including Firestore collections, security rules, and sample data, see the [Firebase Setup Guide](./docs/firebase-setup-guide.md).
+For detailed instructions on setting up Firebase, including Firestore collections, security rules, and sample data, see the [Firebase Setup Guide](./docs/setup/firebase.md).
 
 ### Firebase Setup Scripts
 
@@ -217,7 +217,7 @@ npm run safe-start:persistent
 npm run safe-start:complete
 ```
 
-For a comprehensive guide to Firebase Emulator setup, see [Firebase Emulator Setup Guide](./docs/FIREBASE_EMULATOR_SETUP.md).
+For a comprehensive guide to local setup and build/runtime expectations, start with [docs/README.md](./docs/README.md) and the guides in [`docs/setup/`](./docs/setup/).
 
 ### Emulator Ports
 

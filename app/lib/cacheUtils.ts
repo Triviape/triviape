@@ -4,7 +4,7 @@
 
 // Cache storage for memoized data
 const globalCache: Record<string, {
-  data: any;
+  data: unknown;
   timestamp: number;
   ttl: number;
 }> = {};
@@ -21,7 +21,7 @@ interface CacheOptions {
 /**
  * Create a cache key from the function name and arguments
  */
-export function createCacheKey(fnName: string, args: any[]): string {
+export function createCacheKey(fnName: string, args: unknown[]): string {
   try {
     return `${fnName}:${JSON.stringify(args)}`;
   } catch (error) {
@@ -37,16 +37,16 @@ export function createCacheKey(fnName: string, args: any[]): string {
  * @param options Cache options
  * @returns Memoized function
  */
-export function memoizeWithCache<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
+export function memoizeWithCache<TArgs extends unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
   options: CacheOptions = {}
-): T {
+): (...args: TArgs) => Promise<TResult> {
   const {
     ttl = 5 * 60 * 1000, // 5 minutes default TTL
     staleWhileRevalidate = true,
   } = options;
 
-  const memoized = async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+  const memoized = async (...args: TArgs): Promise<TResult> => {
     // Create a cache key based on function name and arguments
     const fnName = fn.name || 'anonymous';
     const cacheKey = options.cacheKey || createCacheKey(fnName, args);
@@ -56,7 +56,7 @@ export function memoizeWithCache<T extends (...args: any[]) => Promise<any>>(
     
     // Check if we have valid cached data
     if (cached && now - cached.timestamp < cached.ttl) {
-      return cached.data;
+      return cached.data as TResult;
     }
     
     // If staleWhileRevalidate is enabled and we have stale data, return it
@@ -76,7 +76,7 @@ export function memoizeWithCache<T extends (...args: any[]) => Promise<any>>(
         });
       
       // Return stale data immediately
-      return cached.data;
+      return cached.data as TResult;
     }
     
     // No valid cache, fetch fresh data
@@ -95,7 +95,7 @@ export function memoizeWithCache<T extends (...args: any[]) => Promise<any>>(
       // If we have stale data and an error occurs, return the stale data
       if (cached) {
         console.warn(`Error fetching fresh data for ${cacheKey}, using stale data:`, error);
-        return cached.data;
+        return cached.data as TResult;
       }
       
       // Otherwise, propagate the error
@@ -103,7 +103,7 @@ export function memoizeWithCache<T extends (...args: any[]) => Promise<any>>(
     }
   };
   
-  return memoized as T;
+  return memoized;
 }
 
 /**

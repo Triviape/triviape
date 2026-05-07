@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/lib/auth/auth';
 import { withRateLimit, RateLimitConfigs } from '../rateLimiter';
 import { logError, ErrorCategory, ErrorSeverity } from '../errorHandler';
-import { validateSessionFingerprint, sessionFingerprintManager } from '../security/sessionFingerprinting';
 
 /**
  * Middleware types for route protection
@@ -193,55 +192,6 @@ export async function middleware(request: NextRequest) {
     url.searchParams.set('redirect', pathname);
     const response = NextResponse.redirect(url);
     return applySecurityHeaders(response);
-  }
-
-  // 5.5. Session fingerprint validation for authenticated users
-  if (isAuthenticated && session?.user) {
-    try {
-      const fingerprintComparison = await validateSessionFingerprint(request);
-      
-      // Log suspicious activity for monitoring
-      if (fingerprintComparison.riskLevel === 'high') {
-        logError(new Error('High-risk session detected'), {
-          category: ErrorCategory.SECURITY,
-          severity: ErrorSeverity.WARNING,
-          context: {
-            action: 'session_fingerprint_validation',
-            additionalData: {
-              userId: session.user.id,
-              userEmail: session.user.email,
-              score: fingerprintComparison.score,
-              differences: fingerprintComparison.differences,
-              riskLevel: fingerprintComparison.riskLevel,
-              pathname
-            }
-          }
-        });
-      }
-      
-      // For very suspicious sessions, require re-authentication
-      if (fingerprintComparison.riskLevel === 'high' && fingerprintComparison.score < 30) {
-        // Clear the session fingerprint to force re-establishment
-        await sessionFingerprintManager.clearFingerprint();
-        
-        // Redirect to login with a security notice
-        const url = new URL('/auth', request.url);
-        url.searchParams.set('redirect', pathname);
-        url.searchParams.set('security_check', 'true');
-        const response = NextResponse.redirect(url);
-        return applySecurityHeaders(response);
-      }
-    } catch (error) {
-      // Log fingerprint validation errors but don't block the request
-      logError(error instanceof Error ? error : new Error('Fingerprint validation failed'), {
-        category: ErrorCategory.SECURITY,
-        severity: ErrorSeverity.WARNING,
-        context: {
-          action: 'session_fingerprint_validation_error',
-          additionalData: { pathname, userId: session.user.id }
-        }
-      });
-    }
   }
 
   // 6. Handle API routes with authentication

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DailyQuizArea } from '@/app/components/daily/DailyQuizArea';
 import { updateDailyQuizCompletion } from '@/app/hooks/useDailyQuizStatus';
-import { QuizState } from '@/app/page';
+import { QuizState } from '@/app/types/quizState';
 
 export default function DailyQuizPage() {
   const router = useRouter();

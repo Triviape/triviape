@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { createHash } from 'crypto';
 import { cookies } from 'next/headers';
 
 /**
@@ -87,7 +86,7 @@ export class SessionFingerprintManager {
   /**
    * Create fingerprint hash from components
    */
-  private createFingerprintHash(components: Partial<SessionFingerprint>): string {
+  private async createFingerprintHash(components: Partial<SessionFingerprint>): Promise<string> {
     const { userAgent, acceptLanguage, acceptEncoding, ipAddress, timezone, screenResolution, platform } = components;
     
     const fingerprintString = [
@@ -99,8 +98,15 @@ export class SessionFingerprintManager {
       screenResolution || '',
       platform || ''
     ].join('|');
-    
-    return createHash('sha256').update(fingerprintString).digest('hex');
+
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(fingerprintString)
+    );
+
+    return Array.from(new Uint8Array(digest))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
   }
 
   /**
@@ -127,7 +133,7 @@ export class SessionFingerprintManager {
       hash: ''
     };
     
-    fingerprint.hash = this.createFingerprintHash(fingerprint);
+    fingerprint.hash = await this.createFingerprintHash(fingerprint);
     
     return fingerprint;
   }
@@ -241,6 +247,10 @@ export class SessionFingerprintManager {
    * Store fingerprint in secure cookie
    */
   async storeFingerprint(fingerprint: SessionFingerprint): Promise<void> {
+    if (!fingerprint.hash) {
+      return;
+    }
+
     const cookieStore = await cookies();
     
     // Only store the hash and timestamp to minimize cookie size
@@ -272,14 +282,20 @@ export class SessionFingerprintManager {
         return null;
       }
       
-      const data = JSON.parse(fingerprintCookie.value);
+      const data = JSON.parse(fingerprintCookie.value) as { hash?: unknown; timestamp?: unknown } | null;
+      if (!data || typeof data.hash !== 'string' || typeof data.timestamp !== 'number') {
+        return null;
+      }
       
       // Check if fingerprint is not too old (7 days)
       if (Date.now() - data.timestamp > this.MAX_AGE * 1000) {
         return null;
       }
       
-      return data;
+      return {
+        hash: data.hash,
+        timestamp: data.timestamp
+      };
     } catch {
       return null;
     }
@@ -293,9 +309,19 @@ export class SessionFingerprintManager {
     deviceData?: DeviceFingerprint
   ): Promise<FingerprintComparison> {
     const currentFingerprint = await this.generateFingerprint(request, deviceData);
+    if (!currentFingerprint.hash) {
+      return {
+        isValid: true,
+        score: 100,
+        differences: [],
+        riskLevel: 'low',
+        shouldChallenge: false
+      };
+    }
+
     const storedData = await this.getStoredFingerprint();
     
-    if (!storedData) {
+    if (!storedData?.hash) {
       // No stored fingerprint, consider this a new session
       await this.storeFingerprint(currentFingerprint);
       return {

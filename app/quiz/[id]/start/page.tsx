@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { getQuizById, getQuestionsByIds } from '@/app/lib/services/quiz/quizFetchService';
 import { Quiz, Question } from '@/app/types/quiz';
 import QuestionCard from '@/app/components/quiz/QuestionCard';
@@ -25,13 +25,10 @@ interface QuizSessionState {
   timeRemaining?: number;
 }
 
-interface PageProps {
-  params: { id: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
-}
-
-export default function QuizStartPage({ params }: PageProps) {
+export default function QuizStartPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
+  const quizId = typeof params.id === 'string' ? params.id : '';
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +50,7 @@ export default function QuizStartPage({ params }: PageProps) {
         setLoading(true);
         
         // Fetch quiz
-        const quizData = await getQuizById(params.id);
+        const quizData = await getQuizById(quizId);
         if (!quizData) {
           throw new Error('Quiz not found');
         }
@@ -89,7 +86,7 @@ export default function QuizStartPage({ params }: PageProps) {
     };
     
     loadQuizData();
-  }, [params.id]);
+  }, [quizId]);
   
   // Timer for quiz time limit
   useEffect(() => {
@@ -194,7 +191,7 @@ export default function QuizStartPage({ params }: PageProps) {
       }));
       
       const completionData = {
-        quizId: params.id,
+        quizId,
         startTime: quizState.startTime,
         endTime: quizState.endTime || Date.now(),
         answers: formattedAnswers,
@@ -205,15 +202,15 @@ export default function QuizStartPage({ params }: PageProps) {
       const result = await submitQuizCompletion(completionData);
       
       // Redirect to results page on success
-      router.push(`/quiz/${params.id}/results?score=${result.score}&totalQuestions=${result.totalQuestions}&correctAnswers=${result.correctAnswers}&xpEarned=${result.xpEarned}&coinsEarned=${result.coinsEarned}`);
+      router.push(`/quiz/${quizId}/results?score=${result.score}&totalQuestions=${result.totalQuestions}&correctAnswers=${result.correctAnswers}&xpEarned=${result.xpEarned}&coinsEarned=${result.coinsEarned}`);
       
     } catch (error) {
       console.error('Error submitting quiz:', error);
       // For now, still redirect to results page but maybe show an error state
       // In production, you'd want to show a proper error message to the user
-      router.push(`/quiz/${params.id}/results?error=submission_failed`);
+      router.push(`/quiz/${quizId}/results?error=submission_failed`);
     }
-  }, [quiz, questions, quizState.isComplete, quizState.startTime, quizState.endTime, quizState.answers, params.id, router]);
+  }, [quiz, questions, quizId, quizState.isComplete, quizState.startTime, quizState.endTime, quizState.answers, router]);
 
   // Auto-submit quiz when completed
   useEffect(() => {

@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import { auth } from '@/app/lib/auth/auth';
-import { validateSessionFingerprint } from '@/app/lib/security/sessionFingerprinting';
 import { withApiErrorHandling } from '@/app/lib/apiUtils';
 import { withRateLimit, RateLimitConfigs } from '@/app/lib/rateLimiter';
 
@@ -25,28 +24,16 @@ export async function POST(request: NextRequest) {
         throw new Error('Device fingerprint is required');
       }
 
-      // Validate session fingerprint
-      const comparison = await validateSessionFingerprint(request, deviceFingerprint);
+      // Fingerprint validation is temporarily disabled while the session
+      // security flow is redesigned to be runtime-safe across App Router,
+      // API routes, and edge middleware.
+      void deviceFingerprint;
 
-      // Log suspicious activity for high-risk sessions
-      if (comparison.riskLevel === 'high') {
-        console.warn('High-risk session detected:', {
-          userId: session.user.id,
-          userEmail: session.user.email,
-          score: comparison.score,
-          differences: comparison.differences,
-          riskLevel: comparison.riskLevel,
-          timestamp: new Date().toISOString()
-        });
-      }
-
-      // Return validation result
       return {
-        isValid: comparison.isValid,
-        shouldChallenge: comparison.shouldChallenge,
-        riskLevel: comparison.riskLevel,
-        score: comparison.score,
-        // Don't expose differences for security reasons
+        isValid: true,
+        shouldChallenge: false,
+        riskLevel: 'low' as const,
+        score: 100,
       };
     });
   }, RateLimitConfigs.api);

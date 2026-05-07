@@ -1,12 +1,8 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
-  },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
@@ -33,14 +29,11 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   // swcMinify: true, // Removed as it's enabled by default in Next.js 15
-  experimental: {
-    optimizeCss: true,
-    turbo: {
+  turbopack: {
       rules: {
         // Include all files in the app directory
         '**/*': ['static']
       }
-    }
   },
   // Renamed from serverComponentsExternalPackages to serverExternalPackages
   serverExternalPackages: [
@@ -67,4 +60,10 @@ const withBundleAnalyzer =
       require('@next/bundle-analyzer')({ enabled: true })
     : (config: NextConfig) => config;
 
-export default withBundleAnalyzer(nextConfig);
+const analyzedConfig = withBundleAnalyzer(nextConfig);
+
+export default process.env.NEXT_PUBLIC_SENTRY_DSN
+  ? withSentryConfig(analyzedConfig, {
+      silent: true,
+    })
+  : analyzedConfig;

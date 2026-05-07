@@ -77,7 +77,7 @@ describe('Authentication Server Actions', () => {
       });
 
       const formData = mockFormData();
-      const result = await login({}, formData);
+      const result = await login(null, formData);
 
       expect(UserService.signInWithEmail).toHaveBeenCalledWith(
         'test@example.com',
@@ -105,7 +105,7 @@ describe('Authentication Server Actions', () => {
         }),
       } as unknown as FormData;
 
-      const result = await login({}, invalidFormData);
+      const result = await login(null, invalidFormData);
 
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
@@ -117,7 +117,7 @@ describe('Authentication Server Actions', () => {
       });
 
       const formData = mockFormData();
-      const result = await login({}, formData);
+      const result = await login(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('No account found with this email address.');
@@ -128,7 +128,7 @@ describe('Authentication Server Actions', () => {
       (UserService.signInWithEmail as jest.Mock).mockRejectedValue(new Error('Network Error'));
 
       const formData = mockFormData();
-      const result = await login({}, formData);
+      const result = await login(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Error: Network Error');
@@ -140,7 +140,7 @@ describe('Authentication Server Actions', () => {
       });
 
       const formData = mockFormData();
-      const result = await login({}, formData);
+      const result = await login(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Too many unsuccessful attempts. Please try again later or reset your password.');
@@ -161,7 +161,7 @@ describe('Authentication Server Actions', () => {
       });
 
       const formData = mockFormData();
-      const result = await login({}, formData);
+      const result = await login(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Failed to create session cookie');
@@ -184,7 +184,7 @@ describe('Authentication Server Actions', () => {
       });
 
       const formData = mockFormData();
-      const result = await register({}, formData);
+      const result = await register(null, formData);
 
       expect(UserService.registerWithEmail).toHaveBeenCalledWith(
         'test@example.com',
@@ -214,7 +214,7 @@ describe('Authentication Server Actions', () => {
         }),
       } as unknown as FormData;
 
-      const result = await register({}, invalidFormData);
+      const result = await register(null, invalidFormData);
 
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
@@ -226,7 +226,7 @@ describe('Authentication Server Actions', () => {
       });
 
       const formData = mockFormData();
-      const result = await register({}, formData);
+      const result = await register(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('This email is already registered. Please use a different email or try logging in.');
@@ -239,7 +239,7 @@ describe('Authentication Server Actions', () => {
       });
 
       const formData = mockFormData();
-      const result = await register({}, formData);
+      const result = await register(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Password is too weak. Please use a stronger password.');
@@ -251,7 +251,7 @@ describe('Authentication Server Actions', () => {
       });
 
       const formData = mockFormData();
-      const result = await register({}, formData);
+      const result = await register(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('The email address is not valid.');
@@ -263,7 +263,7 @@ describe('Authentication Server Actions', () => {
       });
 
       const formData = mockFormData();
-      const result = await register({}, formData);
+      const result = await register(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Authentication error (auth/internal-error): undefined');

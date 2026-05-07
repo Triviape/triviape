@@ -1,19 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { CheckCircle, XCircle, Award, Coins, Zap, Clock, TrendingUp } from 'lucide-react';
 
-interface QuizResultsPageProps {
-  params: { id: string };
-}
-
-export default function QuizResultsPage({ params }: QuizResultsPageProps) {
+export default function QuizResultsPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const quizId = typeof params.id === 'string' ? params.id : '';
   
   // Get results from URL parameters
   const score = searchParams.get('score');
@@ -45,7 +43,7 @@ export default function QuizResultsPage({ params }: QuizResultsPageProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <Button onClick={() => router.push(`/quiz/${params.id}`)} variant="outline">
+            <Button onClick={() => router.push(`/quiz/${quizId}`)} variant="outline">
               Return to Quiz
             </Button>
             <Button onClick={() => router.push('/quiz')} className="w-full">
@@ -69,7 +67,7 @@ export default function QuizResultsPage({ params }: QuizResultsPageProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <Button onClick={() => router.push(`/quiz/${params.id}`)} variant="outline">
+            <Button onClick={() => router.push(`/quiz/${quizId}`)} variant="outline">
               Retake Quiz
             </Button>
             <Button onClick={() => router.push('/quiz')} className="w-full">
@@ -169,7 +167,7 @@ export default function QuizResultsPage({ params }: QuizResultsPageProps) {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 pt-6">
               <Button 
-                onClick={() => router.push(`/quiz/${params.id}`)} 
+                onClick={() => router.push(`/quiz/${quizId}`)} 
                 variant="outline" 
                 className="flex-1"
               >

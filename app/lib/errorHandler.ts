@@ -75,13 +75,23 @@ export function logError(
     context: errorContext
   };
   
-  // Log to console (in production, this would send to a logging service)
+  // Log to console
   console.error(`[${severity.toUpperCase()}] [${category}] ${error.message}`, errorData);
-  
-  // In a production app, you would send this to a logging service like Sentry
-  // if (process.env.NODE_ENV === 'production') {
-  //   sendToLoggingService(errorData);
-  // }
+
+  // Report to Sentry in production
+  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_SENTRY_DSN) {
+    void import('@sentry/nextjs')
+      .then((Sentry) => {
+        Sentry.captureException(error, {
+          level: severity === ErrorSeverity.CRITICAL ? 'fatal' : severity,
+          tags: { category },
+          extra: errorContext,
+        });
+      })
+      .catch(() => {
+        // Ignore observability failures in the error handler itself.
+      });
+  }
 }
 
 /**

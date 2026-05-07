@@ -10,9 +10,10 @@ import { Metadata } from 'next';
 export async function generateMetadata({ 
   params 
 }: { 
-  params: { id: string } 
+  params: Promise<{ id: string }> 
 }): Promise<Metadata> {
-  const quiz = await getQuizById(params.id);
+  const { id } = await params;
+  const quiz = await getQuizById(id);
   
   if (!quiz) {
     return {
@@ -44,19 +45,16 @@ const getDifficultyColor = (difficulty: DifficultyLevel | QuizDifficulty | strin
 };
 
 // Define the params type for page
-interface QuizPageParams {
-  id: string;
-}
-
-// Define the page component
 export default async function QuizPage({ 
   params 
 }: { 
-  params: QuizPageParams;
+  params: Promise<{ id: string }>;
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
+  const { id } = await params;
+
   // Fetch quiz data
-  const quiz = await getQuizById(params.id);
+  const quiz = await getQuizById(id);
   
   // If quiz not found, show 404 page
   if (!quiz) {
