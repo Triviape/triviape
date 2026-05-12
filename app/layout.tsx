@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { AppProviders } from "./providers/app-providers";
 import { Toaster } from "./components/ui/toaster";
@@ -80,7 +81,15 @@ export default function RootLayout({
       <body className="font-sans antialiased h-full">
         <ErrorBoundary>
           <AppProviders>
-            {children}
+            <Suspense
+              fallback={
+                <div className="flex min-h-[50dvh] items-center justify-center text-sm text-muted-foreground">
+                  Loading…
+                </div>
+              }
+            >
+              {children}
+            </Suspense>
             <Toaster />
           </AppProviders>
         </ErrorBoundary>

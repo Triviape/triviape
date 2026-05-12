@@ -31,8 +31,20 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
   SidebarRail,
-  SidebarInset
+  SidebarInset,
+  useSidebar,
 } from "@/app/components/ui/sidebar";
+
+function SidebarLeftEdgePeek() {
+  const { openFromEdgePeek } = useSidebar();
+  return (
+    <div
+      className="fixed left-0 top-0 bottom-0 w-2 z-40 bg-transparent"
+      aria-hidden
+      onMouseEnter={openFromEdgePeek}
+    />
+  );
+}
 
 type SidebarNavItem = {
   href: string;
@@ -129,18 +141,7 @@ export function ShadcnSidebar() {
       enableHover={true}
       hoverDelay={300}
     >
-      {/* Add a hover trigger area at the edge of the screen */}
-      <div 
-        className="fixed left-0 top-0 bottom-0 w-2 z-40 bg-transparent"
-        onMouseEnter={() => {
-          console.log("Edge hover triggered");
-          // Use the global function to trigger the sidebar
-          const win = window as any;
-          if (win.__triggerSidebarHover) {
-            win.__triggerSidebarHover();
-          }
-        }}
-      />
+      <SidebarLeftEdgePeek />
       
       <Sidebar 
         collapsible="offcanvas" 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { useAuth } from '@/app/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { AppLayout } from '@/app/components/layouts/app-layout';
@@ -37,7 +37,15 @@ export default function DashboardLayout({
       className="bg-background"
       useShadcnSidebar={true}
     >
-      {children}
+      <Suspense
+        fallback={
+          <div className="p-6 text-sm text-muted-foreground animate-pulse" aria-busy="true">
+            Loading…
+          </div>
+        }
+      >
+        {children}
+      </Suspense>
     </AppLayout>
   );
 } 

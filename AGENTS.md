@@ -1,17 +1,19 @@
 # Agent Instructions
 
-This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
+**Engineering work is sequenced in [docs/GUIDE.md](./docs/GUIDE.md)** (phases, file-level tasks, product epics `FC-*` / `LB-*`). Start there before ad-hoc refactors.
 
-If `bd create` / `bd ready` fail with a **Dolt / database** error, run `bd doctor` and see **docs/GUIDE.md §10.1** for in-repo epic IDs (`FC-*`, `LB-*`) until beads is healthy.
+**Optional:** The repo may include **bd** (beads) for dependency-aware issues. It is **not required** for delivery. If `bd` commands fail (Dolt/database), **skip beads** and use GUIDE.md milestones plus normal git workflow.
 
 ## Quick Reference
 
 ```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
-bd sync               # Sync with git
+# Primary
+cat docs/GUIDE.md           # Current delivery order & phase items
+
+# Optional (when beads is healthy)
+bd ready
+bd show <id>
+bd close <id>
 ```
 
 ## Landing the Plane (Session Completion)
@@ -20,23 +22,20 @@ bd sync               # Sync with git
 
 **MANDATORY WORKFLOW:**
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+1. **Track follow-ups** — Add GUIDE items or GitHub issues for anything not finished (beads optional).
+2. **Run quality gates** (if code changed) — Tests, linters, builds.
+3. **PUSH TO REMOTE** — This is MANDATORY:
    ```bash
    git pull --rebase
-   bd sync
    git push
    git status  # MUST show "up to date with origin"
    ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+4. **Clean up** — Clear stashes, prune remote branches.
+5. **Verify** — All changes committed AND pushed.
+6. **Hand off** — Brief summary for the next session.
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-
+- Work is NOT complete until `git push` succeeds.
+- NEVER stop before pushing — that leaves work stranded locally.
+- NEVER say "ready to push when you are" — YOU must push.
+- If push fails, resolve and retry until it succeeds.

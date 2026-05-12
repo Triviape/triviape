@@ -33,6 +33,8 @@ interface ExtendedPerformance extends Performance {
  */
 export function useBenchmark(options: BenchmarkOptions): BenchmarkMetrics {
   const { name, enabled = true, threshold = 16, onThresholdExceeded } = options;
+  const onThresholdExceededRef = useRef(onThresholdExceeded);
+  onThresholdExceededRef.current = onThresholdExceeded;
   const { deviceInfo } = useResponsiveUI();
   
   const [metrics, setMetrics] = useState<BenchmarkMetrics>({
@@ -113,12 +115,11 @@ export function useBenchmark(options: BenchmarkOptions): BenchmarkMetrics {
       
       setMetrics(newMetrics);
       
-      // Call callback if threshold exceeded
-      if (!isPerformant && onThresholdExceeded) {
-        onThresholdExceeded(newMetrics);
+      if (!isPerformant && onThresholdExceededRef.current) {
+        onThresholdExceededRef.current(newMetrics);
       }
     };
-  }, [name, enabled, adjustedThreshold, onThresholdExceeded]);
+  }, [name, enabled, adjustedThreshold]);
   
   return metrics;
 } 

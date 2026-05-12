@@ -80,7 +80,7 @@ This is the single source of truth for all codebase improvement work. Every chan
 | **1** | Immediate Fixes | **Done** | 4 items |
 | **2** | Security & Reliability | **Done** | 5 items |
 | **3** | Code Quality | **Done** | 6 items |
-| **4** | Architecture & Performance | Pending | 6 items |
+| **4** | Architecture & Performance | In progress | 6 items (sidebar + suspense + API polish landed; service layout 4.4 still open) |
 | **5** | Polish & Production Readiness | Pending | 5 items |
 
 ---
@@ -235,19 +235,19 @@ This is the single source of truth for all codebase improvement work. Every chan
 
 ### 4.2 Decompose `sidebar.tsx` (805 lines)
 
-- **File:** `app/components/ui/sidebar.tsx`
-- **Issue:** Complex state, global window mutations, hover race conditions
-- **Fix:** Extract sub-components, remove window globals, simplify hover logic
-- **Status:** Pending
-- **Completed:** —
+- **Files:** `app/components/ui/sidebar/` (`sidebar-provider.tsx`, `sidebar-primitives.tsx`, `index.ts`) — imports stay `@/app/components/ui/sidebar`
+- **Issue:** Monolith file, ad hoc `window.__triggerSidebarHover` hooks
+- **Fix:** Provider split + `openFromEdgePeek` on context; nav edge strip uses `useSidebar()` (see `shadcn-sidebar.tsx`)
+- **Status:** Done
+- **Completed:** 2026-05-12
 
 ### 4.3 Add Suspense boundaries for streaming
 
-- **Files:** Quiz question loading, leaderboard entries, friend lists, daily quiz content
-- **Issue:** No Suspense boundaries causes waterfall loading
-- **Fix:** Add `<Suspense>` with fallbacks around key data-loading sections
-- **Status:** Pending
-- **Completed:** —
+- **Files:** `app/layout.tsx` (root `children`), `app/dashboard/layout.tsx` (dashboard `children`)
+- **Issue:** No Suspense defaults for route transitions and client subtrees
+- **Fix:** Lightweight fallbacks so lazy/streamed segments can suspend without blank shells; add tighter Suspense around feature islands as those components split further
+- **Status:** Partially done (shell boundaries in place)
+- **Completed:** 2026-05-12 (initial)
 
 ### 4.4 Complete service layer reorganization (Phases 4-7)
 
@@ -267,10 +267,10 @@ This is the single source of truth for all codebase improvement work. Every chan
 
 ### 4.6 Standardize API response format
 
-- **Files:** All API routes in `app/api/`
-- **Issue:** 3 different response patterns (standard, partial, raw). Documented in DECISIONS.md.
-- **Fix:** Apply `ApiResponse<T>` wrapper to all endpoints using the existing `withApiErrorHandling` utility
-- **Status:** Pending
+- **Files:** All API routes in `app/api/` — `auth/csrf`, `auth/diagnostics` now use `withApiErrorHandling` (same envelope as core quiz/user routes)
+- **Issue:** Mixed response shapes; see DECISIONS.md
+- **Fix:** Apply `withApiErrorHandling` to remaining ad hoc routes; NextAuth catch-all may stay framework-shaped
+- **Status:** In progress
 - **Completed:** —
 
 ---
@@ -327,6 +327,7 @@ This is the single source of truth for all codebase improvement work. Every chan
 
 | Date | Item | Change | Files Modified |
 |------|------|--------|----------------|
+| 2026-05-12 | 4.2–4.3, 4.6 (partial), §10 | Split sidebar into `ui/sidebar/*`, edge peek via context; Suspense on root + dashboard layouts; CSRF + diagnostics use `withApiErrorHandling`; AGENTS/GUIDE drop mandatory beads; `useBenchmark` stable callback ref | `AGENTS.md`, `docs/GUIDE.md`, `app/components/ui/sidebar/*`, `app/components/navigation/shadcn-sidebar.tsx`, `app/layout.tsx`, `app/dashboard/layout.tsx`, `app/api/auth/csrf/route.ts`, `app/api/auth/diagnostics/route.ts`, `app/hooks/performance/useBenchmark.ts` |
 | 2026-05-12 | 3.6, 4.1, §10 | Closed Phase 3 (TODO → epic refs); split `friendService` into `app/lib/services/social/*`; added product epic IDs; attempted `bd create` (blocked: Dolt DB missing — see §10.2) | `docs/GUIDE.md`, `app/lib/services/friendService.ts`, `app/lib/services/social/*`, `app/leaderboard/page.tsx`, `app/social/page.tsx`, `app/hooks/useFriends.ts`, `app/lib/services/leaderboardService.ts`, `AGENTS.md` |
 | 2026-05-07 | 5.5 | Marked `docs/Roadmap.md` as historical/reference-only and aligned the docs tracker with the current Firebase Functions backend surface | `docs/GUIDE.md`, `docs/README.md`, `docs/Roadmap.md` |
 | 2026-02-09 | — | Created this guide from comprehensive codebase analysis | `docs/GUIDE.md` |
@@ -390,23 +391,15 @@ Stable IDs for the **friend challenges** product thread and **friends leaderboar
 
 | ID | Scope | Code / notes |
 |----|--------|----------------|
-| **FC-1** | Challenge modal on social | `app/social/page.tsx` — `handleChallengeClick` |
-| **FC-2** | Friend stats from real challenge data | `app/hooks/useFriends.ts` — `useFriendStats` active/completed/winRate |
-| **LB-1** | Friends-only leaderboard + `isFriend` on entries | `app/leaderboard/page.tsx` (enable type), `app/lib/services/leaderboardService.ts` (`isFriend`) |
+| **FC-1** | Challenge modal on social | **Shipped:** `ChallengeFriendDialog` + `handleChallengeClick` on `app/social/page.tsx` |
+| **FC-2** | Friend stats from real challenge data | **Shipped:** `useFriendStats` reads `getChallenges` via shared query key (`app/hooks/useFriends.ts`) |
+| **LB-1** | Friends-only leaderboard + `isFriend` on entries | **Shipped:** Friends type + bounded global slice (`DECISIONS.md` §8) |
 
-**Picked product thread:** ship **FC-1 → FC-2** first (vertical slice on social), then **LB-1** (depends on friend list + challenge data being trustworthy).
+**Product thread:** FC/LB vertical slice is in place; iterate on UX and data quality as challenges/notifications grow.
 
-### 10.1 Beads (`bd`) — when `bd create` fails
+### 10.1 Issue tracking without beads
 
-If `bd create` errors with **database "beads" not found** / Dolt server unreachable, repair the local beads store before relying on `bd` IDs:
-
-```bash
-bd doctor          # diagnose
-bd doctor --fix    # optional repair
-bd init            # bootstrap if needed; ensure dolt sql-server matches .beads config
-```
-
-Until then, use the **FC-*** / **LB-*** IDs above in commits and PRs; migrate to `bd-*` IDs after issues are created successfully.
+**Beads (`bd`) is optional.** If `bd` fails (Dolt / local database), do not block delivery — use **this GUIDE**, GitHub issues, and epic IDs **FC-*** / **LB-*** in commits. To try repairing beads: run `bd doctor` and follow `.beads/` / project docs only if you explicitly want local issue sync.
 
 ---
 

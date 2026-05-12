@@ -1,227 +1,23 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeftIcon } from "lucide-react"
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { VariantProps, cva } from "class-variance-authority";
+import { PanelLeftIcon } from "lucide-react";
 
-import { useIsMobile } from "@/app/hooks/use-mobile"
-import { cn } from "@/app/lib/utils"
-import { Button } from "@/app/components/ui/button"
-import { Input } from "@/app/components/ui/input"
-import { Separator } from "@/app/components/ui/separator"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/app/components/ui/sheet"
-import { Skeleton } from "@/app/components/ui/skeleton"
+import { cn } from "@/app/lib/utils";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Separator } from "@/app/components/ui/separator";
+import { Sheet, SheetContent } from "@/app/components/ui/sheet";
+import { Skeleton } from "@/app/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
-} from "@/app/components/ui/tooltip"
+} from "@/app/components/ui/tooltip";
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "12rem"
-const SIDEBAR_WIDTH_MOBILE = "16rem"
-const SIDEBAR_WIDTH_ICON = "2.5rem"
-const SIDEBAR_KEYBOARD_SHORTCUT = "b"
-
-type SidebarContext = {
-  state: "expanded" | "collapsed"
-  open: boolean
-  setOpen: (open: boolean) => void
-  openMobile: boolean
-  setOpenMobile: (open: boolean) => void
-  isMobile: boolean
-  toggleSidebar: () => void
-  enableHover: boolean
-  hoverDelay: number
-  handleMouseEnter: () => void
-  handleMouseLeave: () => void
-}
-
-const SidebarContext = React.createContext<SidebarContext | null>(null)
-
-function useSidebar() {
-  const context = React.useContext(SidebarContext)
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.")
-  }
-
-  return context
-}
-
-function SidebarProvider({
-  defaultOpen = false,
-  enableHover = false,
-  hoverDelay = 300,
-  open: openProp,
-  onOpenChange: setOpenProp,
-  className,
-  style,
-  children,
-  ...props
-}: React.ComponentProps<"div"> & {
-  defaultOpen?: boolean
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  enableHover?: boolean
-  hoverDelay?: number
-}) {
-  const isMobile = useIsMobile()
-  const [openMobile, setOpenMobile] = React.useState(false)
-
-  // This is the internal state of the sidebar.
-  // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen) // Default to collapsed
-  const open = openProp ?? _open
-  
-  // Timeout ref for hover
-  const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
-  
-  const setOpen = React.useCallback(
-    (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(open) : value
-      if (setOpenProp) {
-        setOpenProp(openState)
-      } else {
-        _setOpen(openState)
-      }
-
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
-    },
-    [setOpenProp, open]
-  )
-
-  // Helper to toggle the sidebar.
-  const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
-  }, [isMobile, setOpen, setOpenMobile])
-  
-  // Mouse event handlers for hover functionality
-  const handleMouseEnter = React.useCallback(() => {
-    if (enableHover && !isMobile && !open) {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current)
-        hoverTimeoutRef.current = null
-      }
-      setOpen(true)
-    }
-  }, [enableHover, isMobile, open, setOpen])
-  
-  const handleMouseLeave = React.useCallback(() => {
-    if (enableHover && !isMobile && open) {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current)
-      }
-      hoverTimeoutRef.current = setTimeout(() => {
-        setOpen(false)
-      }, hoverDelay)
-    }
-  }, [enableHover, isMobile, open, setOpen, hoverDelay])
-  
-  // Cleanup timeout on unmount
-  React.useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current)
-      }
-    }
-  }, [])
-  
-  // Expose the setOpen function for direct access
-  React.useEffect(() => {
-    if (typeof window !== 'undefined' && enableHover) {
-      // Use a type-safe approach
-      const win = window as any;
-      win.__triggerSidebarHover = () => {
-        if (!isMobile && !open) {
-          setOpen(true);
-        }
-      };
-      
-      win.__closeSidebarHover = () => {
-        if (!isMobile && open) {
-          setOpen(false);
-        }
-      };
-      
-      return () => {
-        // Clean up
-        delete win.__triggerSidebarHover;
-        delete win.__closeSidebarHover;
-      };
-    }
-  }, [enableHover, isMobile, open, setOpen]);
-
-  // Adds a keyboard shortcut to toggle the sidebar.
-  React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-        (event.metaKey || event.ctrlKey)
-      ) {
-        event.preventDefault()
-        toggleSidebar()
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [toggleSidebar])
-
-  // We add a state so that we can do data-state="expanded" or "collapsed".
-  // This makes it easier to style the sidebar with Tailwind classes.
-  const state = open ? "expanded" : "collapsed"
-
-  const contextValue = React.useMemo<SidebarContext>(
-    () => ({
-      state,
-      open,
-      setOpen,
-      isMobile,
-      openMobile,
-      setOpenMobile,
-      toggleSidebar,
-      enableHover,
-      hoverDelay,
-      handleMouseEnter,
-      handleMouseLeave
-    }),
-    [open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, enableHover, hoverDelay, handleMouseEnter, handleMouseLeave]
-  )
-
-  return (
-    <SidebarContext.Provider value={contextValue}>
-      <TooltipProvider delayDuration={0}>
-        <div
-          data-slot="sidebar-wrapper"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH,
-              "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-              ...style,
-            } as React.CSSProperties
-          }
-          className={cn(
-            "group/sidebar-wrapper flex min-h-svh w-full",
-            className
-          )}
-          {...props}
-        >
-          {children}
-        </div>
-      </TooltipProvider>
-    </SidebarContext.Provider>
-  )
-}
+import { useSidebar } from "./sidebar-provider";
 
 function Sidebar({
   side = "left",
@@ -347,7 +143,7 @@ function SidebarTrigger({
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { toggleSidebar, state, enableHover, handleMouseEnter, handleMouseLeave } = useSidebar()
+  const { toggleSidebar, enableHover, handleMouseEnter, handleMouseLeave } = useSidebar()
 
   // Only apply hover handlers if enableHover is true
   const hoverProps = enableHover ? {
@@ -795,9 +591,7 @@ export {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarProvider,
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-  useSidebar,
-}
+};

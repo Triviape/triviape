@@ -167,7 +167,7 @@ export const withApiErrorHandling = <T>(
 
 **Current Status:** ⚠️ **Mostly wrapped; polish remains**
 - Most JSON routes use `withApiErrorHandling` in `app/lib/apiUtils.ts`, which wraps success payloads in a shared shape (`success`, `data`, `timestamp`, `requestId`).
-- Some routes (e.g. parts of `/api/auth/csrf`, `/api/auth/diagnostics`) still use ad hoc `NextResponse.json` bodies for small or diagnostic payloads.
+- **`/api/auth/csrf`** and **`/api/auth/diagnostics`** use the same wrapper; NextAuth routes remain framework-shaped.
 - Client code may still assume older nesting for specific endpoints — verify when touching consumers (see GUIDE Phase **4.6**).
 
 **Migration Path:**
