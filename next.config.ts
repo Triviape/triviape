@@ -2,8 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // webpackBuildWorker has caused webpack crashes (null `.hash` in chunk graph) during
+  // production builds with this repo's dependency graph — keep builds single-threaded.
   experimental: {
-    webpackBuildWorker: true,
+    webpackBuildWorker: false,
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
