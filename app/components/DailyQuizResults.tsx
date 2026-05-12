@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { handleDailyQuizCompletion, invalidateQuizCompletionCaches, QuizCompletionResult } from '@/app/lib/services/quizCompletionService';
+import { handleDailyQuizCompletion, invalidateQuizCompletionCaches, QuizCompletionResult } from '@/app/lib/services/quiz';
 import { useAuth } from '@/app/hooks/useAuth';
 
 interface DailyQuizResultsProps {

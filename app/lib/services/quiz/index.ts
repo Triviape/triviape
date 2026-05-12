@@ -17,3 +17,8 @@ export * from './analyticsService';
 
 // Core Firestore quiz operations
 export * from './quizService';
+
+// Daily quiz + completion (question helpers live in `./questionService` — not re-exported
+// here to avoid colliding with `getQuestionsByIds` / `updateQuestionAnalytics` in quizFetch/analytics)
+export * from './dailyQuizService';
+export * from './quizCompletionService';

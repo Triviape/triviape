@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, QueryKey, UseQueryOptions } from '@tanstack/react-query';
-import { getDailyQuiz, getTodayDateString } from '@/app/lib/services/dailyQuizService';
+import { getDailyQuiz, getTodayDateString } from '@/app/lib/services/quiz';
 import { Quiz } from '@/app/types/quiz';
 import { QUERY_CONFIGS } from '@/app/lib/query-config';
 

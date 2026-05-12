@@ -2,7 +2,7 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firest
 import { db } from '@/app/lib/firebase';
 import { COLLECTIONS } from '@/app/lib/constants/collections';
 import { UserDailyQuizData, DailyQuizStatus, RecordCompletionParams } from '@/app/types/userDailyQuiz';
-import { getTodayDateString } from './dailyQuizService';
+import { getTodayDateString } from './quiz/dailyQuizService';
 
 /**
  * Gets the date string for yesterday in YYYY-MM-DD format

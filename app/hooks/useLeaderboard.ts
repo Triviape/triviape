@@ -1,7 +1,7 @@
 import { useQueryClient, QueryKey, UseQueryOptions } from '@tanstack/react-query';
 import { getLeaderboardEntries } from '@/app/lib/services/leaderboardService';
 import { DailyQuizLeaderboardEntry } from '@/app/types/leaderboard';
-import { getTodayDateString } from '@/app/lib/services/dailyQuizService';
+import { getTodayDateString } from '@/app/lib/services/quiz';
 import { useRealtimeQuery, REALTIME_PRESETS } from './query/useRealtimeQuery';
 import { queryKeys } from '@/app/lib/queryKeys';
 

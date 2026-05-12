@@ -254,7 +254,7 @@ This is the single source of truth for all codebase improvement work. Every chan
 - **Reference:** Previously tracked in `SERVICES_REORGANIZATION_PROGRESS.md` (now archived)
 - **Issue:** Quiz, social, and multiplayer services still need consolidation (Phases 1-3 of that plan are done)
 - **Remaining:** Move quiz services to `quiz/`, social to `social/`, multiplayer to `multiplayer/`, then cleanup
-- **Progress:** `leaderboard` implementation moved to `app/lib/services/leaderboard/` with a thin `leaderboardService.ts` re-export shim for legacy import paths. **`QuizService`** moved to `app/lib/services/quiz/quizService.ts` with root `quizService.ts` shim. **`WebSocketService`** moved to `app/lib/services/multiplayer/websocketService.ts` with root `websocketService.ts` shim and `multiplayer/index.ts`.
+- **Progress:** `leaderboard` implementation moved to `app/lib/services/leaderboard/` with a thin `leaderboardService.ts` re-export shim for legacy import paths. **`QuizService`** moved to `app/lib/services/quiz/quizService.ts` with root `quizService.ts` shim. **`WebSocketService`** moved to `app/lib/services/multiplayer/websocketService.ts` with root `websocketService.ts` shim and `multiplayer/index.ts`. **`questionService`**, **`dailyQuizService`**, and **`quizCompletionService`** live under `app/lib/services/quiz/` with root shims; `quiz/index` re-exports daily + completion (not `questionService`, which collides with `quizFetchService` / `analyticsService` symbol names).
 - **Status:** In progress
 - **Completed:** —
 
@@ -328,6 +328,7 @@ This is the single source of truth for all codebase improvement work. Every chan
 
 | Date | Item | Change | Files Modified |
 |------|------|--------|----------------|
+| 2026-05-12 | 4.4 | Move `questionService`, `dailyQuizService`, `quizCompletionService` into `services/quiz/` with root shims; `quiz/index` exports daily + completion only (avoid duplicate exports with quizFetch/analytics); hooks use `@/app/lib/services/quiz` where clean | `app/lib/services/quiz/*`, root shims, `userDailyQuizService`, `leaderboard/leaderboardService`, hooks, `DailyQuizResults.tsx`, `docs/GUIDE.md` |
 | 2026-05-12 | 4.4 | Move `WebSocketService` to `services/multiplayer/websocketService.ts`; root shim; `useWebSocket` imports `@/app/lib/services/multiplayer` | `app/lib/services/multiplayer/*`, `app/lib/services/websocketService.ts`, `app/hooks/useWebSocket.ts`, `docs/GUIDE.md` |
 | 2026-05-12 | 4.4 | Move `QuizService` to `services/quiz/quizService.ts`; root `quizService.ts` shim; `app/quiz/page` imports `@/app/lib/services/quiz` | `app/lib/services/quiz/quizService.ts`, `app/lib/services/quizService.ts`, `app/lib/services/quiz/index.ts`, `app/quiz/page.tsx`, `docs/GUIDE.md` |
 | 2026-05-12 | 4.5 | Web Vitals production ingest: `forwardClientMetric` + `POST /api/analytics/metrics` (Zod, public rate limit, ack-only v1); opt-out `NEXT_PUBLIC_DISABLE_CLIENT_PERF_INGEST` | `performanceAnalyzer.ts`, `app/lib/performance/forwardClientMetric.ts`, `app/api/analytics/metrics/route.ts`, `.env.example`, `docs/GUIDE.md` |

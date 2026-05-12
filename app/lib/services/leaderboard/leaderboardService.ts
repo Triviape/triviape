@@ -32,7 +32,7 @@ import {
 } from '@/app/types/leaderboard';
 import { COLLECTIONS } from '@/app/lib/constants/collections';
 import { FRIENDS_LEADERBOARD_GLOBAL_SLICE_ROW_LIMIT } from '@/app/lib/constants/leaderboard';
-import { getTodayDateString } from '../dailyQuizService';
+import { getTodayDateString } from '../quiz/dailyQuizService';
 import { socialPerformanceMonitor } from '../socialPerformanceMonitor';
 
 const LEADERBOARD_PAGE_SIZE = 25;
