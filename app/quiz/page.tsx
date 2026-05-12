@@ -1,6 +1,6 @@
 import React from 'react';
 import QuizList from '@/app/components/quiz/QuizList';
-import { QuizService } from '@/app/lib/services/quizService';
+import { QuizService } from '@/app/lib/services/quiz';
 import { QuizCategory } from '@/app/types/quiz';
 
 // This is a server component that fetches categories

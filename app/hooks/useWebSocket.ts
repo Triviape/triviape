@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { webSocketService } from '@/app/lib/services/websocketService';
+import { webSocketService } from '@/app/lib/services/multiplayer';
 import { 
   MultiplayerSession,
   Player,

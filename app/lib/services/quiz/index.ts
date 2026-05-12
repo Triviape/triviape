@@ -13,4 +13,7 @@ export * from './errorHandler';
 export * from './quizFetchService';
 
 // Export analytics functionality
-export * from './analyticsService'; 
+export * from './analyticsService';
+
+// Core Firestore quiz operations
+export * from './quizService';
