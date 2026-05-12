@@ -1,5 +1,9 @@
 # Triviape Roadmap
 
+> **Product backlog (themes and ideas).** Delivery order and engineering tasks live in [GUIDE.md](./GUIDE.md) — update that file when sequencing work, not this roadmap, unless you are changing product intent.
+>
+> **Runtime note:** Primary HTTP handlers are **Next.js App Router** routes under `app/api/`. The `functions/` package exists for future **Firebase Cloud Functions** but is not the active application backend in this repository today (see [DECISIONS.md](./DECISIONS.md) — runtime & deployment).
+
 ## Q3 2025: Core Experience Refinement
 
 *   **Daily Quiz Enhancements:**

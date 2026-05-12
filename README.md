@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Triviape
+
+Gamified trivia on **Next.js** (App Router), **Firebase** (Firestore / Realtime DB), and **NextAuth** + **Firebase Auth**. Product themes and ideas: [`docs/Roadmap.md`](docs/Roadmap.md). Engineering tasks and delivery order: [`docs/GUIDE.md`](docs/GUIDE.md). Architecture decisions: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Getting Started
 
