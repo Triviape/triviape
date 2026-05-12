@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { 
   Users, 
   Trophy, 
@@ -24,15 +23,17 @@ import {
   Send,
   GamepadIcon
 } from 'lucide-react';
-import { cn } from '@/app/lib/utils';
 import { useFriendActivity, usePresence } from '@/app/hooks/useFriends';
 import { useAuth } from '@/app/hooks/useAuth';
+import { ChallengeFriendDialog } from '@/app/components/social/ChallengeFriendDialog';
 import { friendService } from '@/app/lib/services/friendService';
 import { Friend, FriendActivity } from '@/app/types/social';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function SocialPage() {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const [challengeDialogFriend, setChallengeDialogFriend] = useState<Friend | null>(null);
+  const [challengeDialogOpen, setChallengeDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { currentUser } = useAuth();
   const { data: activities, isLoading: activitiesLoading } = useFriendActivity();
@@ -57,8 +58,8 @@ export default function SocialPage() {
   };
 
   const handleChallengeClick = (friend: Friend) => {
-    // Tracked: docs/GUIDE.md §10 (FC-1) challenge modal from social
-    void friend;
+    setChallengeDialogFriend(friend);
+    setChallengeDialogOpen(true);
   };
 
   const renderActivity = (activity: FriendActivity) => {
@@ -325,6 +326,17 @@ export default function SocialPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ChallengeFriendDialog
+        friend={challengeDialogFriend}
+        open={challengeDialogOpen}
+        onOpenChange={(next) => {
+          setChallengeDialogOpen(next);
+          if (!next) {
+            setChallengeDialogFriend(null);
+          }
+        }}
+      />
     </AppLayout>
   );
 }

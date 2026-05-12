@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AppLayout } from '@/app/components/layouts/app-layout';
 import { Navbar } from '@/app/components/navigation/navbar';
 import { VirtualizedLeaderboard } from '@/app/components/leaderboard/VirtualizedLeaderboard';
@@ -19,7 +19,6 @@ import {
   Zap,
   Filter
 } from 'lucide-react';
-import { cn } from '@/app/lib/utils';
 import { 
   LeaderboardPeriod, 
   LeaderboardType, 
@@ -27,6 +26,7 @@ import {
   EnhancedLeaderboardEntry 
 } from '@/app/types/leaderboard';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useFriends } from '@/app/hooks/useFriends';
 
 interface PeriodOption {
   value: LeaderboardPeriod;
@@ -92,6 +92,9 @@ const TYPE_OPTIONS: TypeOption[] = [
 
 export default function LeaderboardPage() {
   const { currentUser } = useAuth();
+  const { friends } = useFriends();
+  const friendUserIds = useMemo(() => friends.map((f) => f.userId), [friends]);
+
   const [selectedPeriod, setSelectedPeriod] = useState<LeaderboardPeriod>('daily');
   const [selectedType, setSelectedType] = useState<LeaderboardType>('global');
   const [enableRealTime, setEnableRealTime] = useState(true);
@@ -106,7 +109,8 @@ export default function LeaderboardPage() {
   const getCurrentUserFilters = (): LeaderboardFilters => {
     return {
       ...filters,
-      userId: currentUser?.uid
+      userId: currentUser?.uid,
+      friendUserIds,
     };
   };
 
@@ -173,14 +177,18 @@ export default function LeaderboardPage() {
                     variant={selectedType === option.value ? "default" : "outline"}
                     className="h-auto p-3 flex flex-col gap-2"
                     onClick={() => setSelectedType(option.value)}
-                    disabled={option.value === 'friends'} // Tracked: docs/GUIDE.md §10 (LB-1) friends leaderboard scope
+                    disabled={option.value === 'friends' && !currentUser?.uid}
                   >
                     <div className="flex items-center gap-2">
                       {option.icon}
                       <span className="font-medium">{option.label}</span>
-                      {option.value === 'friends' && (
-                        <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
-                      )}
+                      {option.value === 'friends' &&
+                        currentUser?.uid &&
+                        friendUserIds.length === 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            Solo (add friends)
+                          </Badge>
+                        )}
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {option.description}

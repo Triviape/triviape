@@ -35,6 +35,8 @@ import { getTodayDateString } from './dailyQuizService';
 import { socialPerformanceMonitor } from './socialPerformanceMonitor';
 
 const LEADERBOARD_PAGE_SIZE = 25;
+/** Global rows scanned when building friends-scoped view (friends may sit below pure global top ranks). */
+const FRIENDS_LEADERBOARD_SCAN_LIMIT = 250;
 const CACHE_TTL = 60000; // 1 minute
 const CACHE_CLEANUP_INTERVAL = 30000; // 30 seconds
 
@@ -279,9 +281,55 @@ export class LeaderboardService {
         try {
           const cacheKey = this.getCacheKey(type, period, filters, cursor);
           const cached = this.getFromCache(cacheKey);
-          
+
           if (cached) {
             return cached;
+          }
+
+          const friendBadgeIds = this.buildFriendBadgeSet(filters);
+
+          if (type === 'friends') {
+            const empty: PaginatedLeaderboard = {
+              entries: [],
+              hasMore: false,
+              totalCount: 0,
+              currentUserRank: undefined,
+            };
+            const scoped = this.resolveFriendsLeaderboardParticipantIds(filters);
+
+            if (scoped.size === 0) {
+              this.setCache(cacheKey, empty);
+              return empty;
+            }
+
+            const sliceDocs = await this.fetchOrderedGlobalLeaderboardSlice(period, filters);
+            const filteredDocs = sliceDocs.filter((docSnap) =>
+              scoped.has((docSnap.data() as { userId: string }).userId),
+            );
+
+            const pageDocs = filteredDocs.slice(0, pageSize);
+            const entries = this.processLeaderboardEntries(pageDocs, filters.userId, {
+              friendsScope: true,
+              friendBadgeIds,
+            });
+
+            let currentUserRank: number | undefined;
+            if (filters.userId) {
+              const idx = filteredDocs.findIndex(
+                (docSnap) => (docSnap.data() as { userId: string }).userId === filters.userId,
+              );
+              currentUserRank = idx >= 0 ? idx + 1 : undefined;
+            }
+
+            const result: PaginatedLeaderboard = {
+              entries,
+              hasMore: false,
+              totalCount: filteredDocs.length,
+              currentUserRank,
+            };
+
+            this.setCache(cacheKey, result);
+            return result;
           }
 
           const leaderboardRef = collection(db, this.getCollectionName(type, period));
@@ -290,7 +338,7 @@ export class LeaderboardService {
             where('period', '==', period),
             orderBy('score', 'desc'),
             orderBy('completionTime', 'asc'),
-            limit(pageSize + 1) // +1 to check if there's more
+            limit(pageSize + 1), // +1 to check if there's more
           );
 
           // Apply filters
@@ -309,18 +357,20 @@ export class LeaderboardService {
           const snapshot = await getDocs(leaderboardQuery);
           const docs = snapshot.docs;
           const hasMore = docs.length > pageSize;
-          
+
           if (hasMore) {
             docs.pop(); // Remove the extra document used for pagination
           }
 
-          const entries = await this.processLeaderboardEntries(docs, filters.userId);
+          const entries = this.processLeaderboardEntries(docs, filters.userId, { friendBadgeIds });
           const result: PaginatedLeaderboard = {
             entries,
             hasMore,
             nextCursor: hasMore ? docs[docs.length - 1].id : undefined,
             totalCount: await this.getTotalCount(type, period, filters),
-            currentUserRank: filters.userId ? await this.getUserRank(filters.userId, type, period, filters) : undefined
+            currentUserRank: filters.userId
+              ? await this.getUserRank(filters.userId, type, period, filters)
+              : undefined,
           };
 
           this.setCache(cacheKey, result);
@@ -344,7 +394,8 @@ export class LeaderboardService {
     callback: (update: LeaderboardUpdate) => void
   ): LeaderboardSubscription {
     const subscriptionKey = this.getSubscriptionKey(type, period, filters);
-    const leaderboardRef = collection(db, this.getCollectionName(type, period));
+    const queryType: LeaderboardType = type === 'friends' ? 'global' : type;
+    const leaderboardRef = collection(db, this.getCollectionName(queryType, period));
     let leaderboardQuery = query(
       leaderboardRef,
       where('period', '==', period),
@@ -549,18 +600,72 @@ export class LeaderboardService {
     keysToDelete.forEach(key => this.cache.delete(key));
   }
 
-  private async processLeaderboardEntries(
-    docs: any[], 
-    currentUserId?: string
-  ): Promise<EnhancedLeaderboardEntry[]> {
-    return docs.map((doc, index) => {
-      const data = doc.data();
+  private buildFriendBadgeSet(filters: LeaderboardFilters): Set<string> | undefined {
+    const raw = filters.friendUserIds?.filter((id): id is string => Boolean(id)) ?? [];
+    if (raw.length === 0) {
+      return undefined;
+    }
+    return new Set(raw);
+  }
+
+  private resolveFriendsLeaderboardParticipantIds(filters: LeaderboardFilters): Set<string> {
+    const set = new Set<string>();
+    for (const id of filters.friendUserIds?.filter((x): x is string => Boolean(x)) ?? []) {
+      set.add(id);
+    }
+    if (filters.userId) {
+      set.add(filters.userId);
+    }
+    return set;
+  }
+
+  private async fetchOrderedGlobalLeaderboardSlice(
+    period: LeaderboardPeriod,
+    filters: LeaderboardFilters,
+  ): Promise<DocumentSnapshot[]> {
+    const globalCollection = this.getCollectionName('global', period);
+    const leaderboardRef = collection(db, globalCollection);
+    let leaderboardQuery = query(
+      leaderboardRef,
+      where('period', '==', period),
+      orderBy('score', 'desc'),
+      orderBy('completionTime', 'asc'),
+      limit(FRIENDS_LEADERBOARD_SCAN_LIMIT),
+    );
+
+    if (filters.categoryId) {
+      leaderboardQuery = query(leaderboardQuery, where('categoryId', '==', filters.categoryId));
+    }
+
+    const snapshot = await getDocs(leaderboardQuery);
+    return snapshot.docs;
+  }
+
+  private processLeaderboardEntries(
+    docs: DocumentSnapshot[],
+    currentUserId?: string,
+    options?: {
+      friendsScope?: boolean;
+      friendBadgeIds?: Set<string>;
+    },
+  ): EnhancedLeaderboardEntry[] {
+    return docs.map((docSnap, index) => {
+      const data = docSnap.data() as EnhancedLeaderboardEntry;
+      const uid = data.userId;
+      let isFriend = false;
+
+      if (options?.friendsScope) {
+        isFriend = !!(currentUserId && uid !== currentUserId);
+      } else if (options?.friendBadgeIds && currentUserId) {
+        isFriend = uid !== currentUserId && options.friendBadgeIds.has(uid);
+      }
+
       return {
         ...data,
-        id: doc.id,
+        id: docSnap.id,
         rank: index + 1,
-        isCurrentUser: currentUserId === data.userId,
-        isFriend: false // Tracked: docs/GUIDE.md §10 (LB-1) friend-aware leaderboard entries
+        isCurrentUser: currentUserId === uid,
+        isFriend,
       };
     });
   }
@@ -570,6 +675,17 @@ export class LeaderboardService {
     period: LeaderboardPeriod, 
     filters: LeaderboardFilters
   ): Promise<number> {
+    if (type === 'friends') {
+      const scoped = this.resolveFriendsLeaderboardParticipantIds(filters);
+      if (scoped.size === 0) {
+        return 0;
+      }
+      const sliceDocs = await this.fetchOrderedGlobalLeaderboardSlice(period, filters);
+      return sliceDocs.filter((docSnap) =>
+        scoped.has((docSnap.data() as { userId: string }).userId),
+      ).length;
+    }
+
     // This is a simplified implementation
     // In production, you'd want to maintain aggregate counts
     const leaderboardRef = collection(db, this.getCollectionName(type, period));
@@ -589,6 +705,21 @@ export class LeaderboardService {
     period: LeaderboardPeriod, 
     filters: LeaderboardFilters
   ): Promise<number | undefined> {
+    if (type === 'friends') {
+      const scoped = this.resolveFriendsLeaderboardParticipantIds(filters);
+      if (!scoped.has(userId)) {
+        return undefined;
+      }
+      const sliceDocs = await this.fetchOrderedGlobalLeaderboardSlice(period, filters);
+      const filteredDocs = sliceDocs.filter((docSnap) =>
+        scoped.has((docSnap.data() as { userId: string }).userId),
+      );
+      const idx = filteredDocs.findIndex(
+        (docSnap) => (docSnap.data() as { userId: string }).userId === userId,
+      );
+      return idx >= 0 ? idx + 1 : undefined;
+    }
+
     const leaderboardRef = collection(db, this.getCollectionName(type, period));
     let userEntryQuery = query(
       leaderboardRef,

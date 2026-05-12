@@ -54,6 +54,8 @@ export interface LeaderboardFilters {
   categoryId?: string;
   friendsOnly?: boolean;
   userId?: string;
+  /** Friend user IDs used to flag `isFriend` on global/category boards and scope the friends leaderboard view. */
+  friendUserIds?: string[];
 }
 
 export interface PaginatedLeaderboard {

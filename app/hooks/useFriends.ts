@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { friendService } from '@/app/lib/services/friendService';
 import { 
@@ -294,17 +294,38 @@ export function useFriendStats() {
   const { friends } = useFriends();
   const { requests } = useFriendRequests();
 
-  const stats: FriendStats = {
-    totalFriends: friends?.length || 0,
-    onlineFriends: friends?.filter(f => f.isOnline).length || 0,
-    pendingRequests: requests?.received.length || 0,
-    sentRequests: requests?.sent.length || 0,
-    activeChallenges: 0, // Tracked: docs/GUIDE.md §10 (FC-2) derive from getChallenges
-    completedChallenges: 0, // Tracked: docs/GUIDE.md §10 (FC-2)
-    winRate: 0, // Tracked: docs/GUIDE.md §10 (FC-2)
-  };
+  const challengesQuery = useQuery({
+    queryKey: QUERY_KEYS.challenges(currentUser?.uid || ''),
+    queryFn: () => friendService.getChallenges(currentUser!.uid, undefined),
+    enabled: !!currentUser?.uid,
+    staleTime: 30000,
+  });
 
-  return stats;
+  return useMemo((): FriendStats => {
+    const sentChallenges = challengesQuery.data?.sent || [];
+    const receivedChallenges = challengesQuery.data?.received || [];
+    const combined = [...sentChallenges, ...receivedChallenges];
+    const activeChallenges = combined.filter((c) =>
+      ['pending', 'accepted', 'in_progress'].includes(c.status),
+    ).length;
+    const completedChallengesList = combined.filter((c) => c.status === 'completed');
+    const wins = currentUser?.uid
+      ? completedChallengesList.filter((c) => c.winner === currentUser.uid).length
+      : 0;
+
+    const completedCount = completedChallengesList.length;
+    const winRate = completedCount > 0 ? Math.round((wins / completedCount) * 100) : 0;
+
+    return {
+      totalFriends: friends?.length || 0,
+      onlineFriends: friends?.filter((f) => f.isOnline).length || 0,
+      pendingRequests: requests?.received.length || 0,
+      sentRequests: requests?.sent.length || 0,
+      activeChallenges,
+      completedChallenges: completedCount,
+      winRate,
+    };
+  }, [currentUser?.uid, challengesQuery.data, friends, requests]);
 }
 
 /**
