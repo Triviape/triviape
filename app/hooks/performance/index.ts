@@ -9,4 +9,4 @@ export { useMeasurePerformance } from './useMeasurePerformance';
 export { useNetworkMonitor } from './useNetworkMonitor';
 
 // Re-export types from the performance analyzer for convenience
-export { MetricType } from '@/app/lib/performanceAnalyzer'; 
+export { MetricType } from '@/app/lib/performance'; 

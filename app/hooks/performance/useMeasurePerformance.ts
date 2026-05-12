@@ -11,7 +11,7 @@ import {
   measureAsyncExecutionTime, 
   recordMetric, 
   MetricType 
-} from '@/app/lib/performanceAnalyzer';
+} from '@/app/lib/performance';
 
 interface UseMeasurePerformanceOptions {
   /**

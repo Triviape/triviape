@@ -69,7 +69,7 @@ export function recordMetric(metric: Omit<PerformanceMetric, 'timestamp'>): void
     }
 
     // Production observability: values stay in the in-memory ring buffer (see getMetricsByType).
-    // When Sentry analytics or `/api/analytics` exists, enqueue here (avoid logError INFO spam).
+    // Call sites should import from `@/app/lib/performance`; when Sentry or `/api/analytics` exists, enqueue here (avoid logError INFO spam).
   } catch (error) {
     logError(error instanceof Error ? error : new Error(String(error)), {
       category: ErrorCategory.PERFORMANCE,

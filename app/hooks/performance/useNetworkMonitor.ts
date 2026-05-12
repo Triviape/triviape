@@ -6,7 +6,7 @@
  */
 
 import { useEffect } from 'react';
-import { recordMetric, MetricType } from '@/app/lib/performanceAnalyzer';
+import { recordMetric, MetricType } from '@/app/lib/performance';
 
 interface UseNetworkMonitorOptions {
   /**

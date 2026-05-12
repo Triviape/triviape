@@ -10,8 +10,7 @@
 import React, { ReactNode, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { recordMetric, MetricType } from '@/app/lib/performanceAnalyzer';
-import { subscribeWebVitalsForPath } from '@/app/lib/performance/subscribeWebVitals';
+import { recordMetric, MetricType, subscribeWebVitalsForPath } from '@/app/lib/performance';
 import { useNetworkMonitor } from '@/app/hooks/performance/useNetworkMonitor';
 import { useIsClient } from '@/app/hooks/useIsClient';
 

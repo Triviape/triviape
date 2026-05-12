@@ -2,7 +2,7 @@
  * Centralized web-vitals subscriptions that feed `recordMetric`.
  * Used by app providers so we do not duplicate metric wiring.
  */
-import { recordMetric, MetricType } from '@/app/lib/performanceAnalyzer';
+import { recordMetric, MetricType } from '../performanceAnalyzer';
 
 export function subscribeWebVitalsForPath(pathname: string): void {
   if (typeof window === 'undefined') return;
