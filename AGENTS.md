@@ -2,6 +2,8 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
+If `bd create` / `bd ready` fail with a **Dolt / database** error, run `bd doctor` and see **docs/GUIDE.md §10.1** for in-repo epic IDs (`FC-*`, `LB-*`) until beads is healthy.
+
 ## Quick Reference
 
 ```bash

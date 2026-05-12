@@ -173,7 +173,7 @@ export default function LeaderboardPage() {
                     variant={selectedType === option.value ? "default" : "outline"}
                     className="h-auto p-3 flex flex-col gap-2"
                     onClick={() => setSelectedType(option.value)}
-                    disabled={option.value === 'friends'} // TODO: Enable when friends system is implemented
+                    disabled={option.value === 'friends'} // Tracked: docs/GUIDE.md §10 (LB-1) friends leaderboard scope
                   >
                     <div className="flex items-center gap-2">
                       {option.icon}

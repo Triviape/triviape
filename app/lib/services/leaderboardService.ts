@@ -560,7 +560,7 @@ export class LeaderboardService {
         id: doc.id,
         rank: index + 1,
         isCurrentUser: currentUserId === data.userId,
-        isFriend: false // TODO: Implement friend checking
+        isFriend: false // Tracked: docs/GUIDE.md §10 (LB-1) friend-aware leaderboard entries
       };
     });
   }

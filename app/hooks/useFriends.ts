@@ -299,9 +299,9 @@ export function useFriendStats() {
     onlineFriends: friends?.filter(f => f.isOnline).length || 0,
     pendingRequests: requests?.received.length || 0,
     sentRequests: requests?.sent.length || 0,
-    activeChallenges: 0, // TODO: Implement when challenge system is complete
-    completedChallenges: 0, // TODO: Implement when challenge system is complete
-    winRate: 0, // TODO: Implement when challenge system is complete
+    activeChallenges: 0, // Tracked: docs/GUIDE.md §10 (FC-2) derive from getChallenges
+    completedChallenges: 0, // Tracked: docs/GUIDE.md §10 (FC-2)
+    winRate: 0, // Tracked: docs/GUIDE.md §10 (FC-2)
   };
 
   return stats;

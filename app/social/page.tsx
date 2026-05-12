@@ -57,8 +57,8 @@ export default function SocialPage() {
   };
 
   const handleChallengeClick = (friend: Friend) => {
-    // TODO: Implement challenge modal
-    console.log('Challenge friend:', friend);
+    // Tracked: docs/GUIDE.md §10 (FC-1) challenge modal from social
+    void friend;
   };
 
   const renderActivity = (activity: FriendActivity) => {
