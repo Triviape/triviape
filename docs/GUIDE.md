@@ -243,27 +243,28 @@ This is the single source of truth for all codebase improvement work. Every chan
 
 ### 4.3 Add Suspense boundaries for streaming
 
-- **Files:** `app/layout.tsx` (root `children`), `app/dashboard/layout.tsx` (dashboard `children`)
+- **Files:** `app/layout.tsx` (root), `app/dashboard/layout.tsx`, `app/leaderboard/page.tsx` (`next/dynamic` VirtualizedLeaderboard), `app/social/page.tsx` (dynamic `FriendsList` + `ChallengeFriendDialog`)
 - **Issue:** No Suspense defaults for route transitions and client subtrees
-- **Fix:** Lightweight fallbacks so lazy/streamed segments can suspend without blank shells; add tighter Suspense around feature islands as those components split further
-- **Status:** Partially done (shell boundaries in place)
-- **Completed:** 2026-05-12 (initial)
+- **Fix:** Shell Suspense at root + dashboard; code-split heavy social/leaderboard client islands with explicit loading UI
+- **Status:** Partially done
+- **Completed:** 2026-05-12 (expanded)
 
 ### 4.4 Complete service layer reorganization (Phases 4-7)
 
 - **Reference:** Previously tracked in `SERVICES_REORGANIZATION_PROGRESS.md` (now archived)
 - **Issue:** Quiz, social, and multiplayer services still need consolidation (Phases 1-3 of that plan are done)
 - **Remaining:** Move quiz services to `quiz/`, social to `social/`, multiplayer to `multiplayer/`, then cleanup
-- **Status:** Pending
+- **Progress:** `leaderboard` implementation moved to `app/lib/services/leaderboard/` with a thin `leaderboardService.ts` re-export shim for legacy import paths.
+- **Status:** In progress
 - **Completed:** —
 
 ### 4.5 Fix performance monitoring gaps
 
-- **Files:** `app/lib/performanceAnalyzer.ts`, Web Vitals integration
+- **Files:** `app/lib/performanceAnalyzer.ts`, `app/lib/performance/subscribeWebVitals.ts`, `app/providers/app-providers.tsx`, Web Vitals integration
 - **Issue:** Production metrics export disabled, INP and TTFB not tracked, `useBenchmark` memory leak, component metrics always report 0
-- **Fix:** Enable production export, add missing Web Vitals, fix the memory leak
-- **Status:** Pending
-- **Completed:** —
+- **Fix:** Centralize Web Vitals (CLS, FID, LCP, **INP**, **TTFB**) with `subscribeWebVitalsForPath`; next step is Sentry/analytics sink for `recordMetric` in production
+- **Status:** Partially done
+- **Completed:** 2026-05-12 (vitals + benchmark ref from prior commit; production sink still open)
 
 ### 4.6 Standardize API response format
 
@@ -327,6 +328,7 @@ This is the single source of truth for all codebase improvement work. Every chan
 
 | Date | Item | Change | Files Modified |
 |------|------|--------|----------------|
+| 2026-05-12 | 4.3–4.5, build | Fix Next build (`webpackBuildWorker: false`); move leaderboard service to `services/leaderboard/` + shim; `subscribeWebVitalsForPath` (INP, TTFB); dynamic imports on `/leaderboard` and `/social` | `next.config.ts`, `app/lib/services/leaderboard/*`, `app/lib/performance/subscribeWebVitals.ts`, providers, `app/leaderboard/page.tsx`, `app/social/page.tsx`, `docs/GUIDE.md`, `docs/DECISIONS.md` |
 | 2026-05-12 | 4.2–4.3, 4.6 (partial), §10 | Split sidebar into `ui/sidebar/*`, edge peek via context; Suspense on root + dashboard layouts; CSRF + diagnostics use `withApiErrorHandling`; AGENTS/GUIDE drop mandatory beads; `useBenchmark` stable callback ref | `AGENTS.md`, `docs/GUIDE.md`, `app/components/ui/sidebar/*`, `app/components/navigation/shadcn-sidebar.tsx`, `app/layout.tsx`, `app/dashboard/layout.tsx`, `app/api/auth/csrf/route.ts`, `app/api/auth/diagnostics/route.ts`, `app/hooks/performance/useBenchmark.ts` |
 | 2026-05-12 | 3.6, 4.1, §10 | Closed Phase 3 (TODO → epic refs); split `friendService` into `app/lib/services/social/*`; added product epic IDs; attempted `bd create` (blocked: Dolt DB missing — see §10.2) | `docs/GUIDE.md`, `app/lib/services/friendService.ts`, `app/lib/services/social/*`, `app/leaderboard/page.tsx`, `app/social/page.tsx`, `app/hooks/useFriends.ts`, `app/lib/services/leaderboardService.ts`, `AGENTS.md` |
 | 2026-05-07 | 5.5 | Marked `docs/Roadmap.md` as historical/reference-only and aligned the docs tracker with the current Firebase Functions backend surface | `docs/GUIDE.md`, `docs/README.md`, `docs/Roadmap.md` |

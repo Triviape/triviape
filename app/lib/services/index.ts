@@ -52,8 +52,8 @@ export * from './quizCompletionService';
 // Question Services (Phase 4 - NEXT)
 export * from './questionService';
 
-// Leaderboard Services (Phase 5 - NEXT)
-export * from './leaderboardService';
+// Leaderboard Services
+export * from './leaderboard';
 
 // Social Services (Phase 5 - NEXT)
 export * from './friendService';

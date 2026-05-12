@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/app/components/layouts/app-layout';
 import { Navbar } from '@/app/components/navigation/navbar';
-import { FriendsList } from '@/app/components/social/FriendsList';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -25,10 +25,30 @@ import {
 } from 'lucide-react';
 import { useFriendActivity, usePresence } from '@/app/hooks/useFriends';
 import { useAuth } from '@/app/hooks/useAuth';
-import { ChallengeFriendDialog } from '@/app/components/social/ChallengeFriendDialog';
 import { friendService } from '@/app/lib/services/friendService';
 import { Friend, FriendActivity } from '@/app/types/social';
 import { formatDistanceToNow } from 'date-fns';
+
+const FriendsList = dynamic(
+  () => import('@/app/components/social/FriendsList').then((m) => ({ default: m.FriendsList })),
+  {
+    loading: () => (
+      <div
+        className="min-h-[240px] animate-pulse rounded-lg border border-border/50 bg-muted/20"
+        role="status"
+        aria-label="Loading friends"
+      />
+    ),
+  },
+);
+
+const ChallengeFriendDialog = dynamic(
+  () =>
+    import('@/app/components/social/ChallengeFriendDialog').then((m) => ({
+      default: m.ChallengeFriendDialog,
+    })),
+  { ssr: false },
+);
 
 export default function SocialPage() {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);

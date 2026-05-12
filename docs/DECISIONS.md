@@ -238,7 +238,7 @@ class QuizService {
   └── admin/         # Administrative operations
 ```
 
-**As-built (2026-05):** Several domains still live at the `services/` root (e.g. `leaderboardService.ts`, `friendService.ts`) alongside nested folders. Incremental migration is tracked in **GUIDE.md** Phase **4.4**.
+**As-built (2026-05):** Several domains still live at the `services/` root (e.g. `friendService.ts`, `quizService.ts`) alongside nested folders; **`leaderboard`** now lives under `services/leaderboard/` (see `services/leaderboard/index.ts`). Incremental migration is tracked in **GUIDE.md** Phase **4.4**.
 
 ---
 

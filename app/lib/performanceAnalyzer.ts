@@ -67,11 +67,9 @@ export function recordMetric(metric: Omit<PerformanceMetric, 'timestamp'>): void
     if (process.env.NODE_ENV === 'development') {
       console.log(`[Performance] ${metric.type}: ${metric.name} = ${metric.value}ms`);
     }
-    
-    // In production, you would send this to an analytics service
-    // if (process.env.NODE_ENV === 'production') {
-    //   sendToAnalyticsService(fullMetric);
-    // }
+
+    // Production observability: values stay in the in-memory ring buffer (see getMetricsByType).
+    // When Sentry analytics or `/api/analytics` exists, enqueue here (avoid logError INFO spam).
   } catch (error) {
     logError(error instanceof Error ? error : new Error(String(error)), {
       category: ErrorCategory.PERFORMANCE,

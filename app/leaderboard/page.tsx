@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { AppLayout } from '@/app/components/layouts/app-layout';
 import { Navbar } from '@/app/components/navigation/navbar';
-import { VirtualizedLeaderboard } from '@/app/components/leaderboard/VirtualizedLeaderboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -28,6 +28,25 @@ import {
 import { useAuth } from '@/app/hooks/useAuth';
 import { useFriends } from '@/app/hooks/useFriends';
 import { FRIENDS_LEADERBOARD_GLOBAL_SLICE_ROW_LIMIT } from '@/app/lib/constants/leaderboard';
+
+const VirtualizedLeaderboard = dynamic(
+  () =>
+    import('@/app/components/leaderboard/VirtualizedLeaderboard').then((m) => ({
+      default: m.VirtualizedLeaderboard,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="flex h-[600px] items-center justify-center rounded-lg border border-border/60 bg-muted/20 text-sm text-muted-foreground"
+        role="status"
+        aria-live="polite"
+      >
+        Loading leaderboard…
+      </div>
+    ),
+  },
+);
 
 interface PeriodOption {
   value: LeaderboardPeriod;

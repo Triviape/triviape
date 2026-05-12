@@ -9,6 +9,7 @@ import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { recordMetric, MetricType } from '@/app/lib/performanceAnalyzer';
+import { subscribeWebVitalsForPath } from '@/app/lib/performance/subscribeWebVitals';
 import { useNetworkMonitor } from '@/app/hooks/performance/useNetworkMonitor';
 import dynamic from 'next/dynamic';
 import { ReactQueryProvider } from './query-provider';
@@ -58,36 +59,7 @@ function NavigationMetricsTracker() {
     });
     
     if (typeof window !== 'undefined') {
-      import('web-vitals').then(({ getCLS, getFID, getLCP }) => {
-        getCLS(({ value }) => {
-          recordMetric({
-            type: MetricType.LAYOUT_SHIFT,
-            name: 'CLS',
-            value,
-            metadata: { pathname }
-          });
-        });
-        
-        getFID(({ value }) => {
-          recordMetric({
-            type: MetricType.FIRST_INPUT,
-            name: 'FID',
-            value,
-            metadata: { pathname }
-          });
-        });
-        
-        getLCP(({ value }) => {
-          recordMetric({
-            type: MetricType.PAINT,
-            name: 'LCP',
-            value,
-            metadata: { pathname }
-          });
-        });
-      }).catch(() => {
-        console.warn('web-vitals library not available');
-      });
+      subscribeWebVitalsForPath(pathname);
     }
   }, [pathname, searchParams, isClient]);
   
