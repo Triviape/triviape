@@ -2,20 +2,150 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to read and write their own data
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // ── Users ───────────────────────────────────────────────────
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+
+      // Subcollection: per-quiz completion status
+      match /quiz_status/{quizId} {
+        allow read, write: if isOwner(userId);
+      }
     }
-    
-    // Allow authenticated users to read public quiz data
-    match /quizzes/{quizId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+
+    // Lightweight profile summaries (read-only for authenticated users)
+    match /user_profile_summaries/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
     }
-    
-    // Default deny all
+
+    // ── Quiz Content (read-only, admin-writable) ────────────────
+    match /Quizzes/{quizId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /Questions/{questionId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /Categories/{categoryId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Daily Quiz ──────────────────────────────────────────────
+    match /daily_quizzes/{dateId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /user_daily_quiz/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    match /user_daily_quizzes/{docId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ── Quiz Attempts ───────────────────────────────────────────
+    match /quiz_attempts/{attemptId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ── Leaderboards ────────────────────────────────────────────
+    match /leaderboards/{entryId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Social: Friend Requests ─────────────────────────────────
+    match /friend_requests/{requestId} {
+      allow read: if isSignedIn()
+        && (resource.data.fromUserId == request.auth.uid
+            || resource.data.toUserId == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.fromUserId == request.auth.uid;
+      allow update: if isSignedIn()
+        && (resource.data.fromUserId == request.auth.uid
+            || resource.data.toUserId == request.auth.uid);
+      allow delete: if isSignedIn()
+        && (resource.data.fromUserId == request.auth.uid
+            || resource.data.toUserId == request.auth.uid);
+    }
+
+    // ── Social: Friendships ─────────────────────────────────────
+    match /friendships/{friendshipId} {
+      allow read: if isSignedIn()
+        && (resource.data.user1Id == request.auth.uid
+            || resource.data.user2Id == request.auth.uid);
+      allow create: if isSignedIn();
+      allow delete: if isSignedIn()
+        && (resource.data.user1Id == request.auth.uid
+            || resource.data.user2Id == request.auth.uid);
+    }
+
+    // ── Social: Challenges ──────────────────────────────────────
+    match /challenges/{challengeId} {
+      allow read: if isSignedIn()
+        && (resource.data.challengerId == request.auth.uid
+            || resource.data.challengedId == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.challengerId == request.auth.uid;
+      allow update: if isSignedIn()
+        && (resource.data.challengerId == request.auth.uid
+            || resource.data.challengedId == request.auth.uid);
+    }
+
+    // ── Social: Friend Activities ───────────────────────────────
+    match /friend_activities/{activityId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ── Messaging: Conversations ────────────────────────────────
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn()
+        && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn()
+        && request.auth.uid in request.resource.data.participants;
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.participants;
+    }
+
+    // ── Messaging: Messages ─────────────────────────────────────
+    match /messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.senderId == request.auth.uid;
+    }
+
+    // ── Notifications ───────────────────────────────────────────
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Default deny ────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }
   }
-} 
+}
