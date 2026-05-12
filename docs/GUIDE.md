@@ -260,11 +260,11 @@ This is the single source of truth for all codebase improvement work. Every chan
 
 ### 4.5 Fix performance monitoring gaps
 
-- **Files:** `app/lib/performanceAnalyzer.ts`, `app/lib/performance/subscribeWebVitals.ts`, `app/providers/app-providers.tsx`, Web Vitals integration
+- **Files:** `app/lib/performanceAnalyzer.ts`, `app/lib/performance/subscribeWebVitals.ts`, `app/lib/performance/forwardClientMetric.ts`, `app/api/analytics/metrics/route.ts`, `app/providers/app-providers.tsx`, Web Vitals integration
 - **Issue:** Production metrics export disabled, INP and TTFB not tracked, `useBenchmark` memory leak, component metrics always report 0
-- **Fix:** Centralize Web Vitals (CLS, FID, LCP, **INP**, **TTFB**) with `subscribeWebVitalsForPath`; next step is Sentry/analytics sink for `recordMetric` in production
+- **Fix:** Centralize Web Vitals (CLS, FID, LCP, **INP**, **TTFB**) with `subscribeWebVitalsForPath`; production **Web Vitals** POST to `/api/analytics/metrics` (rate-limited, validated); optional Sentry custom metrics when SDK is re-enabled
 - **Status:** Partially done
-- **Completed:** 2026-05-12 (vitals + benchmark ref from prior commit; production sink still open)
+- **Completed:** 2026-05-12 (vitals + benchmark ref from prior commit); **2026-05-12** client Web Vitals ingest to `/api/analytics/metrics` (ack-only v1; persistence / Sentry still optional)
 
 ### 4.6 Standardize API response format
 
@@ -328,6 +328,7 @@ This is the single source of truth for all codebase improvement work. Every chan
 
 | Date | Item | Change | Files Modified |
 |------|------|--------|----------------|
+| 2026-05-12 | 4.5 | Web Vitals production ingest: `forwardClientMetric` + `POST /api/analytics/metrics` (Zod, public rate limit, ack-only v1); opt-out `NEXT_PUBLIC_DISABLE_CLIENT_PERF_INGEST` | `performanceAnalyzer.ts`, `app/lib/performance/forwardClientMetric.ts`, `app/api/analytics/metrics/route.ts`, `.env.example`, `docs/GUIDE.md` |
 | 2026-05-12 | 4.3–4.5, build | Fix Next build (`webpackBuildWorker: false`); move leaderboard service to `services/leaderboard/` + shim; `subscribeWebVitalsForPath` (INP, TTFB); dynamic imports on `/leaderboard` and `/social` | `next.config.ts`, `app/lib/services/leaderboard/*`, `app/lib/performance/subscribeWebVitals.ts`, providers, `app/leaderboard/page.tsx`, `app/social/page.tsx`, `docs/GUIDE.md`, `docs/DECISIONS.md` |
 | 2026-05-12 | 4.2–4.3, 4.6 (partial), §10 | Split sidebar into `ui/sidebar/*`, edge peek via context; Suspense on root + dashboard layouts; CSRF + diagnostics use `withApiErrorHandling`; AGENTS/GUIDE drop mandatory beads; `useBenchmark` stable callback ref | `AGENTS.md`, `docs/GUIDE.md`, `app/components/ui/sidebar/*`, `app/components/navigation/shadcn-sidebar.tsx`, `app/layout.tsx`, `app/dashboard/layout.tsx`, `app/api/auth/csrf/route.ts`, `app/api/auth/diagnostics/route.ts`, `app/hooks/performance/useBenchmark.ts` |
 | 2026-05-12 | 3.6, 4.1, §10 | Closed Phase 3 (TODO → epic refs); split `friendService` into `app/lib/services/social/*`; added product epic IDs; attempted `bd create` (blocked: Dolt DB missing — see §10.2) | `docs/GUIDE.md`, `app/lib/services/friendService.ts`, `app/lib/services/social/*`, `app/leaderboard/page.tsx`, `app/social/page.tsx`, `app/hooks/useFriends.ts`, `app/lib/services/leaderboardService.ts`, `AGENTS.md` |

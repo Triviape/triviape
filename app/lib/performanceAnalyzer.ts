@@ -68,8 +68,16 @@ export function recordMetric(metric: Omit<PerformanceMetric, 'timestamp'>): void
       console.log(`[Performance] ${metric.type}: ${metric.name} = ${metric.value}ms`);
     }
 
-    // Production observability: values stay in the in-memory ring buffer (see getMetricsByType).
-    // Call sites should import from `@/app/lib/performance`; when Sentry or `/api/analytics` exists, enqueue here (avoid logError INFO spam).
+    // Production: forward Core Web Vitals to `/api/analytics/metrics` (see forwardClientMetric).
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+      import('./performance/forwardClientMetric')
+        .then((mod) => {
+          mod.maybeForwardClientMetric(fullMetric);
+        })
+        .catch(() => {});
+    }
+
+    // In-memory ring buffer (see getMetricsByType). Sentry custom metrics remain optional (SDK currently stubbed).
   } catch (error) {
     logError(error instanceof Error ? error : new Error(String(error)), {
       category: ErrorCategory.PERFORMANCE,
