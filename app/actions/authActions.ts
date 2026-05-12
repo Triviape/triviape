@@ -25,7 +25,7 @@ const RegisterSchema = z.object({
 /**
  * Server action to handle login
  */
-export async function login(prevState: any, formData: FormData) {
+export async function login(prevState: AuthResult | null, formData: FormData) {
   try {
     // Validate form data
     const rawInput = {
@@ -84,7 +84,7 @@ export async function login(prevState: any, formData: FormData) {
 /**
  * Server action to handle registration
  */
-export async function register(prevState: any, formData: FormData) {
+export async function register(prevState: AuthResult | null, formData: FormData) {
   try {
     // Validate form data
     const rawInput = {

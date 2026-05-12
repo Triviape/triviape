@@ -40,7 +40,7 @@ export async function csrfFetch(
 /**
  * CSRF-protected POST request
  */
-export async function csrfPost(url: string, data?: any, options: RequestInit = {}): Promise<Response> {
+export async function csrfPost(url: string, data?: Record<string, unknown>, options: RequestInit = {}): Promise<Response> {
   return csrfFetch(url, {
     method: 'POST',
     body: data ? JSON.stringify(data) : undefined,
@@ -51,7 +51,7 @@ export async function csrfPost(url: string, data?: any, options: RequestInit = {
 /**
  * CSRF-protected PUT request
  */
-export async function csrfPut(url: string, data?: any, options: RequestInit = {}): Promise<Response> {
+export async function csrfPut(url: string, data?: Record<string, unknown>, options: RequestInit = {}): Promise<Response> {
   return csrfFetch(url, {
     method: 'PUT',
     body: data ? JSON.stringify(data) : undefined,
@@ -72,7 +72,7 @@ export async function csrfDelete(url: string, options: RequestInit = {}): Promis
 /**
  * CSRF-protected PATCH request
  */
-export async function csrfPatch(url: string, data?: any, options: RequestInit = {}): Promise<Response> {
+export async function csrfPatch(url: string, data?: Record<string, unknown>, options: RequestInit = {}): Promise<Response> {
   return csrfFetch(url, {
     method: 'PATCH',
     body: data ? JSON.stringify(data) : undefined,

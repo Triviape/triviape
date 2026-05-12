@@ -25,12 +25,28 @@ export interface SecurityMiddlewareConfig {
 /**
  * Default security configuration
  */
+/**
+ * Build allowed origins list from environment or use defaults.
+ * Set ALLOWED_ORIGINS as a comma-separated list in .env to override.
+ */
+function getAllowedOrigins(): string[] {
+  if (process.env.ALLOWED_ORIGINS) {
+    return process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+  }
+  return [
+    'http://localhost:3000',
+    'http://localhost:3031',
+    'https://triviape-cbc23.web.app',
+    'https://triviape-cbc23.firebaseapp.com',
+  ];
+}
+
 const DEFAULT_SECURITY_CONFIG: SecurityMiddlewareConfig = {
   rateLimit: true,
   validateHeaders: true,
   validateBody: true,
   maxBodySize: 1024 * 1024, // 1MB
-  allowedOrigins: ['http://localhost:3000', 'https://yourdomain.com'],
+  allowedOrigins: getAllowedOrigins(),
   enableCORS: true,
   enableCSRF: true,
   enableXSS: true,
