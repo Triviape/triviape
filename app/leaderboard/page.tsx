@@ -27,6 +27,7 @@ import {
 } from '@/app/types/leaderboard';
 import { useAuth } from '@/app/hooks/useAuth';
 import { useFriends } from '@/app/hooks/useFriends';
+import { FRIENDS_LEADERBOARD_GLOBAL_SLICE_ROW_LIMIT } from '@/app/lib/constants/leaderboard';
 
 interface PeriodOption {
   value: LeaderboardPeriod;
@@ -80,7 +81,7 @@ const TYPE_OPTIONS: TypeOption[] = [
     value: 'friends',
     label: 'Friends',
     icon: <Users className="h-4 w-4" />,
-    description: 'See how you rank among friends'
+    description: `Compare you and friends within the top ${FRIENDS_LEADERBOARD_GLOBAL_SLICE_ROW_LIMIT} global scores for this period`,
   },
   {
     value: 'category',
@@ -234,7 +235,13 @@ export default function LeaderboardPage() {
           </TabsList>
 
           <TabsContent value="leaderboard" className="space-y-6">
-            {/* Main Leaderboard */}
+            {selectedType === 'friends' && (
+              <p className="text-sm text-muted-foreground max-w-2xl" role="note">
+                Friends uses the same leaderboard ordering as Global. Anyone in your circle whose
+                score sits below that top {FRIENDS_LEADERBOARD_GLOBAL_SLICE_ROW_LIMIT} window does
+                not appear here yet.
+              </p>
+            )}
             <VirtualizedLeaderboard
               type={selectedType}
               period={selectedPeriod}

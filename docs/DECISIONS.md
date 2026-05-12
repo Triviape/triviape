@@ -1,14 +1,25 @@
 # Architectural Decision Log
 
-**Last Updated:** 2026-01-24  
+**Last Updated:** 2026-05-12  
 **Status:** Living Document
 
 This document captures key architectural decisions made in the TriviaPE codebase, including context, alternatives considered, and implications.
 
 ---
 
+## Runtime & deployment (authoritative snapshot)
+
+| Surface | Role in this repo |
+|---------|-------------------|
+| **`app/api/**`** | Primary HTTP API for the Next.js app (session-aware routes, quiz/daily/user proxies, etc.) |
+| **`functions/src/`** | Reserved for Firebase Cloud Functions; **entrypoint is currently a stub** until new handlers are exported |
+| **Firestore / Realtime DB** | Primary data stores; accessed from services and server routes via Firebase Admin / client SDKs as applicable |
+
+---
+
 ## Table of Contents
 
+- [Runtime & deployment](#runtime--deployment-authoritative-snapshot)
 1. [Authentication & Authorization](#1-authentication--authorization)
 2. [State Management Strategy](#2-state-management-strategy)
 3. [API Response Standards](#3-api-response-standards)
@@ -16,6 +27,7 @@ This document captures key architectural decisions made in the TriviaPE codebase
 5. [Error Handling Architecture](#5-error-handling-architecture)
 6. [Component Organization](#6-component-organization)
 7. [Service Layer Design](#7-service-layer-design)
+8. [Friends leaderboard (bounded global slice)](#8-friends-leaderboard-bounded-global-slice)
 
 ---
 
@@ -153,10 +165,10 @@ export const withApiErrorHandling = <T>(
 };
 ```
 
-**Current Status:** ⚠️ **Inconsistencies Remain**
-- Pattern A (Standard): `/api/auth/*` - Full standard response
-- Pattern B (Partial): `/api/user/stats` - Missing meta, inconsistent nesting
-- Pattern C (Raw): `/api/daily-quiz` - Direct data returns
+**Current Status:** ⚠️ **Mostly wrapped; polish remains**
+- Most JSON routes use `withApiErrorHandling` in `app/lib/apiUtils.ts`, which wraps success payloads in a shared shape (`success`, `data`, `timestamp`, `requestId`).
+- Some routes (e.g. parts of `/api/auth/csrf`, `/api/auth/diagnostics`) still use ad hoc `NextResponse.json` bodies for small or diagnostic payloads.
+- Client code may still assume older nesting for specific endpoints — verify when touching consumers (see GUIDE Phase **4.6**).
 
 **Migration Path:**
 1. Create response builder utilities (`buildSuccessResponse`, `buildErrorResponse`)
@@ -216,7 +228,7 @@ class QuizService {
 - Composite queries to reduce round trips
 - Background data prefetching for known user flows
 
-**Service Organization:**
+**Service Organization (target layout):**
 ```
 /lib/services/
   ├── auth/          # Authentication services
@@ -225,6 +237,8 @@ class QuizService {
   ├── leaderboard/   # Scoring and rankings
   └── admin/         # Administrative operations
 ```
+
+**As-built (2026-05):** Several domains still live at the `services/` root (e.g. `leaderboardService.ts`, `friendService.ts`) alongside nested folders. Incremental migration is tracked in **GUIDE.md** Phase **4.4**.
 
 ---
 
@@ -456,11 +470,41 @@ export class FirebaseAdminService {
 - Inconsistent service patterns (singleton vs. static vs. functional)
 - Service layer not fully covering all database operations
 
-**Improvement Roadmap:**
+**Service Layer Follow-Ups:**
 1. Complete migration of all database calls to services
 2. Standardize on singleton pattern for stateful services
 3. Add comprehensive service layer tests
 4. Document service contracts and interfaces
+
+---
+
+## 8. Friends leaderboard (bounded global slice)
+
+### Decision: Derive Friends rankings from a capped ordered read of the global leaderboard
+
+**Context:**
+- Friends must be ranked relative to each other without a dedicated friends leaderboard collection or a friend × score compound index path.
+- The service layer should avoid depending on friend-list APIs (`friendUserIds` is supplied by callers for explicit enrichment and simpler tests).
+
+**Chosen approach:**
+- One Firestore query loads the globally ordered leaderboard slice for the period (and optional category), capped by **`FRIENDS_LEADERBOARD_GLOBAL_SLICE_ROW_LIMIT`** (`app/lib/constants/leaderboard.ts`; currently 250).
+- Filter that slice to the participant set `{ current userId } ∪ friendUserIds` and assign ranks within the filtered ordering.
+- All Friends code paths (`getLeaderboard`, `getTotalCount`, `getUserRank`) use **`getOrderedFriendCircleEntriesFromGlobalLeaderboardWindow`** in `leaderboardService` so the scan semantics stay centralized.
+- UI copy on the leaderboard page states the bounded-window caveat for players.
+
+**Rationale:**
+- Predictable read cost vs. scanning the whole leaderboard or invoking `friendService` from leaderboard code.
+- Callers retain control of who counts as a “friend” for the leaderboard without circular service dependencies.
+
+**Alternatives considered:**
+- Resolve friends inside `leaderboardService`: couples domains and widens mocks in tests.
+- Materialized friend-only leaderboard rows / Cloud Functions: better for arbitrary rank depth but more write-path complexity.
+
+**Limitation:** Anyone in your circle placed **below** the configured global top-*N* window does not appear on the Friends tab until the limit increases or persistence is redesigned (for example dedicated friend-scope documents).
+
+**Status:** Implemented (constant + helper + leaderboard page note).
+
+**Next steps:** Optional pagination or a `truncated` flag on API responses when product needs certainty at the cutoff; emulator-backed scenarios when notification/challenge flows mature.
 
 ---
 
@@ -472,7 +516,7 @@ This document should be reviewed quarterly or when:
 - Performance or scaling issues emerge
 - Team feedback indicates confusion or inconsistency
 
-**Next Review:** 2026-04-24
+**Next Review:** 2026-07-24
 
 ---
 

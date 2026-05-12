@@ -31,12 +31,11 @@ import {
   GlobalLeaderboardStats
 } from '@/app/types/leaderboard';
 import { COLLECTIONS } from '@/app/lib/constants/collections';
+import { FRIENDS_LEADERBOARD_GLOBAL_SLICE_ROW_LIMIT } from '@/app/lib/constants/leaderboard';
 import { getTodayDateString } from './dailyQuizService';
 import { socialPerformanceMonitor } from './socialPerformanceMonitor';
 
 const LEADERBOARD_PAGE_SIZE = 25;
-/** Global rows scanned when building friends-scoped view (friends may sit below pure global top ranks). */
-const FRIENDS_LEADERBOARD_SCAN_LIMIT = 250;
 const CACHE_TTL = 60000; // 1 minute
 const CACHE_CLEANUP_INTERVAL = 30000; // 30 seconds
 
@@ -302,10 +301,11 @@ export class LeaderboardService {
               return empty;
             }
 
-            const sliceDocs = await this.fetchOrderedGlobalLeaderboardSlice(period, filters);
-            const filteredDocs = sliceDocs.filter((docSnap) =>
-              scoped.has((docSnap.data() as { userId: string }).userId),
-            );
+            const filteredDocs =
+              await this.getOrderedFriendCircleEntriesFromGlobalLeaderboardWindow(
+                period,
+                filters,
+              );
 
             const pageDocs = filteredDocs.slice(0, pageSize);
             const entries = this.processLeaderboardEntries(pageDocs, filters.userId, {
@@ -619,7 +619,30 @@ export class LeaderboardService {
     return set;
   }
 
-  private async fetchOrderedGlobalLeaderboardSlice(
+  /**
+   * Firestore API for Friends leaderboard: reads one ordered global leaderboard window,
+   * then filters client-side to the current user and `friendUserIds`.
+   *
+   * Bounded by {@link FRIENDS_LEADERBOARD_GLOBAL_SLICE_ROW_LIMIT}; keep call sites routed
+   * through this helper so semantics and indexes stay centralized.
+   */
+  private async getOrderedFriendCircleEntriesFromGlobalLeaderboardWindow(
+    period: LeaderboardPeriod,
+    filters: LeaderboardFilters,
+  ): Promise<DocumentSnapshot[]> {
+    const scoped = this.resolveFriendsLeaderboardParticipantIds(filters);
+    if (scoped.size === 0) {
+      return [];
+    }
+
+    const sliceDocs = await this.fetchGlobalLeaderboardTopSliceOrdered(period, filters);
+    return sliceDocs.filter((docSnap) =>
+      scoped.has((docSnap.data() as { userId: string }).userId),
+    );
+  }
+
+  /** Ordered top-N global leaderboard documents for Friends view derivation (see constant). */
+  private async fetchGlobalLeaderboardTopSliceOrdered(
     period: LeaderboardPeriod,
     filters: LeaderboardFilters,
   ): Promise<DocumentSnapshot[]> {
@@ -630,7 +653,7 @@ export class LeaderboardService {
       where('period', '==', period),
       orderBy('score', 'desc'),
       orderBy('completionTime', 'asc'),
-      limit(FRIENDS_LEADERBOARD_SCAN_LIMIT),
+      limit(FRIENDS_LEADERBOARD_GLOBAL_SLICE_ROW_LIMIT),
     );
 
     if (filters.categoryId) {
@@ -676,14 +699,9 @@ export class LeaderboardService {
     filters: LeaderboardFilters
   ): Promise<number> {
     if (type === 'friends') {
-      const scoped = this.resolveFriendsLeaderboardParticipantIds(filters);
-      if (scoped.size === 0) {
-        return 0;
-      }
-      const sliceDocs = await this.fetchOrderedGlobalLeaderboardSlice(period, filters);
-      return sliceDocs.filter((docSnap) =>
-        scoped.has((docSnap.data() as { userId: string }).userId),
-      ).length;
+      const filteredDocs =
+        await this.getOrderedFriendCircleEntriesFromGlobalLeaderboardWindow(period, filters);
+      return filteredDocs.length;
     }
 
     // This is a simplified implementation
@@ -710,10 +728,8 @@ export class LeaderboardService {
       if (!scoped.has(userId)) {
         return undefined;
       }
-      const sliceDocs = await this.fetchOrderedGlobalLeaderboardSlice(period, filters);
-      const filteredDocs = sliceDocs.filter((docSnap) =>
-        scoped.has((docSnap.data() as { userId: string }).userId),
-      );
+      const filteredDocs =
+        await this.getOrderedFriendCircleEntriesFromGlobalLeaderboardWindow(period, filters);
       const idx = filteredDocs.findIndex(
         (docSnap) => (docSnap.data() as { userId: string }).userId === userId,
       );

@@ -54,7 +54,11 @@ export interface LeaderboardFilters {
   categoryId?: string;
   friendsOnly?: boolean;
   userId?: string;
-  /** Friend user IDs used to flag `isFriend` on global/category boards and scope the friends leaderboard view. */
+  /**
+   * Friend user IDs for `isFriend` on global/category boards and for scoping the Friends tab.
+   * The Friends view ranks you and these IDs within a bounded global leaderboard window
+   * (`FRIENDS_LEADERBOARD_GLOBAL_SLICE_ROW_LIMIT` in `app/lib/constants/leaderboard.ts`).
+   */
   friendUserIds?: string[];
 }
 
