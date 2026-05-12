@@ -4,6 +4,7 @@ import { useQuery, useQueryClient, QueryKey, UseQueryOptions, useMutation, Query
 import { getQuestionsByIds } from '@/app/lib/services/questionService';
 import { Question } from '@/app/types/question';
 import { useCallback, useMemo } from 'react';
+import { queryKeys } from '@/app/lib/queryKeys';
 
 /**
  * Error type for question fetching
@@ -17,8 +18,8 @@ export interface QuestionFetchError extends Error {
  * Generates consistent query keys for question caching
  * Sorting ensures cache hit regardless of array order
  */
-export const getQuestionsQueryKey = (questionIds: string[]): QueryKey => 
-  ['questions', ...questionIds.sort()];
+export const getQuestionsQueryKey = (questionIds: string[]): QueryKey =>
+  queryKeys.questions(questionIds);
 
 /**
  * Hook to fetch questions for a quiz with optimized caching

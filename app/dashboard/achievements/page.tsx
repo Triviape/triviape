@@ -185,7 +185,7 @@ export default function AchievementsPage() {
           ) : (
             <Card>
               <CardContent className="pt-6 text-center">
-                <p className="text-muted-foreground">You've unlocked all available achievements. Congratulations!</p>
+                <p className="text-muted-foreground">You&apos;ve unlocked all available achievements. Congratulations!</p>
               </CardContent>
             </Card>
           )}

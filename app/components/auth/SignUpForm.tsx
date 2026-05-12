@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { signUpSchema, SignUpFormData } from '@/app/lib/validation/authSchemas';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
@@ -14,104 +17,96 @@ interface SignUpFormProps {
 
 export default function SignUpForm({ onSuccess, onError, callbackUrl = '/auth?tab=signin' }: SignUpFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpSchema),
+  });
 
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const displayName = formData.get('displayName') as string;
+  const onSubmit = async (data: SignUpFormData) => {
+    setIsLoading(true);
+    setServerError(null);
 
     try {
-      console.log('Creating new user with email:', email);
-      
       const response = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
-          password,
-          displayName,
+          ...data,
           acceptTerms: true,
         }),
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
+        throw new Error(result.error || 'Registration failed');
       }
-
-      console.log('User created successfully:', data.userId);
 
       onSuccess?.();
       router.push(callbackUrl);
-    } catch (err: any) {
-      console.error('Sign up error:', err);
-      const errorMessage = err.message || 'An error occurred during sign up';
-      setError(errorMessage);
-      onError?.(err instanceof Error ? err : new Error(errorMessage));
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setServerError(error.message);
+      onError?.(error);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {serverError && (
         <div className="bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-md text-sm">
-          {error}
+          {serverError}
         </div>
       )}
-      
+
       <div className="space-y-2">
-        <Label htmlFor="displayName" className="text-foreground">
-          Display Name
-        </Label>
+        <Label htmlFor="displayName" className="text-foreground">Display Name</Label>
         <Input
           type="text"
-          name="displayName"
           id="displayName"
-          required
           placeholder="Your display name"
           className="bg-background border-input"
+          {...register('displayName')}
         />
+        {errors.displayName && (
+          <p className="text-sm text-destructive">{errors.displayName.message}</p>
+        )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-foreground">
-          Email
-        </Label>
+        <Label htmlFor="email" className="text-foreground">Email</Label>
         <Input
           type="email"
-          name="email"
           id="email"
-          required
           placeholder="you@example.com"
           className="bg-background border-input"
+          {...register('email')}
         />
+        {errors.email && (
+          <p className="text-sm text-destructive">{errors.email.message}</p>
+        )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password" className="text-foreground">
-          Password
-        </Label>
+        <Label htmlFor="password" className="text-foreground">Password</Label>
         <Input
           type="password"
-          name="password"
           id="password"
-          required
-          minLength={6}
           placeholder="••••••••"
           className="bg-background border-input"
+          {...register('password')}
         />
+        {errors.password && (
+          <p className="text-sm text-destructive">{errors.password.message}</p>
+        )}
       </div>
 
       <Button type="submit" disabled={isLoading} className="w-full">
@@ -119,4 +114,4 @@ export default function SignUpForm({ onSuccess, onError, callbackUrl = '/auth?ta
       </Button>
     </form>
   );
-} 
+}

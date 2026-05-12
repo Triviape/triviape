@@ -85,7 +85,7 @@ export function StageArea({
               {riveError ? (
                 <div className="text-center">
                   <p className="text-foreground/50">Stage visuals unavailable</p>
-                  <p className="text-xs text-foreground/30 mt-1">Don't worry, all features still work!</p>
+                  <p className="text-xs text-foreground/30 mt-1">Don&apos;t worry, all features still work!</p>
                 </div>
               ) : (
                 <div className="text-center">

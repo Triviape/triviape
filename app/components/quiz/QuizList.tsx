@@ -26,7 +26,7 @@ const QuizList: React.FC<QuizListProps> = ({
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">
-            We've simplified our quiz experience to focus on the Daily Quiz feature. 
+            We&apos;ve simplified our quiz experience to focus on the Daily Quiz feature.
             Each day, a new quiz will be selected for you to enjoy.
           </p>
         </CardContent>

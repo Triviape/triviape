@@ -107,7 +107,6 @@ function SidebarProvider({
   
   // Mouse event handlers for hover functionality
   const handleMouseEnter = React.useCallback(() => {
-    console.log("Mouse enter triggered", { enableHover, isMobile, open });
     if (enableHover && !isMobile && !open) {
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current)
@@ -118,7 +117,6 @@ function SidebarProvider({
   }, [enableHover, isMobile, open, setOpen])
   
   const handleMouseLeave = React.useCallback(() => {
-    console.log("Mouse leave triggered", { enableHover, isMobile, open });
     if (enableHover && !isMobile && open) {
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current)

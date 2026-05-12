@@ -112,7 +112,7 @@ export function PasswordResetForm({ onBack, onSuccess, initialEmail = '' }: Pass
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900">Check Your Email</h2>
           <p className="text-gray-600 mt-2">
-            We've sent password reset instructions to:
+            We&apos;ve sent password reset instructions to:
           </p>
           <p className="font-medium text-gray-900 mt-1">{email}</p>
         </div>
@@ -126,7 +126,7 @@ export function PasswordResetForm({ onBack, onSuccess, initialEmail = '' }: Pass
                 The link will expire in 24 hours for security.
               </p>
               <p className="text-sm text-gray-600">
-                Don't see the email? Check your spam folder or try resending.
+                Don&apos;t see the email? Check your spam folder or try resending.
               </p>
             </div>
           </AlertDescription>
@@ -167,7 +167,7 @@ export function PasswordResetForm({ onBack, onSuccess, initialEmail = '' }: Pass
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900">Reset Your Password</h2>
         <p className="text-gray-600 mt-2">
-          Enter your email address and we'll send you a link to reset your password.
+          Enter your email address and we&apos;ll send you a link to reset your password.
         </p>
       </div>
 

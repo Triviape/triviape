@@ -136,7 +136,7 @@ export function DailyQuizCard({
         </Button>
         {isCompleted && (
           <span id="completed-message" className="sr-only">
-            You have already completed today's daily quiz
+            You have already completed today&apos;s daily quiz
           </span>
         )}
       </CardFooter>

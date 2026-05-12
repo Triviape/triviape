@@ -3,12 +3,13 @@ import { getLeaderboardEntries } from '@/app/lib/services/leaderboardService';
 import { DailyQuizLeaderboardEntry } from '@/app/types/leaderboard';
 import { getTodayDateString } from '@/app/lib/services/dailyQuizService';
 import { useRealtimeQuery, REALTIME_PRESETS } from './query/useRealtimeQuery';
+import { queryKeys } from '@/app/lib/queryKeys';
 
 /**
  * Generates a consistent query key for leaderboard caching
  */
-export const getLeaderboardQueryKey = (quizId: string, dateString?: string): QueryKey => 
-  dateString ? ['leaderboard', quizId, dateString] : ['leaderboard', quizId];
+export const getLeaderboardQueryKey = (quizId: string, dateString?: string): QueryKey =>
+  queryKeys.leaderboardEntries(quizId, dateString);
 
 interface UseLeaderboardOptions extends Omit<UseQueryOptions<DailyQuizLeaderboardEntry[], Error, DailyQuizLeaderboardEntry[], QueryKey>, 'queryKey' | 'queryFn'> {
   /**

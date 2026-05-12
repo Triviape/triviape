@@ -121,7 +121,7 @@ export default function UIShowcasePage() {
                 placeholder="you@example.com"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               />
-              <p className="text-xs text-muted-foreground">Helper: We'll never share your email.</p>
+              <p className="text-xs text-muted-foreground">Helper: We&apos;ll never share your email.</p>
             </div>
           </section>
 

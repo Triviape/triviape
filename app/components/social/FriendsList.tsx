@@ -206,7 +206,7 @@ export function FriendsList({
         </div>
         {request.message && (
           <div className="text-sm text-muted-foreground mt-1 italic">
-            "{request.message}"
+            &ldquo;{request.message}&rdquo;
           </div>
         )}
       </div>
@@ -431,7 +431,7 @@ export function FriendsList({
                 ) : (
                   <div className="text-center py-4">
                     <div className="text-muted-foreground">
-                      No users found matching "{searchQuery}"
+                      No users found matching &ldquo;{searchQuery}&rdquo;
                     </div>
                   </div>
                 )}

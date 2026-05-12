@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { useRive, useStateMachineInput, Layout, Fit, Alignment } from '@rive-app/react-canvas';
+import { useRive, Layout, Fit, Alignment } from '@rive-app/react-canvas';
 import Image from "next/image";
 import { useResponsiveUI } from "@/app/contexts/responsive-ui-context";
 import { useBenchmark } from "@/app/hooks/performance/useBenchmark";
@@ -128,28 +128,29 @@ function RiveAnimationBase({
     };
   }, [rive, src, useFallback]);
 
-  // Create inputs
-  const inputRefs: Record<string, any> = {};
-  if (rive && stateMachine) {
-    Object.entries(inputs).forEach(([key, value]) => {
-      const input = useStateMachineInput(rive, stateMachine, key);
-      if (input) {
-        inputRefs[key] = input;
-        
-        // Set input value
-        if (typeof value === 'boolean') {
-          input.value = value;
-        } else if (typeof value === 'number') {
-          input.value = value;
-        } else {
-          // For string triggers
-          if (value === 'fire') {
-            input.fire();
+  // Set inputs imperatively through the rive instance
+  useEffect(() => {
+    if (rive && stateMachine) {
+      const stateMachineInputs = rive.stateMachineInputs(stateMachine);
+      if (stateMachineInputs) {
+        Object.entries(inputs).forEach(([key, value]) => {
+          const input = stateMachineInputs.find((i: { name: string }) => i.name === key);
+          if (input) {
+            if (typeof value === 'boolean') {
+              input.value = value;
+            } else if (typeof value === 'number') {
+              input.value = value;
+            } else {
+              // For string triggers
+              if (value === 'fire') {
+                input.fire();
+              }
+            }
           }
-        }
+        });
       }
-    });
-  }
+    }
+  }, [rive, stateMachine, inputs]);
 
   // Register event listeners
   useEffect(() => {

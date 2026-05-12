@@ -108,7 +108,7 @@ export function DailyQuizResults({ quizId, score, completionTime, onResultsReady
     <div className="daily-quiz-results">
       <div className="results-header">
         <h2>Quiz Complete!</h2>
-        <p>Here's how you performed:</p>
+        <p>Here&apos;s how you performed:</p>
       </div>
       
       <div className="results-content">
