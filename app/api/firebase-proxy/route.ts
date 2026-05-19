@@ -8,7 +8,7 @@ const proxyRequestSchema = z.object({
   url: z.string().url('Invalid URL'),
   method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']).optional().default('GET'),
   headers: z.record(z.string()).optional(),
-  body: z.any().optional(),
+  body: z.unknown().optional(),
 });
 
 const ALLOWED_FIREBASE_HOSTS = new Set([

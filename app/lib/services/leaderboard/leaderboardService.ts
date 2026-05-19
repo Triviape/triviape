@@ -39,8 +39,8 @@ const LEADERBOARD_PAGE_SIZE = 25;
 const CACHE_TTL = 60000; // 1 minute
 const CACHE_CLEANUP_INTERVAL = 30000; // 30 seconds
 
-type CacheEntry = {
-  data: any;
+type CacheEntry<T = unknown> = {
+  data: T;
   expiresAt: number;
 };
 
@@ -282,7 +282,7 @@ export class LeaderboardService {
           const cached = this.getFromCache(cacheKey);
 
           if (cached) {
-            return cached;
+            return cached as PaginatedLeaderboard;
           }
 
           const friendBadgeIds = this.buildFriendBadgeSet(filters);
@@ -513,12 +513,12 @@ export class LeaderboardService {
    */
   async getGlobalStats(period: LeaderboardPeriod): Promise<GlobalLeaderboardStats> {
     try {
-      const cacheKey = `stats_${period}`;
-      const cached = this.getFromCache(cacheKey);
-      
-      if (cached) {
-        return cached;
-      }
+          const cacheKey = `stats_${period}`;
+          const cached = this.getFromCache(cacheKey);
+          
+          if (cached) {
+        return cached as GlobalLeaderboardStats;
+          }
 
       const leaderboardRef = collection(db, this.getCollectionName('global', period));
       const snapshot = await getDocs(query(leaderboardRef, where('period', '==', period)));
@@ -555,10 +555,10 @@ export class LeaderboardService {
     return `sub_${type}_${period}_${JSON.stringify(filters)}`;
   }
 
-  private getFromCache(key: string): any {
+  private getFromCache<T = unknown>(key: string): T | null {
     const cached = this.cache.get(key);
     if (cached && Date.now() < cached.expiresAt) {
-      return cached.data;
+      return cached.data as T;
     }
     if (cached) {
       this.cache.delete(key);
@@ -566,7 +566,7 @@ export class LeaderboardService {
     return null;
   }
 
-  private setCache(key: string, data: any, ttl = CACHE_TTL): void {
+  private setCache<T = unknown>(key: string, data: T, ttl = CACHE_TTL): void {
     this.ensureCacheCleanupInterval();
     this.cache.set(key, {
       data,
@@ -814,7 +814,7 @@ export class LeaderboardService {
     return snapshot.size + 1;
   }
 
-  private processRealtimeUpdate(data: any, callback: (update: LeaderboardUpdate) => void): void {
+  private processRealtimeUpdate(data: unknown, callback: (update: LeaderboardUpdate) => void): void {
     // Process real-time data and trigger callback
     // This is a simplified implementation
     const update: LeaderboardUpdate = {

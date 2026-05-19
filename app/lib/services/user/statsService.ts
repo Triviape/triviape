@@ -7,13 +7,14 @@ import { getFirestoreDb } from '../../firebase';
 import { COLLECTIONS, UserServiceErrorType } from './types';
 import { createUserError } from './errorHandler';
 import { FirebaseError } from 'firebase/app';
+import { UserStats } from '@/app/types/user';
 
 /**
  * Get a user's stats
  * @param userId User ID
  * @returns User stats
  */
-export async function getUserStats(userId: string): Promise<any> {
+export async function getUserStats(userId: string): Promise<UserStats | null> {
   try {
     const db = getFirestoreDb();
     const statsDoc = doc(db, COLLECTIONS.USER_STATS, userId);
@@ -26,7 +27,7 @@ export async function getUserStats(userId: string): Promise<any> {
       );
     }
     
-    return docSnap.data();
+    return docSnap.data() as UserStats;
   } catch (error) {
     throw createUserError(
       'Failed to get user stats',

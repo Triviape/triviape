@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
-import { leaderboardService } from '@/app/lib/services/leaderboardService';
+import { leaderboardService } from '@/app/lib/services/leaderboard';
 
 export default function Dashboard() {
   const { profile } = useAuth();

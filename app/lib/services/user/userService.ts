@@ -5,7 +5,7 @@
  */
 
 import { UserCredential } from 'firebase/auth';
-import { UserProfile, UserPreferences, PrivacySettings } from '@/app/types/user';
+import { UserProfile, UserPreferences, PrivacySettings, UserStats } from '@/app/types/user';
 import { BaseServiceImplementation } from '../core/baseService';
 import { 
   DocumentData, 
@@ -220,7 +220,7 @@ export class UserService extends BaseServiceImplementation<UserProfile> {
   }
 
   // Stats methods (delegated to StatsService)
-  static async getUserStats(userId: string): Promise<any> {
+  static async getUserStats(userId: string): Promise<UserStats | null> {
     return StatsService.getUserStats(userId);
   }
 

@@ -171,8 +171,11 @@ export class ConsolidatedAuthService {
           email: userRecord.email,
           displayName: userRecord.displayName
         };
-      } catch (error: any) {
-        if (error.code === 'auth/email-already-exists') {
+      } catch (error: unknown) {
+        const errorCode = error && typeof error === 'object' && 'code' in error
+          ? String((error as { code?: unknown }).code)
+          : undefined;
+        if (errorCode === 'auth/email-already-exists') {
           throw createServiceError(
             'Email already in use',
             ServiceErrorType.CONFLICT_ERROR,
@@ -275,7 +278,7 @@ export class ConsolidatedAuthService {
       if (updates.preferences) safeUpdates.preferences = updates.preferences;
       if (updates.privacySettings) safeUpdates.privacySettings = updates.privacySettings;
 
-      await updateDoc(userRef, safeUpdates as any);
+      await updateDoc(userRef, safeUpdates);
 
       return { success: true };
     }, 'updateUserProfile');

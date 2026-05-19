@@ -3,6 +3,32 @@ import { auth } from '@/auth';
 import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
 import { withApiErrorHandling } from '@/app/lib/apiUtils';
 import { withRateLimit, RateLimitConfigs } from '@/app/lib/rateLimiter';
+import { UserStats } from '@/app/types/user';
+
+interface QuizAttemptSummary {
+  id: string;
+  quizId?: string;
+  score?: number;
+  totalQuestions?: number;
+  correctAnswers?: number;
+  completedAt: string | null;
+}
+
+function toIsoString(value: unknown): string | null {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+    return value.toDate().toISOString();
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    return new Date(value).toISOString();
+  }
+
+  return null;
+}
 
 export async function GET(request: NextRequest) {
   const rateLimitedHandler = withRateLimit(async (req: NextRequest) => {
@@ -22,7 +48,20 @@ export async function GET(request: NextRequest) {
         throw new Error('User profile not found');
       }
 
-      const profile = userDoc.data() || {};
+      const profile = userDoc.data() as Partial<UserStats> & {
+        displayName?: string;
+        email?: string;
+        photoURL?: string | null;
+        level?: number;
+        xp?: number;
+        xpToNextLevel?: number;
+        coins?: number;
+        quizzesTaken?: number;
+        questionsAnswered?: number;
+        correctAnswers?: number;
+        lastLoginAt?: { toDate?: () => Date } | Date | string | number | null;
+        createdAt?: { toDate?: () => Date } | Date | string | number | null;
+      };
 
       // Fetch recent quiz attempts
       const attemptsSnap = await db
@@ -32,17 +71,21 @@ export async function GET(request: NextRequest) {
         .limit(10)
         .get();
 
-      const recentAttempts = attemptsSnap.docs.map((doc: any) => {
-        const d = doc.data() as any;
+      const recentAttempts: QuizAttemptSummary[] = attemptsSnap.docs.map((snapshot) => {
+        const data = snapshot.data() as {
+          quizId?: string;
+          score?: number;
+          totalQuestions?: number;
+          correctAnswers?: number;
+          completedAt?: { toDate?: () => Date } | Date | string | number | null;
+        };
         return {
-          id: doc.id,
-          quizId: d.quizId,
-          score: d.score,
-          totalQuestions: d.totalQuestions,
-          correctAnswers: d.correctAnswers,
-          completedAt: (d.completedAt instanceof Date)
-            ? d.completedAt.toISOString()
-            : (d.completedAt?.toDate ? d.completedAt.toDate().toISOString() : null),
+          id: snapshot.id,
+          quizId: data.quizId,
+          score: data.score,
+          totalQuestions: data.totalQuestions,
+          correctAnswers: data.correctAnswers,
+          completedAt: toIsoString(data.completedAt),
         };
       });
 
@@ -63,8 +106,8 @@ export async function GET(request: NextRequest) {
         questionsAnswered,
         correctAnswers,
         accuracy,
-        lastLoginAt: profile.lastLoginAt ? (profile.lastLoginAt.toDate ? profile.lastLoginAt.toDate().toISOString() : new Date(profile.lastLoginAt).toISOString()) : null,
-        createdAt: profile.createdAt ? (profile.createdAt.toDate ? profile.createdAt.toDate().toISOString() : new Date(profile.createdAt).toISOString()) : null,
+        lastLoginAt: toIsoString(profile.lastLoginAt),
+        createdAt: toIsoString(profile.createdAt),
       };
 
       return { summary, recentAttempts };

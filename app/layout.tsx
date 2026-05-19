@@ -5,6 +5,7 @@ import { AppProviders } from "./providers/app-providers";
 import { Toaster } from "./components/ui/toaster";
 import { ErrorBoundary } from "./lib/componentUtils";
 import { SecurityMetaTags } from "./components/security/CSRFMetaTag";
+import { ServiceWorkerRegistration } from "./components/security/ServiceWorkerRegistration";
 import "@/app/lib/env"; // Validate environment variables at startup
 
 export const metadata: Metadata = {
@@ -94,24 +95,7 @@ export default function RootLayout({
           </AppProviders>
         </ErrorBoundary>
         
-        {/* Service Worker Registration */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('Service Worker registered successfully:', registration.scope);
-                    })
-                    .catch(function(error) {
-                      console.log('Service Worker registration failed:', error);
-                    });
-                });
-              }
-            `,
-          }}
-        />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

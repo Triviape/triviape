@@ -261,7 +261,7 @@ export async function withErrorHandling<T = unknown>(
 
     // Return standardized error response
     const errorResponse = createErrorResponse(message, requestId, errorCode, details);
-    return NextResponse.json(errorResponse, { status: statusCode });
+    return NextResponse.json(errorResponse as ApiResponse<T>, { status: statusCode });
   }
 }
 

@@ -14,6 +14,8 @@ import {
   increment,
   Query,
   DocumentData,
+  DocumentSnapshot,
+  UpdateData,
   serverTimestamp,
 } from 'firebase/firestore';
 import { getFirestoreDb } from '@/app/lib/firebase';
@@ -24,6 +26,7 @@ import {
   QuizCategory,
   DifficultyLevel,
 } from '@/app/types/quiz';
+import { QuizAttempt } from './types';
 
 // Collection names for Firestore
 const COLLECTIONS = {
@@ -49,8 +52,8 @@ export class QuizService {
     categoryId?: string,
     difficulty?: DifficultyLevel,
     pageSize = 10,
-    lastQuizDoc?: any
-  ) {
+    lastQuizDoc?: DocumentSnapshot<DocumentData> | null
+  ): Promise<{ quizzes: Quiz[]; lastDoc: DocumentSnapshot<DocumentData> | null }> {
     try {
       // Start with a base query
       let quizQuery: Query<DocumentData>;
@@ -203,8 +206,8 @@ export class QuizService {
     categoryId?: string,
     difficulty?: DifficultyLevel,
     pageSize = 20,
-    lastDoc?: any
-  ) {
+    lastDoc?: DocumentSnapshot<DocumentData> | null
+  ): Promise<{ questionSummaries: QuestionSummary[]; lastDoc: DocumentSnapshot<DocumentData> | null }> {
     try {
       // Start with a base query
       let questionsQuery: Query<DocumentData>;
@@ -327,7 +330,7 @@ export class QuizService {
         });
       } else {
         // Update analytics based on the answer
-        const updates: any = {
+        const updates: UpdateData<DocumentData> = {
           'stats.timesAnswered': increment(1),
         };
 
@@ -362,7 +365,7 @@ export class QuizService {
    * @param attempt Quiz attempt data
    * @returns ID of the created attempt document
    */
-  static async recordQuizAttempt(attempt: any): Promise<string> {
+  static async recordQuizAttempt(attempt: QuizAttempt): Promise<string> {
     try {
       const attemptsRef = collection(getFirestoreDb(), COLLECTIONS.QUIZ_ATTEMPTS);
       const attemptDoc = await addDoc(attemptsRef, {

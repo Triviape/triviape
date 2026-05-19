@@ -36,11 +36,11 @@ import { FirebaseError } from 'firebase/app';
 /**
  * Helper function to convert Firestore timestamps to Date objects
  */
-const convertTimestamps = <T extends Record<string, any>>(data: T): T => {
-  const result = { ...data };
-  for (const key in result) {
-    if (result[key] && typeof result[key].toDate === 'function') {
-      result[key] = result[key].toDate();
+const convertTimestamps = (data: Record<string, unknown>): Record<string, unknown> => {
+  const result: Record<string, unknown> = { ...data };
+  for (const [key, value] of Object.entries(result)) {
+    if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+      result[key] = value.toDate();
     }
   }
   return result;

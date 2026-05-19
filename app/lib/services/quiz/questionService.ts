@@ -6,6 +6,8 @@ import {
   doc,
   DocumentData,
   QueryDocumentSnapshot,
+  DocumentReference,
+  UpdateData,
   updateDoc,
   increment,
   serverTimestamp,
@@ -218,14 +220,15 @@ export async function updateQuestionAnalytics(
  * @param retries Number of retries remaining
  */
 async function updateWithRetry(
-  docRef: ReturnType<typeof doc>, 
-  updates: Record<string, unknown>, 
+  docRef: DocumentReference<DocumentData>, 
+  updates: UpdateData<DocumentData>, 
   retries = 3
 ): Promise<void> {
   try {
-    await updateDoc(docRef, updates as any);
-  } catch (error: any) {
-    if (retries > 0 && (error.code === 'unavailable' || error.code === 'deadline-exceeded')) {
+    await updateDoc(docRef, updates);
+  } catch (error: unknown) {
+    const code = error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : undefined;
+    if (retries > 0 && (code === 'unavailable' || code === 'deadline-exceeded')) {
       // Wait before retrying (exponential backoff)
       const delay = Math.pow(2, 3 - retries) * 1000;
       await new Promise(resolve => setTimeout(resolve, delay));

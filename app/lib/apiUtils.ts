@@ -126,7 +126,7 @@ export async function fetchWithRetry(
  * @param options Request options
  * @returns Promise with the JSON response
  */
-export async function fetchJson<T = any>(
+export async function fetchJson<T = unknown>(
   url: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
@@ -161,7 +161,7 @@ export const fetchJsonCached = memoizeWithCache(
  * @param params Query parameters
  * @returns Query string
  */
-export function createQueryString(params: Record<string, any>): string {
+export function createQueryString(params: Record<string, unknown>): string {
   const searchParams = new URLSearchParams();
   
   Object.entries(params).forEach(([key, value]) => {
@@ -197,7 +197,7 @@ export function createApiClient(
      * @param options Request options
      * @returns Promise with the JSON response
      */
-    get: <T = any>(url: string, options: ApiRequestOptions = {}): Promise<T> => {
+    get: <T = unknown>(url: string, options: ApiRequestOptions = {}): Promise<T> => {
       return fetchJson<T>(url, {
         method: 'GET',
         baseUrl,
@@ -213,7 +213,7 @@ export function createApiClient(
      * @param options Request options
      * @returns Promise with the JSON response
      */
-    post: <T = any>(url: string, data: any, options: ApiRequestOptions = {}): Promise<T> => {
+    post: <T = unknown>(url: string, data: unknown, options: ApiRequestOptions = {}): Promise<T> => {
       return fetchJson<T>(url, {
         method: 'POST',
         body: JSON.stringify(data),
@@ -230,7 +230,7 @@ export function createApiClient(
      * @param options Request options
      * @returns Promise with the JSON response
      */
-    put: <T = any>(url: string, data: any, options: ApiRequestOptions = {}): Promise<T> => {
+    put: <T = unknown>(url: string, data: unknown, options: ApiRequestOptions = {}): Promise<T> => {
       return fetchJson<T>(url, {
         method: 'PUT',
         body: JSON.stringify(data),
@@ -247,7 +247,7 @@ export function createApiClient(
      * @param options Request options
      * @returns Promise with the JSON response
      */
-    patch: <T = any>(url: string, data: any, options: ApiRequestOptions = {}): Promise<T> => {
+    patch: <T = unknown>(url: string, data: unknown, options: ApiRequestOptions = {}): Promise<T> => {
       return fetchJson<T>(url, {
         method: 'PATCH',
         body: JSON.stringify(data),
@@ -263,7 +263,7 @@ export function createApiClient(
      * @param options Request options
      * @returns Promise with the JSON response
      */
-    delete: <T = any>(url: string, options: ApiRequestOptions = {}): Promise<T> => {
+    delete: <T = unknown>(url: string, options: ApiRequestOptions = {}): Promise<T> => {
       return fetchJson<T>(url, {
         method: 'DELETE',
         baseUrl,
@@ -278,7 +278,7 @@ export function createApiClient(
      * @param options Request options
      * @returns Promise with the JSON response
      */
-    getCached: <T = any>(url: string, options: ApiRequestOptions = {}): Promise<T> => {
+    getCached: <T = unknown>(url: string, options: ApiRequestOptions = {}): Promise<T> => {
       return fetchJsonCached<T>(url, {
         method: 'GET',
         baseUrl,
@@ -295,13 +295,13 @@ export function createApiClient(
 /**
  * Standard API response format
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: {
     message: string;
     code?: string;
-    details?: any;
+    details?: unknown;
   };
   timestamp: string;
   requestId: string;
@@ -357,9 +357,9 @@ export function createSuccessResponse<T>(data: T, requestId: string = generateRe
  */
 export function createErrorResponse(
   message: string,
-  requestIdOrCodeOrDetails?: string | ApiErrorCode | any,
-  codeOrDetails: ApiErrorCode | any = ApiErrorCode.UNKNOWN_ERROR,
-  details?: any
+  requestIdOrCodeOrDetails?: string | ApiErrorCode | unknown,
+  codeOrDetails: ApiErrorCode | unknown = ApiErrorCode.UNKNOWN_ERROR,
+  details?: unknown
 ): ApiResponse {
   const isApiErrorCode = (value: unknown): value is ApiErrorCode =>
     typeof value === 'string' && (Object.values(ApiErrorCode) as string[]).includes(value);
@@ -370,7 +370,7 @@ export function createErrorResponse(
   // 3) createErrorResponse(message, details)
   let requestId = generateRequestId();
   let resolvedCode: ApiErrorCode = ApiErrorCode.UNKNOWN_ERROR;
-  let resolvedDetails: any = undefined;
+  let resolvedDetails: unknown = undefined;
 
   if (isApiErrorCode(requestIdOrCodeOrDetails)) {
     resolvedCode = requestIdOrCodeOrDetails;
@@ -404,7 +404,7 @@ export async function withApiErrorHandling<T>(
   handler: () => Promise<T>,
   options?: {
     logErrors?: boolean;
-    validateRequest?: (data: any) => { valid: boolean; errors?: any };
+    validateRequest?: (data: unknown) => { valid: boolean; errors?: unknown };
     responseHandler?: (response: Response, result: T) => void;
   }
 ): Promise<Response> {
@@ -434,7 +434,7 @@ export async function withApiErrorHandling<T>(
     }
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Log the error if enabled
     if (options?.logErrors !== false) {
       console.error('API error:', error);
@@ -442,7 +442,7 @@ export async function withApiErrorHandling<T>(
       // Log to monitoring service if available
       try {
         if (typeof error === 'object' && error !== null) {
-          logError(error, {
+          logError(error instanceof Error ? error : new Error(String(error)), {
             category: ErrorCategory.API,
             severity: ErrorSeverity.ERROR,
             context: {
@@ -467,41 +467,48 @@ export async function withApiErrorHandling<T>(
     let details = undefined;
     
     // Firebase Auth errors
-    if (error.code && error.code.startsWith('auth/')) {
+    const errorObj = error as {
+      code?: string;
+      message?: string;
+      statusCode?: number;
+      details?: unknown;
+    };
+
+    if (errorObj.code?.startsWith('auth/')) {
       statusCode = 401;
       errorCode = ApiErrorCode.UNAUTHORIZED;
       message = getAuthErrorMessage(error);
     }
     // Not Found errors
-    else if (error.message?.includes('not found') || error.code === 'not-found') {
+    else if (errorObj.message?.includes('not found') || errorObj.code === 'not-found') {
       statusCode = 404;
       errorCode = ApiErrorCode.NOT_FOUND;
-      message = error.message || 'Resource not found';
+      message = errorObj.message || 'Resource not found';
     }
     // Validation errors
-    else if (error.message?.includes('validation') || error.code === 'validation-failed') {
+    else if (errorObj.message?.includes('validation') || errorObj.code === 'validation-failed') {
       statusCode = 400;
       errorCode = ApiErrorCode.VALIDATION_ERROR;
-      message = error.message || 'Validation failed';
-      details = error.details;
+      message = errorObj.message || 'Validation failed';
+      details = errorObj.details;
     }
     // Permission errors
-    else if (error.code === 'permission-denied') {
+    else if (errorObj.code === 'permission-denied') {
       statusCode = 403;
       errorCode = ApiErrorCode.FORBIDDEN;
-      message = error.message || 'Permission denied';
+      message = errorObj.message || 'Permission denied';
     }
     // Handle status code if available
-    else if (error.statusCode) {
-      statusCode = error.statusCode;
+    else if (errorObj.statusCode) {
+      statusCode = errorObj.statusCode;
       
       if (statusCode >= 400 && statusCode < 500) {
         errorCode = ApiErrorCode.BAD_REQUEST;
       }
     }
     // Use error message if available
-    if (error.message) {
-      message = error.message;
+    if (errorObj.message) {
+      message = errorObj.message;
     }
     
     // Return standardized error response

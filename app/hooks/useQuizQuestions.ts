@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient, QueryKey, UseQueryOptions, useMutation, QueryClient } from '@tanstack/react-query';
-import { getQuestionsByIds } from '@/app/lib/services/questionService';
+import { getQuestionsByIds } from '@/app/lib/services/quiz/questionService';
 import { Question } from '@/app/types/question';
 import { useCallback, useMemo } from 'react';
 import { queryKeys } from '@/app/lib/queryKeys';
