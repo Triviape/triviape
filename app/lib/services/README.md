@@ -4,7 +4,7 @@ This directory contains the refactored user services, separated by responsibilit
 
 ## Service Structure
 
-### AuthService (`authService.ts`)
+### ConsolidatedAuthService (`consolidatedAuthService.ts`)
 Handles all authentication operations:
 - User registration with email/password
 - Sign in with email/password
@@ -37,9 +37,8 @@ Manages XP, levels, and coins:
 - Progression calculation utilities
 
 ### UserService (`userService.ts`)
-Orchestrates operations and maintains backward compatibility:
+Orchestrates operations for the user domain:
 - Delegates to focused services
-- Maintains existing API for backward compatibility
 - Provides convenience methods
 - Acts as a facade for the other services
 
@@ -49,24 +48,19 @@ Orchestrates operations and maintains backward compatibility:
 
 ```typescript
 // Import specific services
-import { AuthService } from '@/app/lib/services/authService';
-import { ProfileService } from '@/app/lib/services/profileService';
-import { PreferencesService } from '@/app/lib/services/preferencesService';
-import { ProgressionService } from '@/app/lib/services/progressionService';
-
-// Or import from index
-import { AuthService, ProfileService, PreferencesService, ProgressionService } from '@/app/lib/services';
-
-// For backward compatibility
-import { UserService } from '@/app/lib/services/userService';
+import { ConsolidatedAuthService } from '@/app/lib/services/auth/consolidatedAuthService';
+import { ProfileService } from '@/app/lib/services/user/profileService';
+import { PreferencesService } from '@/app/lib/services/user/preferencesService';
+import { ProgressionService } from '@/app/lib/services/user/progressionService';
+import { UserService } from '@/app/lib/services/user/userService';
 ```
 
 ### Examples
 
 ```typescript
 // Authentication
-const userCredential = await AuthService.registerWithEmail(email, password, displayName);
-await AuthService.signInWithEmail(email, password);
+const userCredential = await ConsolidatedAuthService.registerWithEmail(email, password, displayName);
+await ConsolidatedAuthService.signInWithEmail(email, password);
 
 // Profile management
 await ProfileService.createUserProfileWithBatch(userId, userData);

@@ -10,9 +10,6 @@ export { PreferencesService } from './preferencesService';
 export { ProgressionService } from './progressionService';
 export { StatsService } from './statsService';
 
-// Auth service (imported from auth directory)
-export { ConsolidatedAuthService as AuthService } from '../auth/consolidatedAuthService';
-
 // Types and error handling
 export * from './types';
 export * from './errorHandler';

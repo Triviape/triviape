@@ -10,6 +10,37 @@ import {
   GameSettings
 } from '@/app/types/multiplayer';
 
+type AckResponseBase = {
+  success: boolean;
+  error?: string;
+};
+
+interface JoinSessionResponse extends AckResponseBase {
+  success: true;
+}
+
+interface CreateSessionResponse extends AckResponseBase {
+  success: true;
+  sessionId: string;
+  session: MultiplayerSession;
+}
+
+interface StartGameResponse extends AckResponseBase {
+  success: true;
+}
+
+interface FindSessionsResponse extends AckResponseBase {
+  success: true;
+  sessions: MultiplayerSession[];
+}
+
+interface GetSessionDataResponse extends AckResponseBase {
+  success: true;
+  session: MultiplayerSession;
+}
+
+type EventListener = (data: unknown) => void;
+
 /**
  * WebSocket service for real-time multiplayer features
  */
@@ -21,7 +52,7 @@ export class WebSocketService {
   private maxReconnectAttempts = 5;
   private userId: string | null = null;
   private sessionId: string | null = null;
-  private eventListeners = new Map<string, Set<Function>>();
+  private eventListeners = new Map<string, Set<EventListener>>();
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   public static getInstance(): WebSocketService {
@@ -130,7 +161,7 @@ export class WebSocketService {
     this.sessionId = sessionId;
     
     return new Promise((resolve, reject) => {
-      this.socket!.emit('join-session', { sessionId, playerData }, (response: any) => {
+      this.socket!.emit('join-session', { sessionId, playerData }, (response: JoinSessionResponse) => {
         if (response.success) {
           resolve();
         } else {
@@ -165,7 +196,7 @@ export class WebSocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.socket!.emit('create-session', { settings }, (response: any) => {
+      this.socket!.emit('create-session', { settings }, (response: CreateSessionResponse) => {
         if (response.success) {
           this.sessionId = response.sessionId;
           resolve(response);
@@ -185,7 +216,7 @@ export class WebSocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.socket!.emit('start-game', { sessionId: this.sessionId }, (response: any) => {
+      this.socket!.emit('start-game', { sessionId: this.sessionId }, (response: StartGameResponse) => {
         if (response.success) {
           resolve();
         } else {
@@ -239,7 +270,7 @@ export class WebSocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.socket!.emit('find-sessions', filters, (response: any) => {
+      this.socket!.emit('find-sessions', filters, (response: FindSessionsResponse) => {
         if (response.success) {
           resolve(response.sessions);
         } else {
@@ -258,7 +289,7 @@ export class WebSocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.socket!.emit('get-session', { sessionId: this.sessionId }, (response: any) => {
+      this.socket!.emit('get-session', { sessionId: this.sessionId }, (response: GetSessionDataResponse) => {
         if (response.success) {
           resolve(response.session);
         } else {
@@ -275,13 +306,13 @@ export class WebSocketService {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
     }
-    this.eventListeners.get(event)!.add(callback);
+    this.eventListeners.get(event)!.add(callback as EventListener);
 
     // Set up socket listener if not already set
     if (this.socket && !this.socket.hasListeners(event)) {
-      this.socket.on(event as string, ((data: any) => {
+      this.socket.on(event as string, (data: unknown) => {
         this.notifyListeners(event, data);
-      }) as any);
+      });
     }
   }
 
@@ -291,7 +322,7 @@ export class WebSocketService {
   off<K extends keyof GameEvents>(event: K, callback: (data: GameEvents[K]) => void): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
-      listeners.delete(callback);
+      listeners.delete(callback as EventListener);
       if (listeners.size === 0) {
         this.eventListeners.delete(event);
         if (this.socket) {
@@ -338,7 +369,7 @@ export class WebSocketService {
     // Game events are handled by individual event listeners added via on()
   }
 
-  private notifyListeners(event: string, data: any): void {
+  private notifyListeners(event: string, data: unknown): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
       listeners.forEach(callback => {

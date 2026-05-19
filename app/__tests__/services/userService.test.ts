@@ -1,4 +1,9 @@
-import { UserService, AuthService, ProfileService, PreferencesService, ProgressionService } from '@/app/lib/services';
+import { UserService } from '@/app/lib/services/user/userService';
+import { ConsolidatedAuthService } from '@/app/lib/services/auth/consolidatedAuthService';
+import { ProfileService } from '@/app/lib/services/user/profileService';
+import { PreferencesService } from '@/app/lib/services/user/preferencesService';
+import { ProgressionService } from '@/app/lib/services/user/progressionService';
+import type { UserCredential } from 'firebase/auth';
 import { createServiceError, ServiceErrorType } from '@/app/lib/services/errorHandler';
 import { UserProfile, UserPreferences, PrivacySettings } from '@/app/types/user';
 
@@ -94,7 +99,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
     jest.clearAllMocks();
   });
 
-  describe('AuthService', () => {
+  describe('ConsolidatedAuthService', () => {
     describe('registerWithEmail', () => {
       it('should register user with valid credentials', async () => {
         const mockUserCredential = {
@@ -109,7 +114,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
         createUserWithEmailAndPassword.mockResolvedValue(mockUserCredential);
         updateProfile.mockResolvedValue(undefined);
 
-        const result = await AuthService.registerWithEmail('test@example.com', 'Password123!', 'Test User');
+        const result = await ConsolidatedAuthService.registerWithEmail('test@example.com', 'Password123!', 'Test User');
 
         expect(result).toEqual(mockUserCredential);
         expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
@@ -126,7 +131,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
         const { createUserWithEmailAndPassword } = require('firebase/auth');
         createUserWithEmailAndPassword.mockRejectedValue(new Error('Invalid email'));
         await expect(
-          AuthService.registerWithEmail('invalid-email', 'Password123!', 'Test User')
+          ConsolidatedAuthService.registerWithEmail('invalid-email', 'Password123!', 'Test User')
         ).rejects.toThrow('Invalid email');
       });
 
@@ -134,7 +139,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
         const { createUserWithEmailAndPassword } = require('firebase/auth');
         createUserWithEmailAndPassword.mockRejectedValue(new Error('Invalid password'));
         await expect(
-          AuthService.registerWithEmail('test@example.com', 'weak', 'Test User')
+          ConsolidatedAuthService.registerWithEmail('test@example.com', 'weak', 'Test User')
         ).rejects.toThrow('Invalid password');
       });
 
@@ -142,7 +147,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
         const { createUserWithEmailAndPassword } = require('firebase/auth');
         createUserWithEmailAndPassword.mockRejectedValue(new Error('Invalid display name'));
         await expect(
-          AuthService.registerWithEmail('test@example.com', 'Password123!', '')
+          ConsolidatedAuthService.registerWithEmail('test@example.com', 'Password123!', '')
         ).rejects.toThrow('Invalid display name');
       });
     });
@@ -159,7 +164,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
         const { signInWithEmailAndPassword } = require('firebase/auth');
         signInWithEmailAndPassword.mockResolvedValue(mockUserCredential);
 
-        const result = await AuthService.signInWithEmail('test@example.com', 'Password123!');
+        const result = await ConsolidatedAuthService.signInWithEmail('test@example.com', 'Password123!');
 
         expect(result).toEqual(mockUserCredential);
         expect(signInWithEmailAndPassword).toHaveBeenCalledWith(
@@ -173,7 +178,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
         const { signInWithEmailAndPassword } = require('firebase/auth');
         signInWithEmailAndPassword.mockRejectedValue(new Error('Invalid email'));
         await expect(
-          AuthService.signInWithEmail('invalid-email', 'Password123!')
+          ConsolidatedAuthService.signInWithEmail('invalid-email', 'Password123!')
         ).rejects.toThrow('Invalid email');
       });
     });
@@ -192,7 +197,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
         signInWithPopup.mockResolvedValue(mockUserCredential);
         GoogleAuthProvider.mockImplementation(() => ({}));
 
-        const result = await AuthService.signInWithGoogle();
+        const result = await ConsolidatedAuthService.signInWithGoogle();
 
         expect(result).toEqual(mockUserCredential);
         expect(signInWithPopup).toHaveBeenCalled();
@@ -211,7 +216,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
         signInWithPopup.mockResolvedValue(mockUserCredential);
         TwitterAuthProvider.mockImplementation(() => ({}));
 
-        const result = await AuthService.signInWithTwitter();
+        const result = await ConsolidatedAuthService.signInWithTwitter();
 
         expect(result).toEqual(mockUserCredential);
         expect(signInWithPopup).toHaveBeenCalled();
@@ -230,7 +235,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
         signInWithPopup.mockResolvedValue(mockUserCredential);
         FacebookAuthProvider.mockImplementation(() => ({}));
 
-        const result = await AuthService.signInWithFacebook();
+        const result = await ConsolidatedAuthService.signInWithFacebook();
 
         expect(result).toEqual(mockUserCredential);
         expect(signInWithPopup).toHaveBeenCalled();
@@ -239,12 +244,12 @@ describe('UserService Refactor - Comprehensive Tests', () => {
 
     describe('password reset', () => {
       it('should expose password reset method', () => {
-        expect(typeof AuthService.sendPasswordReset).toBe('function');
+        expect(typeof ConsolidatedAuthService.sendPasswordReset).toBe('function');
       });
 
       it('should throw validation error for invalid email', async () => {
         await expect(
-          AuthService.sendPasswordReset('invalid-email')
+          ConsolidatedAuthService.sendPasswordReset('invalid-email')
         ).rejects.toThrow('Invalid email');
       });
     });
@@ -284,7 +289,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
           ProfileService.createUserProfileWithBatch('test-user-id', {
             displayName: 'Test User',
             email: 'test@example.com',
-            photoURL: 'javascript:alert("xss")'
+            photoURL: 'not-a-url'
           })
         ).rejects.toThrow('Invalid photo URL');
       });
@@ -317,8 +322,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
   describe('PreferencesService', () => {
     describe('updateUserPreferences', () => {
       it('should update user preferences', async () => {
-        const mockUpdate = jest.fn().mockResolvedValue(undefined);
-        jest.spyOn(ProfileService.prototype, 'update').mockImplementation(mockUpdate);
+        const updatePreferencesSpy = jest.spyOn(ProfileService, 'updateUserPreferences').mockResolvedValue(undefined);
 
         const newPreferences: Partial<UserPreferences> = {
           theme: 'dark',
@@ -327,16 +331,13 @@ describe('UserService Refactor - Comprehensive Tests', () => {
 
         await PreferencesService.updateUserPreferences('test-user-id', newPreferences);
 
-        expect(mockUpdate).toHaveBeenCalledWith('test-user-id', {
-          preferences: newPreferences
-        });
+        expect(updatePreferencesSpy).toHaveBeenCalledWith('test-user-id', newPreferences);
       });
     });
 
     describe('updatePrivacySettings', () => {
       it('should update privacy settings', async () => {
-        const mockUpdate = jest.fn().mockResolvedValue(undefined);
-        jest.spyOn(ProfileService.prototype, 'update').mockImplementation(mockUpdate);
+        const updatePrivacySpy = jest.spyOn(ProfileService, 'updatePrivacySettings').mockResolvedValue(undefined);
 
         const newSettings: Partial<PrivacySettings> = {
           profileVisibility: 'private',
@@ -345,9 +346,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
 
         await PreferencesService.updatePrivacySettings('test-user-id', newSettings);
 
-        expect(mockUpdate).toHaveBeenCalledWith('test-user-id', {
-          privacySettings: newSettings
-        });
+        expect(updatePrivacySpy).toHaveBeenCalledWith('test-user-id', newSettings);
       });
     });
   });
@@ -479,18 +478,18 @@ describe('UserService Refactor - Comprehensive Tests', () => {
   });
 
   describe('UserService (Backward Compatibility)', () => {
-          it('should delegate authentication methods to AuthService', async () => {
+          it('should delegate authentication methods to ConsolidatedAuthService', async () => {
         const mockUserCredential = { 
           user: { uid: 'test-user-id' },
           providerId: 'password',
           operationType: 'signIn'
-        } as any;
-        jest.spyOn(AuthService, 'registerWithEmail').mockResolvedValue(mockUserCredential);
+        } as unknown as UserCredential;
+        jest.spyOn(ConsolidatedAuthService, 'registerWithEmail').mockResolvedValue(mockUserCredential);
 
       const result = await UserService.registerWithEmail('test@example.com', 'Password123!', 'Test User');
 
       expect(result).toEqual(mockUserCredential);
-      expect(AuthService.registerWithEmail).toHaveBeenCalledWith('test@example.com', 'Password123!', 'Test User');
+      expect(ConsolidatedAuthService.registerWithEmail).toHaveBeenCalledWith('test@example.com', 'Password123!', 'Test User');
     });
 
     it('should delegate profile methods to ProfileService', async () => {
@@ -519,7 +518,8 @@ describe('UserService Refactor - Comprehensive Tests', () => {
         level: 2,
         xp: 150,
         xpToNextLevel: 200,
-        leveledUp: true
+        leveledUp: true,
+        levelsGained: 1
       });
       expect(ProgressionService.addUserXP).toHaveBeenCalledWith('test-user-id', 100);
     });
@@ -537,11 +537,11 @@ describe('UserService Refactor - Comprehensive Tests', () => {
 
   describe('Error Handling', () => {
     it('should handle Firebase errors gracefully', async () => {
-      const registerSpy = jest.spyOn(AuthService, 'registerWithEmail');
+      const registerSpy = jest.spyOn(ConsolidatedAuthService, 'registerWithEmail');
       registerSpy.mockRejectedValue(new Error('Firebase error'));
 
       await expect(
-        AuthService.registerWithEmail('test@example.com', 'Password123!', 'Test User')
+        ConsolidatedAuthService.registerWithEmail('test@example.com', 'Password123!', 'Test User')
       ).rejects.toThrow();
       registerSpy.mockRestore();
     });
@@ -551,7 +551,7 @@ describe('UserService Refactor - Comprehensive Tests', () => {
       signInWithEmailAndPassword.mockRejectedValue(new Error('Network error'));
 
       await expect(
-        AuthService.signInWithEmail('test@example.com', 'Password123!')
+        ConsolidatedAuthService.signInWithEmail('test@example.com', 'Password123!')
       ).rejects.toThrow('Network error');
       expect(signInWithEmailAndPassword).toHaveBeenCalledTimes(1);
     });

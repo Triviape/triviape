@@ -8,8 +8,10 @@ export interface PerformanceMetric {
   value: number;
   timestamp: number;
   category: 'leaderboard' | 'friends' | 'multiplayer' | 'social' | 'general';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
+
+type PerformanceMetadata = Record<string, unknown>;
 
 export interface PerformanceThresholds {
   leaderboardLoad: number; // ms
@@ -62,7 +64,7 @@ export class SocialPerformanceMonitor {
     name: string,
     value: number,
     category: PerformanceMetric['category'],
-    metadata?: Record<string, any>
+    metadata?: PerformanceMetadata
   ): void {
     const metric: PerformanceMetric = {
       name,
@@ -93,10 +95,10 @@ export class SocialPerformanceMonitor {
    */
   startMeasurement(
     name: string
-  ): (category?: PerformanceMetric['category'], metadata?: Record<string, any>) => void {
+  ): (category?: PerformanceMetric['category'], metadata?: PerformanceMetadata) => void {
     const startTime = performance.now();
     
-    return (category: PerformanceMetric['category'] = 'general', metadata?: Record<string, any>) => {
+    return (category: PerformanceMetric['category'] = 'general', metadata?: PerformanceMetadata) => {
       const duration = performance.now() - startTime;
       this.recordMetric(name, duration, category, metadata);
     };
@@ -109,7 +111,7 @@ export class SocialPerformanceMonitor {
     name: string,
     category: PerformanceMetric['category'],
     operation: () => Promise<T>,
-    metadata?: Record<string, any>
+    metadata?: PerformanceMetadata
   ): Promise<T> {
     const endMeasurement = this.startMeasurement(name);
     
@@ -130,7 +132,7 @@ export class SocialPerformanceMonitor {
     name: string,
     category: PerformanceMetric['category'],
     operation: () => T,
-    metadata?: Record<string, any>
+    metadata?: PerformanceMetadata
   ): T {
     const endMeasurement = this.startMeasurement(name);
     
@@ -353,17 +355,17 @@ export class SocialPerformanceMonitor {
 export const socialPerformanceMonitor = SocialPerformanceMonitor.getInstance();
 
 // Convenience functions for common operations
-export const measureLeaderboardLoad = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureLeaderboardLoad = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   socialPerformanceMonitor.measureAsync('leaderboard-load', 'leaderboard', operation, metadata);
 
-export const measureFriendAction = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureFriendAction = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   socialPerformanceMonitor.measureAsync('friend-action', 'friends', operation, metadata);
 
-export const measureMultiplayerAction = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureMultiplayerAction = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   socialPerformanceMonitor.measureAsync('multiplayer-action', 'multiplayer', operation, metadata);
 
-export const measureSocialAction = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureSocialAction = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   socialPerformanceMonitor.measureAsync('social-action', 'social', operation, metadata);
 
-export const recordRealtimeLatency = (latency: number, metadata?: Record<string, any>) => 
+export const recordRealtimeLatency = (latency: number, metadata?: PerformanceMetadata) => 
   socialPerformanceMonitor.recordMetric('realtime-latency', latency, 'multiplayer', metadata);

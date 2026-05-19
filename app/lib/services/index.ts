@@ -26,15 +26,6 @@ export * from './user';
 // Unified Auth Services (Phase 2 - COMPLETED)
 export * from './auth';
 
-// Legacy exports for backward compatibility
-// These will be removed after all services are unified
-// @deprecated - Use ConsolidatedAuthService from './auth' instead
-export { authService as AuthService } from './auth/consolidatedAuthService';
-export { ProfileService } from './profileService';
-export { PreferencesService } from './preferencesService';
-export { ProgressionService } from './progressionService';
-export { UserService } from './userService';
-
 // Daily Quiz Services (Phase 4 - NEXT)
 export * from './dailyQuizService';
 export {

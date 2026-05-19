@@ -21,7 +21,7 @@ import {
 } from '../../validation/securitySchemas';
 
 // Import the focused services
-import { ConsolidatedAuthService as AuthService } from '../auth/consolidatedAuthService';
+import { ConsolidatedAuthService } from '../auth/consolidatedAuthService';
 import { ProfileService } from './profileService';
 import { PreferencesService } from './preferencesService';
 import { ProgressionService } from './progressionService';
@@ -128,33 +128,33 @@ export class UserService extends BaseServiceImplementation<UserProfile> {
     };
   }
 
-  // Authentication methods (delegated to AuthService)
+  // Authentication methods (delegated to ConsolidatedAuthService)
   static async registerWithEmail(email: string, password: string, displayName: string): Promise<UserCredential> {
-    return AuthService.registerWithEmail(email, password, displayName);
+    return ConsolidatedAuthService.registerWithEmail(email, password, displayName);
   }
 
   static async signInWithEmail(email: string, password: string): Promise<UserCredential> {
-    return AuthService.signInWithEmail(email, password);
+    return ConsolidatedAuthService.signInWithEmail(email, password);
   }
 
   static async signInWithGoogle(): Promise<UserCredential> {
-    return AuthService.signInWithGoogle();
+    return ConsolidatedAuthService.signInWithGoogle();
   }
 
   static async signInWithTwitter(): Promise<UserCredential> {
-    return AuthService.signInWithTwitter();
+    return ConsolidatedAuthService.signInWithTwitter();
   }
 
   static async signInWithFacebook(): Promise<UserCredential> {
-    return AuthService.signInWithFacebook();
+    return ConsolidatedAuthService.signInWithFacebook();
   }
 
   static async sendPasswordReset(email: string): Promise<void> {
-    return AuthService.sendPasswordReset(email);
+    return ConsolidatedAuthService.sendPasswordReset(email);
   }
 
   static async signOut(): Promise<void> {
-    return AuthService.signOut();
+    return ConsolidatedAuthService.signOut();
   }
 
   // Profile methods (delegated to ProfileService)

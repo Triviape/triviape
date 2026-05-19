@@ -8,8 +8,10 @@ export interface PerformanceMetric {
   value: number;
   timestamp: number;
   category: 'leaderboard' | 'friends' | 'multiplayer' | 'social' | 'auth' | 'quiz' | 'user' | 'general';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
+
+type PerformanceMetadata = Record<string, unknown>;
 
 export interface PerformanceThresholds {
   leaderboardLoad: number; // ms
@@ -68,7 +70,7 @@ export class PerformanceMonitor {
     name: string,
     value: number,
     category: PerformanceMetric['category'],
-    metadata?: Record<string, any>
+    metadata?: PerformanceMetadata
   ): void {
     const metric: PerformanceMetric = {
       name,
@@ -99,10 +101,10 @@ export class PerformanceMonitor {
    */
   startMeasurement(
     name: string
-  ): (category?: PerformanceMetric['category'], metadata?: Record<string, any>) => void {
+  ): (category?: PerformanceMetric['category'], metadata?: PerformanceMetadata) => void {
     const startTime = performance.now();
     
-    return (category: PerformanceMetric['category'] = 'general', metadata?: Record<string, any>) => {
+    return (category: PerformanceMetric['category'] = 'general', metadata?: PerformanceMetadata) => {
       const duration = performance.now() - startTime;
       this.recordMetric(name, duration, category, metadata);
     };
@@ -115,7 +117,7 @@ export class PerformanceMonitor {
     name: string,
     category: PerformanceMetric['category'],
     operation: () => Promise<T>,
-    metadata?: Record<string, any>
+    metadata?: PerformanceMetadata
   ): Promise<T> {
     const startTime = performance.now();
     
@@ -138,7 +140,7 @@ export class PerformanceMonitor {
     name: string,
     category: PerformanceMetric['category'],
     operation: () => T,
-    metadata?: Record<string, any>
+    metadata?: PerformanceMetadata
   ): T {
     const startTime = performance.now();
     
@@ -371,7 +373,7 @@ export class PerformanceMonitor {
     }
 
     // Check for high error rates
-    const errorMetrics = metrics.filter(m => m.metadata?.error);
+    const errorMetrics = metrics.filter(m => Boolean(m.metadata && 'error' in m.metadata && m.metadata.error));
     const errorRate = errorMetrics.length / metrics.length;
     if (errorRate > 0.1) {
       recommendations.push(`High error rate detected: ${(errorRate * 100).toFixed(1)}% of operations failed`);
@@ -394,26 +396,26 @@ export class PerformanceMonitor {
 export const performanceMonitor = PerformanceMonitor.getInstance();
 
 // Convenience functions for specific categories
-export const measureLeaderboardLoad = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureLeaderboardLoad = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   performanceMonitor.measureAsync('leaderboard-load', 'leaderboard', operation, metadata);
 
-export const measureFriendAction = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureFriendAction = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   performanceMonitor.measureAsync('friend-action', 'friends', operation, metadata);
 
-export const measureMultiplayerAction = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureMultiplayerAction = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   performanceMonitor.measureAsync('multiplayer-action', 'multiplayer', operation, metadata);
 
-export const measureSocialAction = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureSocialAction = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   performanceMonitor.measureAsync('social-action', 'social', operation, metadata);
 
-export const measureAuthOperation = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureAuthOperation = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   performanceMonitor.measureAsync('auth-operation', 'auth', operation, metadata);
 
-export const measureQuizOperation = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureQuizOperation = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   performanceMonitor.measureAsync('quiz-operation', 'quiz', operation, metadata);
 
-export const measureUserOperation = (operation: () => Promise<any>, metadata?: Record<string, any>) => 
+export const measureUserOperation = <T>(operation: () => Promise<T>, metadata?: PerformanceMetadata) => 
   performanceMonitor.measureAsync('user-operation', 'user', operation, metadata);
 
-export const recordRealtimeLatency = (latency: number, metadata?: Record<string, any>) => 
-  performanceMonitor.recordMetric('realtime-latency', latency, 'multiplayer', metadata); 
+export const recordRealtimeLatency = (latency: number, metadata?: PerformanceMetadata) => 
+  performanceMonitor.recordMetric('realtime-latency', latency, 'multiplayer', metadata);

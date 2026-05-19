@@ -44,7 +44,7 @@ export interface QuestionData {
   timeLimit: number; // seconds
   points: number;
   imageUrl?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**

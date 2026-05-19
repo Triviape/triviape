@@ -226,68 +226,73 @@ export function useMultiplayerSession() {
   useEffect(() => {
     if (!isConnected) return;
 
-    const eventHandlers: { [K in keyof GameEvents]?: (data: GameEvents[K]) => void } = {
-      'player-joined': (data) => {
-        setPlayers(data.session.players);
-        setCurrentSession(data.session);
-      },
-      'player-left': (data) => {
-        setPlayers(data.session.players);
-        setCurrentSession(data.session);
-      },
-      'game-started': (data) => {
-        setGameState('active');
-        setCurrentQuestion(data.question);
-      },
-      'question-changed': (data) => {
-        setCurrentQuestion(data.question);
-      },
-      'game-ended': (data) => {
-        setGameState('completed');
-        setRankings(data.finalRankings);
-      },
-      'rankings-updated': (data) => {
-        setRankings(data.rankings);
-      },
-      'timer-update': (data) => {
-        setTimeRemaining(data.timeRemaining);
-      },
-      'chat-message': (data) => {
-        setChatMessages(prev => [...prev, {
-          id: `${data.timestamp}-${data.playerId}`,
-          playerId: data.playerId,
-          playerName: data.playerName,
-          message: data.message,
-          timestamp: data.timestamp,
-          type: 'player'
-        }]);
-      },
-      'system-message': (data) => {
-        setChatMessages(prev => [...prev, {
-          id: `${Date.now()}-system`,
-          playerId: 'system',
-          playerName: 'System',
-          message: data.message,
-          timestamp: Date.now(),
-          type: 'system'
-        }]);
-      }
+    const onPlayerJoined = (data: GameEvents['player-joined']) => {
+      setPlayers(data.session.players);
+      setCurrentSession(data.session);
+    };
+    const onPlayerLeft = (data: GameEvents['player-left']) => {
+      setPlayers(data.session.players);
+      setCurrentSession(data.session);
+    };
+    const onGameStarted = (data: GameEvents['game-started']) => {
+      setGameState('active');
+      setCurrentQuestion(data.question);
+    };
+    const onQuestionChanged = (data: GameEvents['question-changed']) => {
+      setCurrentQuestion(data.question);
+    };
+    const onGameEnded = (data: GameEvents['game-ended']) => {
+      setGameState('completed');
+      setRankings(data.finalRankings);
+    };
+    const onRankingsUpdated = (data: GameEvents['rankings-updated']) => {
+      setRankings(data.rankings);
+    };
+    const onTimerUpdate = (data: GameEvents['timer-update']) => {
+      setTimeRemaining(data.timeRemaining);
+    };
+    const onChatMessage = (data: GameEvents['chat-message']) => {
+      setChatMessages(prev => [...prev, {
+        id: `${data.timestamp}-${data.playerId}`,
+        playerId: data.playerId,
+        playerName: data.playerName,
+        message: data.message,
+        timestamp: data.timestamp,
+        type: 'player'
+      }]);
+    };
+    const onSystemMessage = (data: GameEvents['system-message']) => {
+      setChatMessages(prev => [...prev, {
+        id: `${Date.now()}-system`,
+        playerId: 'system',
+        playerName: 'System',
+        message: data.message,
+        timestamp: Date.now(),
+        type: 'system'
+      }]);
     };
 
-    // Register event listeners
-    Object.entries(eventHandlers).forEach(([event, handler]) => {
-      if (handler) {
-        service.on(event as keyof GameEvents, handler as any);
-      }
-    });
+    service.on('player-joined', onPlayerJoined);
+    service.on('player-left', onPlayerLeft);
+    service.on('game-started', onGameStarted);
+    service.on('question-changed', onQuestionChanged);
+    service.on('game-ended', onGameEnded);
+    service.on('rankings-updated', onRankingsUpdated);
+    service.on('timer-update', onTimerUpdate);
+    service.on('chat-message', onChatMessage);
+    service.on('system-message', onSystemMessage);
 
     // Cleanup function
     return () => {
-      Object.entries(eventHandlers).forEach(([event, handler]) => {
-        if (handler) {
-          service.off(event as keyof GameEvents, handler as any);
-        }
-      });
+      service.off('player-joined', onPlayerJoined);
+      service.off('player-left', onPlayerLeft);
+      service.off('game-started', onGameStarted);
+      service.off('question-changed', onQuestionChanged);
+      service.off('game-ended', onGameEnded);
+      service.off('rankings-updated', onRankingsUpdated);
+      service.off('timer-update', onTimerUpdate);
+      service.off('chat-message', onChatMessage);
+      service.off('system-message', onSystemMessage);
     };
   }, [isConnected, service]);
 

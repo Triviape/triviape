@@ -140,15 +140,34 @@ export class ProfileService extends BaseServiceImplementation<UserProfile> {
     }
   ): Promise<void> {
     return withErrorHandling(async () => {
+      const displayNameValidation = sanitizeAndValidate(UserInputSchemas.displayName, userData.displayName);
+      const emailValidation = sanitizeAndValidate(UserInputSchemas.email, userData.email);
+
+      if (!displayNameValidation.success) {
+        throw handleValidationError(new Error('Invalid display name'), 'displayName');
+      }
+      if (!emailValidation.success) {
+        throw handleValidationError(new Error('Invalid email'), 'email');
+      }
+
+      let validatedPhotoURL: string | undefined;
+      if (userData.photoURL) {
+        const urlValidation = sanitizeAndValidate(UserInputSchemas.url, userData.photoURL);
+        if (!urlValidation.success) {
+          throw handleValidationError(new Error('Invalid photo URL'), 'photoURL');
+        }
+        validatedPhotoURL = urlValidation.data!;
+      }
+
       const db = getFirestore();
       const batch = writeBatch(db);
       
       const userDoc = doc(db, COLLECTIONS.USERS, userId);
       const userProfile: Partial<UserProfile> = {
         uid: userId,
-        displayName: userData.displayName,
-        email: userData.email,
-        photoURL: userData.photoURL || undefined,
+        displayName: displayNameValidation.data!,
+        email: emailValidation.data!,
+        photoURL: validatedPhotoURL,
         createdAt: Date.now(),
         lastLoginAt: Date.now(),
         isActive: true,

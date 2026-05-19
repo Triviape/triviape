@@ -17,6 +17,12 @@ import {
 import { useAuth } from './useAuth';
 import { queryKeys as QUERY_KEYS } from '@/app/lib/queryKeys';
 
+type ChallengeOptions = {
+  timeLimit?: number;
+  questionCount?: number;
+  difficultyLevel?: string;
+};
+
 /**
  * Hook for managing user's friends
  */
@@ -175,7 +181,7 @@ export function useChallenges(statusFilter?: ChallengeStatus[]) {
       toUserId: string; 
       quizId: string; 
       message?: string; 
-      options?: any 
+      options?: ChallengeOptions
     }) => friendService.sendChallenge(currentUser!.uid, toUserId, quizId, message, options),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.challenges(currentUser!.uid) });

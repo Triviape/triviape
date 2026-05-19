@@ -167,7 +167,7 @@ export function trackInteraction(componentName: string, interactionName: string)
   
   // Track in Firebase Performance if available
   const perf = getPerformanceInstance();
-  let traceInstance: any = null;
+  let traceInstance: ReturnType<typeof firebaseTrace> | null = null;
   
   if (perf) {
     traceInstance = firebaseTrace(perf, `${componentName}_${interactionName}`);

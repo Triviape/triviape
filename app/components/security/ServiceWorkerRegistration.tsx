@@ -11,7 +11,7 @@ export function ServiceWorkerRegistration() {
     const register = async () => {
       try {
         await navigator.serviceWorker.register('/sw.js');
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Service Worker registration failed:', error);
       }
     };
