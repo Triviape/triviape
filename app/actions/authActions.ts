@@ -22,6 +22,13 @@ const RegisterSchema = z.object({
   displayName: z.string().min(2, 'Display name must be at least 2 characters'),
 });
 
+async function assertEmailVerified(email: string): Promise<void> {
+  const userRecord = await FirebaseAdminService.getUserByEmail(email);
+  if (!userRecord.emailVerified) {
+    throw new Error('Please verify your email address before signing in.');
+  }
+}
+
 /**
  * Server action to handle login
  */
@@ -47,6 +54,8 @@ export async function login(prevState: AuthResult | null, formData: FormData) {
       validatedFields.data.email,
       validatedFields.data.password
     );
+
+    await assertEmailVerified(validatedFields.data.email);
     
     // Get the user's ID token for session creation
     const idToken = await result.user.getIdToken();
@@ -109,22 +118,10 @@ export async function register(prevState: AuthResult | null, formData: FormData)
       validatedFields.data.displayName
     );
     
-    // Get the user's ID token for session creation
-    const idToken = await result.user.getIdToken();
-    
-    // Create a session cookie
-    const sessionResult = await createSessionCookie(idToken);
-    
-    if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
-      return {
-        success: false,
-        error: sessionResult.error || 'Failed to create session',
-      };
-    }
-    
     return {
       success: true,
-      redirectTo: formData.get('redirectTo')?.toString() || '/dashboard',
+      redirectTo: '/auth?tab=signin',
+      message: 'Registration successful. Please verify your email before signing in.',
     };
   } catch (error) {
     console.error('Registration error:', error);

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { auth } from '@/app/lib/auth/auth';
 import { withApiErrorHandling } from '@/app/lib/apiUtils';
 import { withRateLimit, RateLimitConfigs } from '@/app/lib/rateLimiter';
+import { validateSessionFingerprint } from '@/app/lib/security/sessionFingerprinting';
 
 /**
  * API route to validate session fingerprint
@@ -17,24 +18,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Parse request body
-      const body = await request.json();
+      const body = await req.json();
       const { deviceFingerprint } = body;
 
       if (!deviceFingerprint) {
         throw new Error('Device fingerprint is required');
       }
 
-      // Fingerprint validation is temporarily disabled while the session
-      // security flow is redesigned to be runtime-safe across App Router,
-      // API routes, and edge middleware.
-      void deviceFingerprint;
-
-      return {
-        isValid: true,
-        shouldChallenge: false,
-        riskLevel: 'low' as const,
-        score: 100,
-      };
+      return validateSessionFingerprint(req, deviceFingerprint);
     });
   }, RateLimitConfigs.api);
 

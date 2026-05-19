@@ -90,11 +90,18 @@ export class RateLimiter {
       try {
         this.store = new UpstashRateLimitStore();
       } catch (error) {
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error(`Failed to initialize Upstash rate limit store: ${error instanceof Error ? error.message : String(error)}`);
+        }
         console.warn('Failed to initialize Upstash store, falling back to memory:', error);
         this.store = new MemoryRateLimitStore();
       }
     } else {
-      // Fall back to in-memory store
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Rate limiting requires Upstash Redis in production');
+      }
+
+      // Fall back to in-memory store for local development and tests
       this.store = new MemoryRateLimitStore();
     }
 

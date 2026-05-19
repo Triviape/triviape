@@ -66,21 +66,7 @@ function matchesAnyPattern(pathname: string, patterns: string[]): boolean {
  */
 function validateRequest(req: NextRequest): { valid: boolean; errors?: string[] } {
   const errors: string[] = [];
-  
-  // Check for suspicious headers
-  const suspiciousHeaders = [
-    'x-forwarded-host',
-    'x-forwarded-proto',
-    'x-real-ip',
-    'x-forwarded-for'
-  ];
-  
-  for (const header of suspiciousHeaders) {
-    if (req.headers.get(header)) {
-      errors.push(`Suspicious header detected: ${header}`);
-    }
-  }
-  
+
   // Check request size
   const contentLength = req.headers.get('content-length');
   if (contentLength && parseInt(contentLength) > 1024 * 1024) { // 1MB limit

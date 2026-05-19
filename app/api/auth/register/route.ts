@@ -9,7 +9,6 @@ import {
 import { 
   handleConflictError 
 } from '@/app/lib/services/errorHandler';
-import { createSessionCookie } from '@/app/lib/authUtils';
 import { signInWithEmailAndPasswordViaRest, sendEmailVerificationViaRest } from '@/app/lib/auth-config';
 
 /**
@@ -66,28 +65,19 @@ export async function POST(request: NextRequest) {
           displayName,
           emailVerified: false
         });
-        
-        // Sign in once via Firebase REST to get an ID token for session cookie issuance.
+
+        // Sign in once via Firebase REST to obtain an ID token for verification mail.
         const signInResult = await signInWithEmailAndPasswordViaRest(email, password);
 
         // Send email verification (non-blocking — don't fail registration if this fails)
-        sendEmailVerificationViaRest(signInResult.idToken).catch(() => {});
-
-        const sessionResult = await createSessionCookie(signInResult.idToken);
-
-        if (sessionResult && typeof sessionResult === 'object' && !sessionResult.success) {
-          throw {
-            code: ApiErrorCode.INTERNAL_ERROR,
-            message: sessionResult.error || 'Failed to create session',
-            statusCode: 500
-          };
-        }
+        await sendEmailVerificationViaRest(signInResult.idToken).catch(() => {});
 
         return {
           success: true,
           userId: userRecord.uid,
-          message: 'Registration successful',
-          autoSignedIn: true
+          message: 'Registration successful. Please verify your email before signing in.',
+          autoSignedIn: false,
+          verificationRequired: true
         };
       } catch (error: any) {
         // Handle specific Firebase errors

@@ -1,6 +1,7 @@
 import { login, register, logout } from '@/app/actions/authActions';
 import { UserService } from '@/app/lib/services/user';
 import { createSessionCookie, revokeSession } from '@/app/lib/authUtils';
+import { FirebaseAdminService } from '@/app/lib/firebaseAdmin';
 import { redirect } from 'next/navigation';
 import { initTestFirebase } from '../utils/firebase-test-utils';
 import { cleanupTestResources, generateTestUserData } from '../utils/test-data-factory';
@@ -26,6 +27,12 @@ jest.mock('@/app/lib/services/user', () => ({
 jest.mock('@/app/lib/authUtils', () => ({
   createSessionCookie: jest.fn(),
   revokeSession: jest.fn(),
+}));
+
+jest.mock('@/app/lib/firebaseAdmin', () => ({
+  FirebaseAdminService: {
+    getUserByEmail: jest.fn(),
+  },
 }));
 
 jest.mock('next/navigation', () => ({
@@ -55,6 +62,9 @@ describe('Authentication Server Actions', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (FirebaseAdminService.getUserByEmail as jest.Mock).mockResolvedValue({
+      emailVerified: true,
+    });
   });
 
   afterEach(async () => {
@@ -71,6 +81,9 @@ describe('Authentication Server Actions', () => {
       
       (UserService.signInWithEmail as jest.Mock).mockResolvedValue({ 
         user: mockUser 
+      });
+      (FirebaseAdminService.getUserByEmail as jest.Mock).mockResolvedValue({
+        emailVerified: true,
       });
       (createSessionCookie as jest.Mock).mockResolvedValue({ 
         success: true 
@@ -155,6 +168,9 @@ describe('Authentication Server Actions', () => {
       (UserService.signInWithEmail as jest.Mock).mockResolvedValue({ 
         user: mockUser 
       });
+      (FirebaseAdminService.getUserByEmail as jest.Mock).mockResolvedValue({
+        emailVerified: true,
+      });
       (createSessionCookie as jest.Mock).mockResolvedValue({ 
         success: false,
         error: 'Failed to create session cookie'
@@ -179,9 +195,6 @@ describe('Authentication Server Actions', () => {
       (UserService.registerWithEmail as jest.Mock).mockResolvedValue({
         user: mockUser,
       });
-      (createSessionCookie as jest.Mock).mockResolvedValue({
-        success: true,
-      });
 
       const formData = mockFormData();
       const result = await register(null, formData);
@@ -191,10 +204,10 @@ describe('Authentication Server Actions', () => {
         'securePassword123',
         'Test User'
       );
-      expect(createSessionCookie).toHaveBeenCalledWith('new-token');
       expect(result).toEqual({
         success: true,
-        redirectTo: '/dashboard',
+        redirectTo: '/auth?tab=signin',
+        message: 'Registration successful. Please verify your email before signing in.',
       });
     });
 

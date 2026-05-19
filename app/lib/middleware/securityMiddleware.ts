@@ -71,21 +71,7 @@ const SECURITY_HEADERS = {
  */
 function validateHeaders(req: NextRequest): { valid: boolean; errors?: string[] } {
   const errors: string[] = [];
-  
-  // Check for suspicious headers
-  const suspiciousHeaders = [
-    'x-forwarded-host',
-    'x-forwarded-proto',
-    'x-real-ip',
-    'x-forwarded-for'
-  ];
-  
-  for (const header of suspiciousHeaders) {
-    if (req.headers.get(header)) {
-      errors.push(`Suspicious header detected: ${header}`);
-    }
-  }
-  
+
   // Validate content type for POST/PUT requests
   if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
     const contentType = req.headers.get('content-type');

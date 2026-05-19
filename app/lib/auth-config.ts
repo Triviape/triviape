@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import { FirebaseAdminService } from './firebaseAdmin';
 
 export type RestSignInResult = {
   uid: string;
@@ -56,6 +57,13 @@ export async function signInWithEmailAndPasswordViaRest(email: string, password:
   };
 }
 
+async function assertEmailVerified(email: string): Promise<void> {
+  const userRecord = await FirebaseAdminService.getUserByEmail(email);
+  if (!userRecord.emailVerified) {
+    throw new Error('Please verify your email address before signing in.');
+  }
+}
+
 /**
  * Send email verification using Firebase REST API.
  * Uses the same Identity Toolkit endpoint that Firebase client SDK uses internally.
@@ -109,6 +117,7 @@ export const authConfig: NextAuthConfig = {
 
         try {
           const user = await signInWithEmailAndPasswordViaRest(email, password);
+          await assertEmailVerified(user.email);
 
           return {
             id: user.uid,
